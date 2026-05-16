@@ -1,0 +1,21 @@
+{
+  "short_name": "Anatli",
+  "name": "ANATLI - أنعتلي",
+  "icons": [
+    {
+      "src": "favicon.png.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "favicon.png.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1a7a1a",
+  "background_color": "#ffffff",
+  "description": "خدماتك المنزلية بلمسة زر"
+}

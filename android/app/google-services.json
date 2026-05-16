@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1013365864559",
+    "project_id": "anatli-466c7",
+    "storage_bucket": "anatli-466c7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013365864559:android:624254e75d6eea0b06f59a",
+        "android_client_info": {
+          "package_name": "com.zayid.anatli"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASYZJgc4B-NTDGb1Zq9Ac9ZmNo5tb2bAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
