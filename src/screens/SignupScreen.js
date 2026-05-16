@@ -80,7 +80,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
       const cleanedPhone = phone.trim().replace(/\s+/g, '');
       
       // 2. إرسال البيانات للسيرفر لإنشاء الحساب (بوضعية غير مفعل)
-      const response = await fetch('https://anatli-server.onrender.com/signup', {
+      const response = await fetch('https://anatli-server-production.up.railway.app/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
