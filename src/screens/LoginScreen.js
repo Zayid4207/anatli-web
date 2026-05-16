@@ -47,7 +47,7 @@ const handleContactUs = () => {
     setError(null);
     
     try {
-      const response = await fetch('https://anatli-server.onrender.com/login', {
+      const response = await fetch('https://anatli-server-production.up.railway.app/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password })
