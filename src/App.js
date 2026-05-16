@@ -54,7 +54,7 @@ function App() {
     // --- نهاية إضافة PWA Install Banner ---
     
     const hasSyncedToken = useRef(false);
-const API_URL = 'anatli-server-production.up.railway.app';
+const API_URL = 'https://anatli-server-production.up.railway.app';
     // 1. منطق الشاشة الترحيبية (5 ثوانٍ) + استعادة المستخدم
     useEffect(() => {
         // مؤقت الشاشة الترحيبية
