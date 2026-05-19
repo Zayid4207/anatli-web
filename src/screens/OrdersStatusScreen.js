@@ -353,7 +353,13 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
         fetch(`${apiUrl}/reports`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-          body: JSON.stringify({ reported_user_id: selectedOrder.provider_id, order_id: selectedOrder.id, reason: reason })
+         body: JSON.stringify({ 
+    reported_user_id: user.user_role === 'customer' 
+        ? selectedOrder.provider_id 
+        : selectedOrder.customer_id,
+    order_id: selectedOrder.id, 
+    reason: reason 
+})
         }).then(() => alert(lang === 'ar' ? "تم إبلاغ الإدارة، سنراجع الأمر فوراً" : "Signalé à l'admin"));
       }
     }}
