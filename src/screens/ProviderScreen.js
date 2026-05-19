@@ -18,7 +18,7 @@ export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  t
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
   const [expiryDate, setExpiryDate] = useState(null);
-
+  const [freeOrdersLeft, setFreeOrdersLeft] = useState(5);
   // --- وظيفة جلب بيانات المستخدم المحدثة من السيرفر ---
  const fetchUserData = useCallback(async () => {
     // تنظيف صارم لـ ID من أي زوائد مثل :1
@@ -162,8 +162,16 @@ if (response.status === 401) {
         const data = await response.json();
 
         if (response.ok) {
-            setOrders(Array.isArray(data) ? data : []);
+            // التعديل الذكي لاستقبال بيانات السيرفر الجديدة
+            if (data && data.orders) {
+                setOrders(data.orders);
+                setIsSubscribed(data.isSubscribed);
+                setFreeOrdersLeft(data.freeOrdersLeft);
+            } else {
+                setOrders(Array.isArray(data) ? data : []);
+            }
         }
+        
     } catch (error) {
         console.error("DEBUG: فشل الاتصال بالسيرفر:", error);
     }
@@ -482,8 +490,8 @@ const toggleAvailability = async () => {
             <header style={styles.header}>
               <h2 style={styles.viewTitle}>{t.home1}</h2>
             </header>
-           {!isSubscribed && (!Array.isArray(orders) || orders.length === 0) ? (
-  // هذه هي الرسالة والزر الجديد الذي سيظهر عندما تنتهي فترته المجانية ولا توجد طلبات
+           {/* 1. نتحقق أولاً: هل انتهت الفترة المجانية (0 محاولة متبقية) وهو غير مشترك فعلياً؟ */}
+{(freeOrdersLeft === 0 && !isSubscribed) ? (
   <div style={{
     textAlign: 'center',
     padding: '30px 15px',
@@ -508,18 +516,20 @@ const toggleAvailability = async () => {
       onClick={() => setActiveTab('sub')} 
       style={{
         ...styles.primaryBtn,
-        backgroundColor: '#1a237e', // لون ذهبي أو كحلي مميز للفت الانتباه
+        backgroundColor: '#1a237e',
         borderRadius: '12px',
-        fontSize: '1rem'
+        fontSize: '1rem',
+        cursor: 'pointer'
       }}
     >
-      {lang === 'ar' ? '💳 اشترك الآن وتصفح الطلبات' : '💳 S\'abonner maintenant'}
+      {lang === 'ar' ? '💳 اشترك الآن وتصفح الطلبات' : "💳 S'abonner maintenant" }
     </button>
   </div>
-) : !Array.isArray(orders) || orders.length === 0 ? (
-  // هذا هو الكود القديم الخاص بك في حال كانت الطلبات فارغة طبيعياً والسوق هادئ
+) : (!Array.isArray(orders) || orders.length === 0) ? (
+  
   <p style={styles.emptyText}>{t.noOrders}</p>
 ) : (
+  
   orders.map(order => (
                 <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -536,9 +546,12 @@ const toggleAvailability = async () => {
                   <p style={styles.orderDesc}>{order.description?.substring(0, 45)}...</p>
                 </div>
               ))
-            )}
-          </div>
-        )}
+            )
+             
+        }     
+         </div>
+        )} 
+         
 {activeTab === 'chat' && (
   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8f9fa' }}>
     
