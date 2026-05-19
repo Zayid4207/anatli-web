@@ -18,7 +18,9 @@ export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  t
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
   const [expiryDate, setExpiryDate] = useState(null);
-  const [freeOrdersLeft, setFreeOrdersLeft] = useState(5);
+  const [freeOrdersLeft, setFreeOrdersLeft] = useState(
+  Math.max(0, 5 - (user?.free_requests_used || 0))
+);
   // --- وظيفة جلب بيانات المستخدم المحدثة من السيرفر ---
  const fetchUserData = useCallback(async () => {
     // تنظيف صارم لـ ID من أي زوائد مثل :1
@@ -41,6 +43,7 @@ const response = await fetch(`${apiUrl}/users/${cleanId}`, {
         if (freshData) {
             setUser(freshData);
             setIsSubscribed(!!freshData.is_premium);
+            setFreeOrdersLeft(Math.max(0, 5 - (freshData.free_requests_used || 0)));
             if (freshData.subscription_end_date) {
                 setExpiryDate(new Date(freshData.subscription_end_date));
             }
