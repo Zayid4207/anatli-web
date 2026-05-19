@@ -17,6 +17,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
  // --- الجزئية المحدثة ---
 const [freeRequestsUsed, setFreeRequestsUsed] = useState(user?.free_requests_used || 0);
 const [isSubscribed, setIsSubscribed] = useState(user?.is_subscribed || false);
+const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
 const [expiryDate, setExpiryDate] = useState(user?.subscription_end_date ? new Date(user.subscription_end_date) : null);
 // -----------------------
   const [orderData, setOrderData] = useState({
@@ -167,6 +168,7 @@ const refreshUserData = async () => {
     if (res.ok) {
       const updatedUser = await res.json();
       // تحديث الواجهة فوراً بالبيانات الجديدة
+      setSubscriptionPending(!!updatedUser.subscription_pending);
       setIsSubscribed(!!updatedUser.is_subscribed);
       setFreeRequestsUsed(updatedUser.free_requests_used || 0);
       if (updatedUser.subscription_end_date) {
@@ -296,6 +298,7 @@ const handleSubscriptionSubmit = async () => {
             if (res.ok) {
                 // 3. تحديث البيانات فوراً من السيرفر
                 // نقوم بهذه الخطوة للتأكد من أن أي تغيير في حالة المستخدم يظهر فوراً
+                setSubscriptionPending(true);
                 const userRes = await fetch(`${apiUrl}/api/users/${user.id}`,{headers: {
                   'Authorization': `Bearer ${localStorage.getItem('userToken')}`
                 }});
@@ -558,8 +561,43 @@ const handleSubscriptionSubmit = async () => {
 
           <div style={styles.scrollableArea}>
             <h3 style={styles.newOrderViewTitle}>{t.subscribe}</h3>
-
-            {isSubscribed && getDaysLeft() > 0 ? (
+            {subscriptionPending && !isSubscribed ? (
+  // واجهة "قيد المعالجة"
+  <div style={{
+    padding: '30px 20px',
+    border: '2px solid #f0a500',
+    backgroundColor: '#fffbf0',
+    borderRadius: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '15px',
+    textAlign: 'center'
+  }}>
+    <span style={{ fontSize: '3rem' }}>⏳</span>
+    <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#b8860b' }}>
+      {lang === 'ar' ? 'طلبك قيد المعالجة' : 'Demande en cours de traitement'}
+    </p>
+    <p style={{ margin: 0, fontSize: '0.9rem', color: '#888', lineHeight: '1.6' }}>
+      {lang === 'ar' 
+        ? 'تم استلام إثبات دفعك بنجاح، وسيتم تفعيل اشتراكك من قبل الإدارة  الان .  شكراً لصبرك!' 
+        : 'Votre preuve de paiement a bien été reçue. Votre abonnement sera activé bientot par l\'administration.'}
+    </p>
+    <div style={{
+      background: '#fff',
+      border: '1px dashed #f0a500',
+      borderRadius: '12px',
+      padding: '10px 20px',
+      fontSize: '0.85rem',
+      color: '#b8860b'
+    }}>
+      {lang === 'ar' ? '🔔 سيصلك إشعار فور التفعيل' : '🔔 Vous serez notifié dès l\'activation'}
+    </div>
+    <button onClick={() => setActiveTab('home')} style={{ ...styles.primaryBtn, width: '100%', backgroundColor: '#f0a500' }}>
+      {lang === 'ar' ? 'العودة للرئيسية' : 'Retour à l\'accueil'}
+    </button>
+  </div>
+) : isSubscribed && getDaysLeft() > 0 ? (
               <div style={{
                 ...styles.countdownContainer,
                 flexDirection: 'column',
