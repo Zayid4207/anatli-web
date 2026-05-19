@@ -482,10 +482,45 @@ const toggleAvailability = async () => {
             <header style={styles.header}>
               <h2 style={styles.viewTitle}>{t.home1}</h2>
             </header>
-            {!Array.isArray(orders) || orders.length === 0 ? (
-              <p style={styles.emptyText}>{t.noOrders}</p>
-            ) : (
-              orders.map(order => (
+           {!isSubscribed && (!Array.isArray(orders) || orders.length === 0) ? (
+  // هذه هي الرسالة والزر الجديد الذي سيظهر عندما تنتهي فترته المجانية ولا توجد طلبات
+  <div style={{
+    textAlign: 'center',
+    padding: '30px 15px',
+    background: '#fff',
+    borderRadius: '20px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+    margin: '20px auto',
+    width: '90%',
+    border: '1px solid #ffcccb',
+    backgroundColor: '#fffaf0'
+  }}>
+    <span style={{ fontSize: '3rem' }}>⚠️</span>
+    <h3 style={{ color: '#d32f2f', margin: '10px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+      {lang === 'ar' ? 'انتهت الفترة المجانية المتاحة لك' : 'Période gratuite expirée'}
+    </h3>
+    <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '20px' }}>
+      {lang === 'ar' 
+        ? 'لقد استهلكت محاولاتك المجانية (5 طلبات). يرجى الاشتراك في الباقة الشهرية لتتمكن من استقبال طلبات الزبائن الجديدة والاستمرار في العمل.' 
+        : 'Vous avez épuisé vos essais gratuits (5 commandes). Veuillez vous abonner pour recevoir de nouvelles commandes.'}
+    </p>
+    <button 
+      onClick={() => setActiveTab('sub')} 
+      style={{
+        ...styles.primaryBtn,
+        backgroundColor: '#1a237e', // لون ذهبي أو كحلي مميز للفت الانتباه
+        borderRadius: '12px',
+        fontSize: '1rem'
+      }}
+    >
+      {lang === 'ar' ? '💳 اشترك الآن وتصفح الطلبات' : '💳 S\'abonner maintenant'}
+    </button>
+  </div>
+) : !Array.isArray(orders) || orders.length === 0 ? (
+  // هذا هو الكود القديم الخاص بك في حال كانت الطلبات فارغة طبيعياً والسوق هادئ
+  <p style={styles.emptyText}>{t.noOrders}</p>
+) : (
+  orders.map(order => (
                 <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{fontSize: '1.1rem'}}>👤 {order.customer_name || 'زبون'}</strong>
