@@ -16,6 +16,7 @@ export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  t
   const [isAvailable, setIsAvailable] = useState(user?.is_available || false);
   const [subStep, setSubStep] = useState(1);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
   const [expiryDate, setExpiryDate] = useState(null);
 
   // --- وظيفة جلب بيانات المستخدم المحدثة من السيرفر ---
@@ -326,6 +327,7 @@ const toggleAvailability = async () => {
         if (response.ok) {
             // 5. في حال النجاح: تصفير المدخلات وإعادة المستخدم للواجهة الرئيسية
             alert(lang === 'ar' ? ' تم إرسال إثبات الدفع بنجاح. يرجى انتظار تفعيل الإدارة.' : 'Preuve envoyée avec succès. Veuillez attendre la validation.');
+            setSubscriptionPending(true); // <--- أضف هذا السطر هنا لتحديث الواجهة فوراً
             setSubFile(null);
             setSubStep(1); // العودة للخطوة الأولى في شاشة الاشتراك
             setActiveTab('home'); // العودة للرئيسية
@@ -579,7 +581,43 @@ const toggleAvailability = async () => {
     </header>
 
     <div style={styles.scrollableArea}>
-      {isSubscribed && expiryDate && getDaysLeft() > 0 ? (
+      {subscriptionPending && !isSubscribed ? (
+  // واجهة "قيد المعالجة"
+  <div style={{
+    padding: '30px 20px',
+    border: '2px solid #f0a500',
+    backgroundColor: '#fffbf0',
+    borderRadius: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '15px',
+    textAlign: 'center'
+  }}>
+    <span style={{ fontSize: '3rem' }}>⏳</span>
+    <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#b8860b' }}>
+      {lang === 'ar' ? 'طلبك قيد المعالجة' : 'Demande en cours de traitement'}
+    </p>
+    <p style={{ margin: 0, fontSize: '0.9rem', color: '#888', lineHeight: '1.6' }}>
+      {lang === 'ar' 
+        ? 'تم استلام إثبات دفعك بنجاح، وسيتم تفعيل اشتراكك من قبل الإدارة قريباً. شكراً لصبرك!' 
+        : 'Votre preuve de paiement a bien été reçue. Votre abonnement sera activé prochainement par l\'administration.'}
+    </p>
+    <div style={{
+      background: '#fff',
+      border: '1px dashed #f0a500',
+      borderRadius: '12px',
+      padding: '10px 20px',
+      fontSize: '0.85rem',
+      color: '#b8860b'
+    }}>
+      {lang === 'ar' ? '🔔 ستصلك إشعار فور التفعيل' : '🔔 Vous serez notifié dès l\'activation'}
+    </div>
+    <button onClick={() => setActiveTab('home')} style={{ ...styles.primaryBtn, width: '100%', backgroundColor: '#f0a500' }}>
+      {lang === 'ar' ? 'العودة للرئيسية' : 'Retour à l\'accueil'}
+    </button>
+  </div>
+) : isSubscribed && expiryDate &&getDaysLeft() > 0 ? (
         // واجهة المشترك الحالي (تم تحسين مظهرها)
         <div style={{...styles.subCard, borderColor: '#1a237e', borderTopWidth: '8px', borderTopStyle: 'solid', borderRadius: '25px'}}>
           <div style={{ textAlign: 'center', marginBottom: '15px' }}>
