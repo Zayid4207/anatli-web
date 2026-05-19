@@ -490,7 +490,6 @@ const toggleAvailability = async () => {
             <header style={styles.header}>
               <h2 style={styles.viewTitle}>{t.home1}</h2>
             </header>
-           {/* 1. نتحقق أولاً: هل انتهت الفترة المجانية (0 محاولة متبقية) وهو غير مشترك فعلياً؟ */}
 {(freeOrdersLeft === 0 && !isSubscribed) ? (
   <div style={{
     textAlign: 'center',
