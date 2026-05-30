@@ -13,7 +13,6 @@ export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  t
   const [lang, setLang] = useState('ar');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [subFile, setSubFile] = useState(null);
-  const [isAvailable, setIsAvailable] = useState(user?.is_available || false);
   const [subStep, setSubStep] = useState(1);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
@@ -86,7 +85,6 @@ const response = await fetch(`${apiUrl}/users/${cleanId}`, {
       bankily: 'بنكيلي', sedad: 'سداد', masrivi: 'مصرفي',
       transferTo: 'التحويل للرقم:', noOrders: 'لا توجد طلبات جديدة حالياً',
       logout: 'تسجيل الخروج',
-      statusAvailable: 'الحالة: متاح الآن', statusBusy: 'الحالة: مشغول حالياً',
       orderType: 'نوع الطلب:',
       descLabel: 'وصف المشكلة:',
       callCustomer: 'اتصال بالزبون',
@@ -118,7 +116,6 @@ const response = await fetch(`${apiUrl}/users/${cleanId}`, {
       bankily: 'Bankily', sedad: 'Sedad', masrivi: 'Masrivi',
       transferTo: 'Transfert au numéro :', noOrders: 'Aucune commande pour le moment',
       logout: 'Déconnexion',
-      statusAvailable: 'Statut: En ligne', statusBusy: 'Statut: Hors ligne',
       orderType: 'Type de commande:',
       descLabel: 'Description du problème:',
       callCustomer: 'Appeler le client',
@@ -127,10 +124,7 @@ const response = await fetch(`${apiUrl}/users/${cleanId}`, {
     }
   }[lang];
 const fetchOrders = useCallback(async () => {
-    if (!isAvailable) {
-        setOrders([]); 
-        return;
-    }
+  
 
     if (!user?.id) return;
 
@@ -142,7 +136,7 @@ const fetchOrders = useCallback(async () => {
         let myRawSpecialty = user?.service_type || user?.specialty;
 
         // داخل دالة fetchOrders ابحث عن سطر الـ url وحدثه:
-let url = `${apiUrl}/orders?provider_id=${cleanId}&is_available=${isAvailable}`;
+let url = `${apiUrl}/orders?provider_id=${cleanId}`;
         
         if (myRawSpecialty) {
             // نرسل القيمة الخام للسيرفر لضمان المطابقة
@@ -178,13 +172,13 @@ if (response.status === 401) {
     } catch (error) {
         console.error("DEBUG: فشل الاتصال بالسيرفر:", error);
     }
-}, [apiUrl, user?.service_type, user?.specialty, user?.id, isAvailable, token]);
+}, [apiUrl, user?.service_type, user?.specialty, user?.id, token]);
 
 // --- أضف هذا الجزء هنا ---
 useEffect(() => {
   let interval;
   // التحديث يعمل فقط إذا كان الحرفي "متاح" وفي "واجهة الرئيسية"
-  if (isAvailable && activeTab === 'home') {
+  if (activeTab === 'home') {
     fetchOrders(); // جلب فوري عند الدخول
     
     interval = setInterval(() => {
@@ -194,7 +188,7 @@ useEffect(() => {
   }
 
   return () => clearInterval(interval); // تنظيف المؤقت عند مغادرة الصفحة أو إغلاق التطبيق
-}, [isAvailable, activeTab, fetchOrders]);
+}, [ activeTab, fetchOrders]);
 // -----------------------
 // --- أضف هذا الجزء لفتح الطلب القادم من الإشعار ---
 useEffect(() => {
@@ -279,29 +273,6 @@ const ignoreOrder = async (orderId) => {
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 0;
   };
-// التعديل المطلوب في دالة toggleAvailability داخل ملف مقدم الخدمة
-const toggleAvailability = async () => {
-  const newStatus = !isAvailable;
-  try {
-   const response = await fetch(`${apiUrl}/users/${user.id}/availability`, {
-    method: 'PUT',
-    headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('userToken')}` // تأمين تغيير الحالة
-    },
-    body: JSON.stringify({ is_available: newStatus })
-});
-    if (response.ok) {
-      setIsAvailable(newStatus);
-      // --- إضافة هذا السطر لمسح القائمة فوراً ---
-      if (!newStatus) { setOrders([]); } 
-    } else {
-      alert('فشل تحديث الحالة في السيرفر');
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
 
   const handleSubSubmit = async () => {
     // 1. التحقق من المدخلات الأساسية
@@ -358,17 +329,15 @@ const toggleAvailability = async () => {
     return t[serviceName] || serviceName;
   };
     useEffect(() => {
-  if (user && isAvailable) { // أضفنا شرط التوفر هنا
+  if (user) { // أضفنا شرط التوفر هنا
     fetchOrders();
-  } else if (!isAvailable) {
-    setOrders([]); // تصفير القائمة إذا دخل وهو غير متاح
   }
   
   setIsSubscribed(!!user?.is_premium);
   if (user?.subscription_end_date) {
     setExpiryDate(new Date(user.subscription_end_date));
   }
-}, [user, isAvailable, fetchOrders]); // أضفنا التوفر والـ
+}, [user, fetchOrders]); // أضفنا التوفر والـ
 
   return (
     <div style={{ ...styles.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
@@ -484,12 +453,6 @@ const toggleAvailability = async () => {
           {lang === 'ar' ? 'FR' : 'AR'}
         </button>
       </div></div>
-            <div style={styles.statusToolbar}>
-              <span style={styles.statusLabel}>{isAvailable ? t.statusAvailable : t.statusBusy}</span>
-              <div onClick={toggleAvailability} style={{ ...styles.toggleContainer, background: isAvailable ? 'linear-gradient(45deg, #27ae60, #2ecc71)' : 'linear-gradient(45deg, #e74c3c, #c0392b)' }}>
-                <div style={{ ...styles.toggleCircle, transform: isAvailable ? (lang === 'ar' ? 'translateX(-44px)' : 'translateX(44px)') : 'translateX(0)' }} />
-              </div>
-            </div>
             <header style={styles.header}>
               <h2 style={styles.viewTitle}>{t.home1}</h2>
             </header>
@@ -891,17 +854,12 @@ const toggleAvailability = async () => {
 const styles = {
   container: { height: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   mainContent: { flex: 1, paddingBottom: '85px', overflowY: 'auto' },
-  viewContainer: { padding: '20px' },
-  statusToolbar: { width: '95%', margin: '10px auto', backgroundColor: '#fff', padding: '12px 15px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
-  statusLabel: { fontWeight: 'bold', color: '#333', fontSize: '0.9rem' },
-  toggleContainer: { width: '82px', height: '36px', borderRadius: '20px', display: 'flex', alignItems: 'center', padding: '0 4px', cursor: 'pointer', position: 'relative', transition: '0.3s' },
-  toggleCircle: { width: '30px', height: '30px', background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
   viewTitle: { fontSize: '1.4rem', color: '#333', fontWeight: 'bold' },
   langBtn: { padding: '6px 12px', borderRadius: '15px', border: '1px solid #006400', background: '#fff', color: '#006400', fontWeight: 'bold' },
   orderCard: { background: '#fff', padding: '18px', borderRadius: '20px', marginBottom: '12px', boxShadow: '0 3px 12px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #f0f0f0' },
   statusDot: { width: '12px', height: '12px', borderRadius: '50%' },
-  orderDesc: { color: '#666', fontSize: '0.85rem', marginTop: '8px', lineHeight: '1.4' },
+  orderDesc: { color: '#666', fontSizess: '0.85rem', marginTop: '8px', lineHeight: '1.4' },
   emptyText: { textAlign: 'center', color: '#999', marginTop: '50px' },
   detailsOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '20px' },
   detailsCard: { background: '#fff', width: '100%', maxWidth: '420px', borderRadius: '28px', padding: '25px', position: 'relative' },
