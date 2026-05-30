@@ -205,11 +205,11 @@ React.useEffect(() => {
     const hasFreeTrial = freeRequestsUsed < 3;
     const skipPayment = isSubscribed || hasFreeTrial;
 
-    // 2. منع الإرسال إذا نقصت البيانات الأساسية
-    if (!orderData.image || (!skipPayment && !orderData.payProof)) {
-      alert(t.requiredError);
-      return;
-    }
+   // 2. منع الإرسال إذا لم يرفق إثبات الدفع
+if (!skipPayment && !orderData.payProof) {
+  alert(t.requiredError);
+  return;
+}
 
     setLoading(true);
     try {
@@ -451,19 +451,7 @@ const handleSubscriptionSubmit = async () => {
     </label>
 
     {/* 4. زر الانتقال للمرحلة التالية مع تحديث شرط التحقق ليشمل الموقع */}
-    <button style={styles.primaryBtn} onClick={() => {
-      // التحقق: يجب أن يكون هناك وصف (أكبر من 5 حروف)، وموقع، وصورة
-      if (orderData.desc && orderData.desc.trim().length > 5 && orderData.location && orderData.location.trim().length > 3 && orderData.image) {
-        setStep(3);
-      } else {
-        // تنبيه مخصص في حالة نسيان الموقع
-        if (!orderData.location || orderData.location.trim().length <= 3) {
-          alert(lang === 'ar' ? "يرجى كتابة العنوان الدقيق لتسهيل وصول الفني إليك" : "Veuillez saisir l'adresse précise.");
-        } else {
-          alert(t.requiredError);
-        }
-      }
-    }}>
+    <button style={styles.primaryBtn} onClick={() => setStep(3)}>
       {t.next}
     </button>
   </div>
