@@ -101,6 +101,24 @@ const [ordersFilter, setOrdersFilter] = useState('all');
       }
     } catch (err) { alert("فشل في معالجة الطلب"); }
   };
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
+    try {
+        const res = await fetch(`${apiUrl}/api/orders/${orderId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+        });
+        if (res.ok) {
+            setAllOrders(allOrders.filter(o => o.id !== orderId));
+            alert("✅ تم حذف الطلب بنجاح");
+        } else {
+            const data = await res.json();
+            alert(`❌ ${data.error}`);
+        }
+    } catch (err) {
+        alert("خطأ في الاتصال بالسيرفر");
+    }
+};
 
   const handleVerifySub = async (subId, userId, role, action) => {
     try {
@@ -561,6 +579,26 @@ const handleResetPassword = async (userId, userPhone) => {
                         <p style={{ fontSize: '12px', color: '#888', margin: '5px 0 0' }}>
                             <strong>💳 الدفع:</strong> {order.payment_method || 'غير محدد'}
                         </p>
+                        {(order.request_status === 'completed' || order.request_status === 'waiting_admin' || order.request_status === 'pending') && (
+    <button
+        onClick={() => handleDeleteOrder(order.id)}
+        style={{
+            marginTop: '10px',
+            width: '100%',
+            padding: '8px',
+            backgroundColor: '#e74c3c',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '13px'
+        }}
+    >
+        🗑️ حذف الطلب
+    </button>
+)}
+
                     </div>
                 );
             })
