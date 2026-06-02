@@ -577,9 +577,40 @@ const styles = {
   adminContainer: { padding: '20px', direction: 'rtl', fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', minHeight: '100vh' },
   adminHeader: { marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
   logoutBtn: { padding: '8px 15px', backgroundColor: '#e74c3c', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' },
-  tabBar: { display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' },
-  tabBtn: { padding: '10px 15px', border: '1px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: '#f9f9f9', fontWeight: 'bold' },
-  activeTabBtn: { padding: '10px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', background: '#006400', color: '#fff', fontWeight: 'bold' },
+ tabBar: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px', 
+    marginTop: '15px' 
+},
+ tabBtn: { 
+    padding: '10px 8px', 
+    border: '1px solid #ddd', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    background: '#f9f9f9', 
+    fontWeight: 'bold',
+    fontSize: '12px',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+},
+activeTabBtn: { 
+    padding: '10px 8px', 
+    border: 'none', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    background: '#006400', 
+    color: '#fff', 
+    fontWeight: 'bold',
+    fontSize: '12px',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+},
+
   listSection: { display: 'flex', flexDirection: 'column', gap: '15px' },
   adminCard: { background: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' },
