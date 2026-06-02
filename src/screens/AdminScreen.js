@@ -7,6 +7,8 @@ const AdminScreen = ({ apiUrl, user, onLogout,  }) => {
   const [activeTab, setActiveTab] = useState('orders'); 
   const [selectedImage, setSelectedImage] = useState(null); 
   const [reports, setReports] = useState([]); // لتخزين الشكاوى الجلبة من السيرفر
+  const [allOrders, setAllOrders] = useState([]);
+const [ordersFilter, setOrdersFilter] = useState('all');
 
   const getImageUrl = (url) => {
     if (!url || typeof url !== 'string') return null;
@@ -17,6 +19,21 @@ const AdminScreen = ({ apiUrl, user, onLogout,  }) => {
     }
     return url;
   };
+  const fetchAllOrders = async (status = 'all') => {
+    try {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+        };
+        const res = await fetch(`${apiUrl}/api/admin/all-orders?status=${status}`, { headers });
+        if (res.ok) {
+            const data = await res.json();
+            setAllOrders(data || []);
+        }
+    } catch (err) {
+        console.error("خطأ في جلب كل الطلبات:", err);
+    }
+};
 
   const fetchAdminData = async () => {
     try {
@@ -208,6 +225,12 @@ const handleResetPassword = async (userId, userPhone) => {
           <button onClick={() => setActiveTab('reports')} style={activeTab === 'reports' ? styles.activeTabBtn : styles.tabBtn}>
             🚩 الشكاوى ({reports.length})
           </button>
+          <button 
+             onClick={() => { setActiveTab('allOrders'); fetchAllOrders('all'); }} 
+           style={activeTab === 'allOrders' ? styles.activeTabBtn : styles.tabBtn}
+>
+    📊 متابعة الطلبات
+</button>
         </div>
       </header>
 
@@ -379,6 +402,172 @@ const handleResetPassword = async (userId, userPhone) => {
             }
           </div>
         )}
+{activeTab === 'allOrders' && (
+    <div style={styles.listSection}>
+
+        {/* شريط الفلترة */}
+        <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            flexWrap: 'wrap', 
+            marginBottom: '15px',
+            justifyContent: 'center'
+        }}>
+            {[
+                { value: 'all',           label: '📋 الكل' },
+                { value: 'pending',       label: '🟡 بانتظار فني' },
+                { value: 'negotiating',   label: '🔵 تفاوض' },
+                { value: 'in_progress',   label: '🟠 قيد التنفيذ' },
+                { value: 'completed',     label: '🟢 مكتمل' },
+                { value: 'waiting_admin', label: '🔴 بانتظار الإدارة' },
+            ].map(f => (
+                <button
+                    key={f.value}
+                    onClick={() => { 
+                        setOrdersFilter(f.value); 
+                        fetchAllOrders(f.value); 
+                    }}
+                    style={{
+                        padding: '7px 13px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        backgroundColor: ordersFilter === f.value ? '#006400' : '#eee',
+                        color: ordersFilter === f.value ? '#fff' : '#333',
+                    }}
+                >
+                    {f.label}
+                </button>
+            ))}
+        </div>
+
+        {/* عداد النتائج */}
+        <p style={{ textAlign: 'center', color: '#888', fontSize: '13px', margin: '0 0 10px' }}>
+            إجمالي النتائج: <strong>{allOrders.length}</strong> طلب
+        </p>
+
+        {/* قائمة الطلبات */}
+        {allOrders.length === 0 ? (
+            <p style={styles.emptyMsg}>لا توجد طلبات في هذه الفئة</p>
+        ) : (
+            allOrders.map(order => {
+
+                // تحديد لون ونص الحالة
+                const statusConfig = {
+                    pending:       { color: '#f39c12', bg: '#fff8e1', label: '🟡 بانتظار فني' },
+                    negotiating:   { color: '#2980b9', bg: '#e3f2fd', label: '🔵 جاري التفاوض' },
+                    in_progress:   { color: '#e67e22', bg: '#fff3e0', label: '🟠 قيد التنفيذ' },
+                    completed:     { color: '#27ae60', bg: '#e8f5e9', label: '🟢 مكتمل' },
+                    waiting_admin: { color: '#e74c3c', bg: '#ffebee', label: '🔴 بانتظار الإدارة' },
+                };
+                const s = statusConfig[order.request_status] || { color: '#888', bg: '#f5f5f5', label: order.request_status };
+
+                return (
+                    <div key={order.id} style={{
+                        ...styles.adminCard,
+                        borderRight: `5px solid ${s.color}`,
+                    }}>
+                        {/* رأس البطاقة: رقم الطلب + الحالة */}
+                        <div style={styles.cardHeader}>
+                            <span style={{ fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
+                                طلب رقم #{order.id}
+                            </span>
+                            <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                backgroundColor: s.bg,
+                                color: s.color,
+                            }}>
+                                {s.label}
+                            </span>
+                        </div>
+
+                        {/* نوع الخدمة والتاريخ */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <span style={styles.badge}>{order.service_type}</span>
+                            <small style={{ color: '#999' }}>
+                                {new Date(order.created_at).toLocaleDateString('ar-EG')}
+                            </small>
+                        </div>
+
+                        {/* بيانات الزبون */}
+                        <div style={{ 
+                            backgroundColor: '#f9f9f9', 
+                            padding: '10px', 
+                            borderRadius: '8px', 
+                            marginBottom: '8px' 
+                        }}>
+                            <p style={{ margin: '0 0 4px', fontSize: '13px' }}>
+                                <strong>👤 الزبون:</strong> {order.customer_name}
+                            </p>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>
+                                <strong>📞</strong> {order.customer_phone}
+                            </p>
+                        </div>
+
+                        {/* بيانات مقدم الخدمة */}
+                        <div style={{ 
+                            backgroundColor: order.provider_name ? '#e8f5e9' : '#fff3e0', 
+                            padding: '10px', 
+                            borderRadius: '8px', 
+                            marginBottom: '8px' 
+                        }}>
+                            <p style={{ margin: '0 0 4px', fontSize: '13px' }}>
+                                <strong>🛠️ مقدم الخدمة:</strong>{' '}
+                                {order.provider_name 
+                                    ? order.provider_name 
+                                    : <span style={{ color: '#e67e22' }}>لم يُقبل الطلب بعد</span>
+                                }
+                            </p>
+                            {order.provider_phone && (
+                                <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>
+                                    <strong>📞</strong> {order.provider_phone}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* الوصف */}
+                        <p style={{ 
+                            fontSize: '13px', 
+                            color: '#555', 
+                            margin: '8px 0',
+                            backgroundColor: '#fafafa',
+                            padding: '8px',
+                            borderRadius: '8px'
+                        }}>
+                            <strong>📝 الوصف:</strong> {order.description}
+                        </p>
+
+                        {/* الموقع */}
+                        {order.location && (
+                            <p style={{ 
+                                fontSize: '13px', 
+                                color: '#333', 
+                                margin: '8px 0',
+                                backgroundColor: '#fff9c4',
+                                padding: '8px',
+                                borderRadius: '8px',
+                                border: '1px solid #fbc02d'
+                            }}>
+                                <strong>📍 الموقع:</strong> {order.location}
+                            </p>
+                        )}
+
+                        {/* وسيلة الدفع */}
+                        <p style={{ fontSize: '12px', color: '#888', margin: '5px 0 0' }}>
+                            <strong>💳 الدفع:</strong> {order.payment_method || 'غير محدد'}
+                        </p>
+                    </div>
+                );
+            })
+        )}
+    </div>
+)}
+
       </div>
     </div>
   );
