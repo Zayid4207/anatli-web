@@ -15,6 +15,10 @@ const SignupScreen = ({ onBack, apiUrl }) => {
   // توليد كود عشوائي للتحقق يظهر للمستخدم ليرسله عبر الواتساب
   const [verificationCode] = useState(Math.floor(1000 + Math.random() * 9000).toString());
 
+  // --- جديد: state الخاص بـ OTP ---
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
   const services = [
     { id: 'plumbing', ar: 'سباكة', fr: 'Plomberie', icon: '🚰' },
     { id: 'electricity', ar: 'كهرباء', fr: 'Électricité', icon: '⚡' },
@@ -66,7 +70,85 @@ const SignupScreen = ({ onBack, apiUrl }) => {
     setStep(2);
   };
 
-  // الدالة الأساسية الجديدة التي تربط السيرفر بالواتساب
+  // --- جديد: إرسال OTP ---
+  const handleSendOtp = async () => {
+    if (role === 'provider' && !serviceType) {
+      setError(c.errorService); return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanedPhone = phone.trim().replace(/\s+/g, '');
+      const response = await fetch('https://anatli-server-production.up.railway.app/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanedPhone }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setOtpSent(true);
+        setStep(4);
+      } else {
+        setError(data.error || "فشل إرسال الرمز");
+      }
+    } catch (err) {
+      setError("فشل الاتصال بالسيرفر");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- جديد: التحقق من OTP وإنشاء الحساب ---
+  const handleVerifyAndSignup = async () => {
+    if (!otpCode) { setError("يرجى إدخال الرمز"); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanedPhone = phone.trim().replace(/\s+/g, '');
+
+      // 1. التحقق من الرمز
+      const verifyRes = await fetch('https://anatli-server-production.up.railway.app/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanedPhone, code: otpCode }),
+      });
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok) {
+        setError(verifyData.error || "الرمز غير صحيح"); 
+        setLoading(false);
+        return;
+      }
+
+      // 2. إنشاء الحساب بعد التحقق
+      const signupRes = await fetch('https://anatli-server-production.up.railway.app/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName,
+          phone: cleanedPhone,
+          password: password,
+          role: role,
+          service_type: role === 'provider' ? serviceType : null
+        }),
+      });
+      const signupData = await signupRes.json();
+
+      if (signupRes.ok) {
+        alert("🎉 تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول.");
+        onBack();
+      } else {
+        setError(signupData.error || "خطأ في إنشاء الحساب");
+      }
+    } catch (err) {
+      console.error("Signup Error:", err);
+      setError("فشل الاتصال بالسيرفر");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // الدالة الأساسية القديمة (محتفظ بها كما هي)
   const handleFinalSignup = async () => {
     if (role === 'provider' && !serviceType) {
       setError(c.errorService); return;
@@ -175,11 +257,11 @@ const SignupScreen = ({ onBack, apiUrl }) => {
               <div style={styles.buttonGroup}>
                 <button onClick={() => setStep(1)} style={styles.secondaryButton}>{c.prev}</button>
                 <button 
-                  onClick={() => role === 'provider' ? setStep(3) : handleFinalSignup()} 
+                  onClick={() => role === 'provider' ? setStep(3) : handleSendOtp()} 
                   disabled={loading}
                   style={styles.button}
                 >
-                  {loading ? '...' : (role === 'customer' ? c.btn : c.next)}
+                  {loading ? '...' : (role === 'customer' ? c.next : c.next)}
                 </button>
               </div>
               {error && <p style={styles.errorText}>{error}</p>}
@@ -207,11 +289,40 @@ const SignupScreen = ({ onBack, apiUrl }) => {
               </div>
               <div style={styles.buttonGroup}>
                 <button onClick={() => setStep(2)} style={styles.secondaryButton}>{c.prev}</button>
-                <button onClick={handleFinalSignup} disabled={loading} style={styles.button}>
-                  {loading ? '...' : c.btn}
+                <button onClick={handleSendOtp} disabled={loading} style={styles.button}>
+                  {loading ? '...' : c.next}
                 </button>
               </div>
               {error && <p style={styles.errorText}>{error}</p>}
+            </div>
+          )}
+
+          {/* --- جديد: Step 4 — إدخال رمز OTP --- */}
+          {step === 4 && (
+            <div style={styles.fadeAnim}>
+              <p style={styles.roleTitle}>
+                {lang === 'ar' ? '📱 أدخل رمز التحقق الذي وصلك على هاتفك' : '📱 Entrez le code reçu par SMS'}
+              </p>
+              <div style={styles.inputWrapper}>
+                <span style={styles.icon}>🔑</span>
+                <input
+                  type="text"
+                  placeholder={lang === 'ar' ? 'الرمز المكون من 6 أرقام' : 'Code à 6 chiffres'}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  style={{...styles.input, textAlign: 'center', letterSpacing: '5px', fontSize: '1.3rem'}}
+                  maxLength={6}
+                />
+              </div>
+              {error && <p style={styles.errorText}>{error}</p>}
+              <div style={styles.buttonGroup}>
+                <button onClick={() => setStep(role === 'provider' ? 3 : 2)} style={styles.secondaryButton}>
+                  {lang === 'ar' ? 'رجوع' : 'Retour'}
+                </button>
+                <button onClick={handleVerifyAndSignup} disabled={loading} style={styles.button}>
+                  {loading ? '...' : (lang === 'ar' ? 'تفعيل الحساب ✅' : 'Activer ✅')}
+                </button>
+              </div>
             </div>
           )}
           
