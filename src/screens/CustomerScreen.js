@@ -80,8 +80,8 @@ const [expiryDate, setExpiryDate] = useState(user?.subscription_end_date ? new D
       uploadImg: 'إرفاق صورة المشكلة', uploadProof: 'إرفاق إثبات الدفع (لقطة شاشة)',
       success: 'تم إرسال طلبك بنجاح! سيتم مراجعته وتفعيله فوراً.',
       services: {
-        plumbing: 'سباكة', electricity: 'كهرباء', cleaning: 'تنظيف',
-        maintenance: 'صيانة', cooling: 'تكييف', building: 'بناء'
+        plumbing: 'أعمال السباكة', electricity: 'أعمال الكهرباء', cleaning: 'أعمال التنظيف',
+        maintenance: 'أعمال الصيانة', cooling: 'أعمال التكييف', building: 'أعمال البناء'
       },
       payMethods: { bankily: 'بنكيلي', sadad: 'السداد', masrivi: 'مصرفي' }
     },
@@ -133,8 +133,8 @@ const [expiryDate, setExpiryDate] = useState(user?.subscription_end_date ? new D
       uploadImg: 'Image du problème', uploadProof: 'Preuve de paiement',
       success: 'Commande envoyée avec succès!',
       services: {
-        plumbing: 'Plomberie', electricity: 'Électricité', cleaning: 'Nettoyage',
-        maintenance: 'Maintenance', cooling: 'Climatisation', building: 'Construction'
+        plumbing: 'Plomberie', electricity: 'électricité', cleaning: 'Nettoyage',
+        maintenance: 'Menuiserie', cooling: 'Climatisation', building: 'Construction'
       },
       payMethods: { bankily: 'Bankily', sadad: 'Sadad', masrivi: 'Masrivi' }
     }

@@ -20,12 +20,12 @@ const SignupScreen = ({ onBack, apiUrl }) => {
   const [otpSent, setOtpSent] = useState(false);
 
   const services = [
-    { id: 'plumbing', ar: 'سباكة', fr: 'Plomberie', icon: '🚰' },
-    { id: 'electricity', ar: 'كهرباء', fr: 'Électricité', icon: '⚡' },
-    { id: 'maintenance', ar: 'صيانة', fr: 'Maintenance', icon: '🛠️' },
-    { id: 'cleaning', ar: 'تنظيف', fr: 'Nettoyage', icon: '🧹' },
-    { id: 'air_conditioning', ar: 'تكييف', fr: 'Climatisation', icon: '❄️' },
-    { id: 'construction', ar: 'بناء', fr: 'Construction', icon: '🏗️' },
+    { id: 'plumbing', ar: 'أعمال السباكة', fr: 'Plomberie', icon: '🚰' },
+    { id: 'electricity', ar: 'أعمال الكهرباء', fr: 'Électricité', icon: '⚡' },
+    { id: 'maintenance', ar: 'أعمال الصيانة', fr: 'Maintenance', icon: '🛠️' },
+    { id: 'cleaning', ar: 'أعمال التنظيف', fr: 'Nettoyage', icon: '🧹' },
+    { id: 'air_conditioning', ar: 'أعمال التكييف', fr: 'Climatisation', icon: '❄️' },
+    { id: 'construction', ar: 'أعمال البناء', fr: 'Construction', icon: '🏗️' },
   ];
 
   const content = {
