@@ -96,12 +96,28 @@ const SignupScreen = ({ onBack, apiUrl }) => {
       });
 
       const data = await response.json();
+if (response.ok) {
+        // توليد رمز OTP وإرساله للسيرفر
+        const otpRes = await fetch('https://anatli-server-production.up.railway.app/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: cleanedPhone }),
+        });
+        const otpData = await otpRes.json();
 
-      if (response.ok) {
-        setStep(4); // الانتقال لصفحة إدخال رمز الـ OTP
+        if (otpRes.ok) {
+          // فتح واتساب برسالة تحتوي الرمز
+          const message = `أنعتلي - رمز التحقق الخاص بي: ${otpData.otp}`;
+          const whatsappUrl = `https://wa.me/22242072952?text=${encodeURIComponent(message)}`;
+          window.open(whatsappUrl, '_blank');
+          setStep(4);
+        } else {
+          setError(otpData.error || "فشل توليد رمز التحقق");
+        }
       } else {
         setError(data.error || "خطأ في السيرفر أثناء التسجيل");
       }
+     
     } catch (err) {
       console.error("Signup Error:", err);
       setError("فشل الاتصال بالسيرفر");
