@@ -270,33 +270,37 @@ if (response.ok) {
           )}
 
           {/* --- جديد: Step 4 — إدخال رمز OTP --- */}
-          {step === 4 && (
-            <div style={styles.fadeAnim}>
-              <p style={styles.roleTitle}>
-                {lang === 'ar' ? '📱 أدخل رمز التحقق الذي وصلك على هاتفك' : '📱 Entrez le code reçu par SMS'}
-              </p>
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}>🔑</span>
+         {/* --- واجهة إدخال رمز التحقق (Step 4) المحسنة --- */}
+    {step === 4 && (
+         <div style={styles.fadeAnim}>
+         <p style={styles.roleTitleCenter}>
+          📱 {lang === 'ar' ? 'أدخل رمز التحقق الذي وصلك على هاتفك' : 'Entrez le code reçu sur votre téléphone'}
+            </p>
+    
+           <div style={styles.inputWrapperOtp}>
                 <input
-                  type="text"
-                  placeholder={lang === 'ar' ? 'الرمز المكون من 6 أرقام' : 'Code à 6 chiffres'}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  style={{...styles.input, textAlign: 'center', letterSpacing: '5px', fontSize: '1.3rem'}}
-                  maxLength={6}
-                />
-              </div>
-              {error && <p style={styles.errorText}>{error}</p>}
-              <div style={styles.buttonGroup}>
-                <button onClick={() => setStep(role === 'provider' ? 3 : 2)} style={styles.secondaryButton}>
-                  {lang === 'ar' ? 'رجوع' : 'Retour'}
-                </button>
-                <button onClick={handleVerifyOtp} disabled={loading} style={styles.button}>
-                  {loading ? '...' : (lang === 'ar' ? 'تفعيل الحساب ✅' : 'Activer ✅')}
-                </button>
-              </div>
-            </div>
-          )}
+               type="text"
+        placeholder={lang === 'ar' ? 'الرمز المكون من 6 أرقام' : 'Code à 6 chiffres'}
+        value={otpCode}
+        onChange={(e) => setOtpCode(e.target.value)}
+        style={styles.inputOtp}
+        maxLength={6}
+      />
+      <span style={styles.iconOtp}>🔑</span>
+    </div>
+    
+    {error && <p style={styles.errorText}>{error}</p>}
+    
+    <div style={styles.buttonGroup}>
+      <button onClick={handleVerifyOtp} disabled={loading} style={styles.button}>
+        {loading ? '...' : (lang === 'ar' ? 'تفعيل الحساب ✅' : 'Activer ✅')}
+      </button>
+      <button onClick={() => setStep(role === 'provider' ? 3 : 2)} style={styles.secondaryButton}>
+        {lang === 'ar' ? 'رجوع' : 'Retour'}
+      </button>
+    </div>
+  </div>
+)}
           
           <button type="button" onClick={onBack} style={styles.linkBtn}>{c.back}</button>
         </div>
@@ -328,7 +332,48 @@ const styles = {
   serviceBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '15px', borderRadius: '18px', border: '2px solid', cursor: 'pointer', transition: '0.2s' },
   linkBtn: { background: 'none', border: 'none', color: '#006400', cursor: 'pointer', marginTop: '15px', fontSize: '0.9rem', fontWeight: '600' },
   errorText: { color: '#e74c3c', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' },
-  fadeAnim: { animation: 'fadeIn 0.5s ease' }
+  fadeAnim: { animation: 'fadeIn 0.5s ease' },
+  // أضف هذه الأسطر داخل كائن styles المتواجد في أسفل ملفك:
+  roleTitleCenter: {
+    textAlign: 'center', 
+    fontSize: '0.95rem', 
+    color: '#334155', 
+    fontWeight: '600', 
+    margin: '10px 0 20px 0' 
+  },
+  inputWrapperOtp: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    backgroundColor: '#f8fafc', 
+    borderRadius: '16px', 
+    padding: '0 20px', 
+    border: '1px solid #e2e8f0', 
+    marginBottom: '12px',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+  },
+  iconOtp: {
+    fontSize: '1.2rem',
+    color: '#ffb703',
+    marginLeft: '10px'
+  },
+  inputOtp: {
+    flex: 1, 
+    padding: '18px 0', 
+    border: 'none', 
+    background: 'none', 
+    outline: 'none', 
+    fontSize: '1.2rem', 
+    textAlign: 'center', 
+    color: '#1e293b',
+    fontWeight: 'bold',
+    letterSpacing: '4px' // يعطي مسافة جمالية بين أرقام الكود أثناء الكتابة
+  },
+  buttonGroup: { 
+    display: 'flex', 
+    gap: '12px', 
+    marginTop: '10px',
+    flexDirection: 'row-reverse' // ليتناسب الترتيب بشكل صحيح من اليمين لليسار (التفعيل أولاً ثم الرجوع)
+  },
 };
 
 export default SignupScreen;
