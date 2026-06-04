@@ -71,85 +71,8 @@ const SignupScreen = ({ onBack, apiUrl }) => {
   };
 
   // --- جديد: إرسال OTP ---
-  const handleSendOtp = async () => {
-    if (role === 'provider' && !serviceType) {
-      setError(c.errorService); return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const cleanedPhone = phone.trim().replace(/\s+/g, '');
-      const response = await fetch('https://anatli-server-production.up.railway.app/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanedPhone }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setOtpSent(true);
-        setStep(4);
-      } else {
-        setError(data.error || "فشل إرسال الرمز");
-      }
-    } catch (err) {
-      setError("فشل الاتصال بالسيرفر");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- جديد: التحقق من OTP وإنشاء الحساب ---
-  const handleVerifyAndSignup = async () => {
-    if (!otpCode) { setError("يرجى إدخال الرمز"); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const cleanedPhone = phone.trim().replace(/\s+/g, '');
-
-      // 1. التحقق من الرمز
-      const verifyRes = await fetch('https://anatli-server-production.up.railway.app/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanedPhone, code: otpCode }),
-      });
-      const verifyData = await verifyRes.json();
-
-      if (!verifyRes.ok) {
-        setError(verifyData.error || "الرمز غير صحيح"); 
-        setLoading(false);
-        return;
-      }
-
-      // 2. إنشاء الحساب بعد التحقق
-      const signupRes = await fetch('https://anatli-server-production.up.railway.app/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: fullName,
-          phone: cleanedPhone,
-          password: password,
-          role: role,
-          service_type: role === 'provider' ? serviceType : null
-        }),
-      });
-      const signupData = await signupRes.json();
-
-      if (signupRes.ok) {
-        alert("🎉 تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول.");
-        onBack();
-      } else {
-        setError(signupData.error || "خطأ في إنشاء الحساب");
-      }
-    } catch (err) {
-      console.error("Signup Error:", err);
-      setError("فشل الاتصال بالسيرفر");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // الدالة الأساسية القديمة (محتفظ بها كما هي)
-  const handleFinalSignup = async () => {
+  // 1. الدالة الأولى: إرسال البيانات للسيرفر لإنشاء الحساب وتوليد الـ OTP
+  const handleSignupAndSendOtp = async () => {
     if (role === 'provider' && !serviceType) {
       setError(c.errorService); return;
     }
@@ -158,10 +81,8 @@ const SignupScreen = ({ onBack, apiUrl }) => {
     setError(null);
 
     try {
-      // 1. تنظيف رقم الهاتف
       const cleanedPhone = phone.trim().replace(/\s+/g, '');
       
-      // 2. إرسال البيانات للسيرفر لإنشاء الحساب (بوضعية غير مفعل)
       const response = await fetch('https://anatli-server-production.up.railway.app/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -177,20 +98,50 @@ const SignupScreen = ({ onBack, apiUrl }) => {
       const data = await response.json();
 
       if (response.ok) {
-        // 3. إذا نجح السيرفر، نفتح الواتساب للمستخدم
-        const adminNumber = "22242072952"; // !!! ضع رقمك الشخصي هنا هنا !!!
-        const message = `مرحباً أنعتلي، أنا ${fullName}. أريد تفعيل حسابي. كود التحقق: ${verificationCode}`;
-        const whatsappUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
-        
-        window.open(whatsappUrl, '_blank');
-        
-        alert(c.success);
-        onBack(); // العودة لصفحة تسجيل الدخول
+        setStep(4); // الانتقال لصفحة إدخال رمز الـ OTP
       } else {
-        setError(data.error || "خطأ في السيرفر");
+        setError(data.error || "خطأ في السيرفر أثناء التسجيل");
       }
     } catch (err) {
       console.error("Signup Error:", err);
+      setError("فشل الاتصال بالسيرفر");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. الدالة الثانية: التحقق من كود الـ OTP المدخل وتفعيل الحساب نهائياً
+  const handleVerifyOtp = async () => {
+    if (!otpCode) { 
+      setError(lang === 'ar' ? "يرجى إدخال الرمز" : "Veuillez entrer le code"); 
+      return; 
+    }
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      const cleanedPhone = phone.trim().replace(/\s+/g, '');
+
+      const response = await fetch('https://anatli-server-production.up.railway.app/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: cleanedPhone,
+          code: otpCode
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(lang === 'ar' ? "🎉 تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول." : "🎉 Votre compte a été activé avec succès!");
+        onBack(); 
+      } else {
+        setError(data.error || "الرمز غير صحيح أو انتهت صلاحيته");
+      }
+    } catch (err) {
+      console.error("Verification Error:", err);
       setError("فشل الاتصال بالسيرفر");
     } finally {
       setLoading(false);
@@ -257,7 +208,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
               <div style={styles.buttonGroup}>
                 <button onClick={() => setStep(1)} style={styles.secondaryButton}>{c.prev}</button>
                 <button 
-                  onClick={() => role === 'provider' ? setStep(3) : handleSendOtp()} 
+                  onClick={() => role === 'provider' ? setStep(3) : handleSignupAndSendOtp()}
                   disabled={loading}
                   style={styles.button}
                 >
@@ -289,7 +240,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
               </div>
               <div style={styles.buttonGroup}>
                 <button onClick={() => setStep(2)} style={styles.secondaryButton}>{c.prev}</button>
-                <button onClick={handleSendOtp} disabled={loading} style={styles.button}>
+                <button onClick={handleSignupAndSendOtp} disabled={loading} style={styles.button}>
                   {loading ? '...' : c.next}
                 </button>
               </div>
@@ -319,7 +270,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
                 <button onClick={() => setStep(role === 'provider' ? 3 : 2)} style={styles.secondaryButton}>
                   {lang === 'ar' ? 'رجوع' : 'Retour'}
                 </button>
-                <button onClick={handleVerifyAndSignup} disabled={loading} style={styles.button}>
+                <button onClick={handleVerifyOtp} disabled={loading} style={styles.button}>
                   {loading ? '...' : (lang === 'ar' ? 'تفعيل الحساب ✅' : 'Activer ✅')}
                 </button>
               </div>
