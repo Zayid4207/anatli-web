@@ -110,7 +110,11 @@ if (response.ok) {
           const message = `أنعتلي - رمز التحقق الخاص بي: ${otpData.otp}`;
           const formattedPhone = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : '222' + cleanedPhone;
           const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
-          window.open(whatsappUrl, '_blank');
+          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+           window.location.href = whatsappUrl;
+                  } else {
+                window.open(whatsappUrl, '_blank');
+                                                      }
           setStep(4);
         } else {
           setError(otpData.error || "فشل توليد رمز التحقق");
