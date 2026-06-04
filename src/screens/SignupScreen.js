@@ -108,7 +108,8 @@ if (response.ok) {
         if (otpRes.ok) {
           // فتح واتساب برسالة تحتوي الرمز
           const message = `أنعتلي - رمز التحقق الخاص بي: ${otpData.otp}`;
-          const whatsappUrl = `https://wa.me/22242072952?text=${encodeURIComponent(message)}`;
+          const formattedPhone = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : '222' + cleanedPhone;
+          const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
           window.open(whatsappUrl, '_blank');
           setStep(4);
         } else {
