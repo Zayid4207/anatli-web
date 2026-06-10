@@ -177,7 +177,7 @@ if (response.ok) {
 
       <div style={styles.card}>
         <div style={styles.header}>
-          <h1 style={styles.logo}>ANATLI</h1>
+          <h1 style={styles.logo}>Le Plombier</h1>
           <p style={styles.subtitle}>{c.subtitle}</p>
         </div>
 

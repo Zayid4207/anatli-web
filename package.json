@@ -17,6 +17,8 @@
     "expo-av": "^16.0.8",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.8.0",
+    "lucide-react": "^1.17.0",
+    "npm": "^11.16.0",
     "onesignal-cordova-plugin": "^5.3.9",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -26,6 +28,7 @@
     "react-scripts": "5.0.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "start": "^5.1.0",
     "twilio": "^6.0.2",
     "web-vitals": "^2.1.4"
   },

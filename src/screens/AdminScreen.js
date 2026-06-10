@@ -226,7 +226,7 @@ const handleResetPassword = async (userId, userPhone) => {
       <header style={styles.adminHeader}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <button onClick={onLogout} style={styles.logoutBtn}>تسجيل الخروج 🚪</button>
-          <h1 style={{ margin: 0, color: '#006400', fontSize: '22px' }}>لوحة التحكم 🛡️ ANATLI</h1>
+          <h1 style={{ margin: 0, color: '#006400', fontSize: '22px' }}>لوحة التحكم 🛡️ Le Plombier</h1>
           <div style={{ width: '100px' }}></div> 
         </div>
         

@@ -37,8 +37,8 @@ const LoginScreen = ({ onSignupClick, onLoginSuccess, onPrivacyClick }) => {
 const handleContactUs = () => {
     const adminPhone = "22242072952"; 
     const message = lang === 'ar' 
-        ? "السلام عليكم، أريد الاستفسار عن تطبيق أنعتلي" 
-        : "Bonjour, je souhaite me renseigner sur l'application ANATLI";
+      ?"أريد الاستفسار عن منصة :Le plombier"
+        : "Bonjour, je souhaite me renseigner sur la platforme Le Plombier";
     window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
   const handleLogin = async (e) => {
@@ -87,7 +87,7 @@ const handleContactUs = () => {
       </button>
 
       <div style={styles.card}>
-        <h1 style={styles.logo}>ANATLI</h1>
+        <h1 style={styles.logo}>Le Plombier</h1>
         <h2 style={styles.title}>{content[lang].title}</h2>
         <form onSubmit={handleLogin} style={styles.form}>
           <div style={styles.inputGroup}>

@@ -1,17 +1,17 @@
 {
-  "short_name": "Anatli",
-  "name": "ANATLI - أنعتلي",
+  "short_name": "Le plombier",
+  "name": "Le Plombier",
   "icons": [
     {
-      "src": "favicon.png.png",
+      "src": "icon.png.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "favicon.png.png",
+      "src": "icon.png.png",
       "type": "image/png",
       "sizes": "512x512"
-    }
+    } 
   ],
   "start_url": "/",
   "display": "standalone",

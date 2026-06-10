@@ -355,7 +355,7 @@ const handleSubscriptionSubmit = async () => {
       boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#006400', fontWeight: '900', letterSpacing: '1px' }}>ANATLI</h2>
+        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#006400', fontWeight: '900', letterSpacing: '1px' }}>Le Plombier</h2>
         <button onClick={toggleLanguage} style={{ ...styles.langBtn, margin: 0, padding: '5px 12px' }}>
           {lang === 'ar' ? 'FR' : 'AR'}
         </button>

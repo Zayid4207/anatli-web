@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'; 
-import SplashScreen from './screens/SplashScreen';
+import LandingPage from './LandingPage'; // أو حسب مكان حفظ الملف لديك
 import LoginScreen from './screens/LoginScreen'; 
 import AdminScreen from './screens/AdminScreen';
 import CustomerScreen from './screens/CustomerScreen';
@@ -7,9 +7,9 @@ import ProviderScreen from './screens/ProviderScreen';
 import SignupScreen from './screens/SignupScreen';
 import OrdersStatusScreen from './screens/OrdersStatusScreen';
 import PrivacyPolicy from './screens/PrivacyPolicy';
+
 function App() {
     const OneSignal = window.plugins?.OneSignal;
-    const [showSplash, setShowSplash] = useState(true); // دالة الشاشة الترحيبية
     const [token, setToken] = useState(null); 
     const [showPrivacy, setShowPrivacy] = useState(false);
     const [initialOrderId, setInitialOrderId] = useState(null);
@@ -17,6 +17,7 @@ function App() {
     const [userRole, setUserRole] = useState(null); 
     const [loading, setLoading] = useState(true);
     const [showSignup, setShowSignup] = useState(false);
+    const [currentView, setCurrentView] = useState('landing'); // إدارة التنقل للزوار الجدد
 
     // --- إضافة PWA Install Banner ---
     const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -54,13 +55,12 @@ function App() {
     // --- نهاية إضافة PWA Install Banner ---
     
     const hasSyncedToken = useRef(false);
-const API_URL = 'https://anatli-server-production.up.railway.app';
+    const API_URL = 'https://anatli-server-production.up.railway.app';
+    
     // 1. منطق الشاشة الترحيبية (5 ثوانٍ) + استعادة المستخدم
     useEffect(() => {
         // مؤقت الشاشة الترحيبية
-        const timer = setTimeout(() => {
-            setShowSplash(false);
-        }, 5500);
+      
 
         // استعادة بيانات المستخدم والتوكن
         const savedUser = localStorage.getItem('anatli_user');
@@ -100,77 +100,79 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
 
         window.addEventListener('beforeunload', handleExit);
         return () => {
-            clearTimeout(timer);
+        
             window.removeEventListener('beforeunload', handleExit);
         };
     }, []);
 
     // 2. منطق الإشعارات وتحديث التوكن
-   useEffect(() => {
-    if (!user || !user.id || hasSyncedToken.current) return;
+    useEffect(() => {
+        if (!user || !user.id || hasSyncedToken.current) return;
 
-    const setupOneSignal = () => {
-        try {
-            const OS = window.plugins?.OneSignal;
-            
-            if (!OS) {
-                console.error("❌ OneSignal غير موجود في window.plugins");
-                return;
-            }
-
-            // تهيئة OneSignal
-            OS.initialize("2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9");
-
-            // طلب إذن الإشعارات
-            OS.Notifications.requestPermission(true);
-
-            // ربط المستخدم
-            // امسح أي جلسة قديمة أولاً
-             OS.logout();
-
-// انتظر ثانيتين ثم سجل دخول جديد
-            setTimeout(() => {
-                               OS.login(user.id.toString());
-                                                     }, 2000);
-
-            // الحصول على التوكن
-            OS.User.pushSubscription.addEventListener('change', (change) => {
-                const pushToken = change.current.id;
-                if (pushToken && !hasSyncedToken.current) {
-                    fetch(`${API_URL}/update-fcm-token`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
-                        },
-                        body: JSON.stringify({ userId: user.id, fcmToken: pushToken })
-                    }).then(() => {
-                        hasSyncedToken.current = true;
-                        console.log("✅ تم ربط جهازك بنجاح");
-                    }).catch(err => console.error("❌ فشل إرسال التوكن:", err));
+        const setupOneSignal = () => {
+            try {
+                const OS = window.plugins?.OneSignal;
+                
+                if (!OS) {
+                    console.error("❌ OneSignal غير موجود في window.plugins");
+                    return;
                 }
-            });
 
-        } catch (error) {
-            console.error('❌ OneSignal Error:', error);
-        }
-    };
+                // تهيئة OneSignal
+                OS.initialize("2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9");
 
-    document.addEventListener('deviceready', setupOneSignal, false);
+                // طلب إذن الإشعارات
+                OS.Notifications.requestPermission(true);
 
-    return () => {
-        document.removeEventListener('deviceready', setupOneSignal);
-    };
-}, [user, API_URL]);
+                // ربط المستخدم
+                // امسح أي جلسة قديمة أولاً
+                OS.logout();
+
+                // انتظر ثانيتين ثم سجل دخول جديد
+                setTimeout(() => {
+                    OS.login(user.id.toString());
+                }, 2000);
+
+                // الحصول على التوكن
+                OS.User.pushSubscription.addEventListener('change', (change) => {
+                    const pushToken = change.current.id;
+                    if (pushToken && !hasSyncedToken.current) {
+                        fetch(`${API_URL}/update-fcm-token`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                            },
+                            body: JSON.stringify({ userId: user.id, fcmToken: pushToken })
+                        }).then(() => {
+                            hasSyncedToken.current = true;
+                            console.log("✅ تم ربط جهازك بنجاح");
+                        }).catch(err => console.error("❌ فشل إرسال التوكن:", err));
+                    }
+                });
+
+            } catch (error) {
+                console.error('❌ OneSignal Error:', error);
+            }
+        };
+
+        document.addEventListener('deviceready', setupOneSignal, false);
+
+        return () => {
+            document.removeEventListener('deviceready', setupOneSignal);
+        };
+    }, [user, API_URL]);
+
     const handleLogout = () => {
-            if (window.plugins?.OneSignal) {
-    window.plugins.OneSignal.logout();
-}
+        if (window.plugins?.OneSignal) {
+            window.plugins.OneSignal.logout();
+        }
         localStorage.removeItem('anatli_user');
         hasSyncedToken.current = false;
         setUser(null);
         setUserRole(null);
         setToken(null);
+        setCurrentView('landing'); // نعود بالعميل إلى الواجهة التعريفية عند الخروج
     };
 
     const handleLoginSuccess = (userData) => {
@@ -187,14 +189,9 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
     if (loading) {
         return (
             <div style={styles.loadingContainer}>
-                <h3 style={{ color: '#006400' }}>جاري تحميل تطبيق أنعتلي...</h3>
+                <h3 style={{ color: '#2563eb' }}>جار تحميل موقع :Le Plombier</h3>
             </div>
         );
-    }
-
-    // ثانياً: عرض الشاشة الترحيبية لمدة 5 ثوانٍ
-    if (showSplash) {
-        return <SplashScreen />;
     }
 
     // ثالثاً: الواجهة الرئيسية للتطبيق
@@ -204,7 +201,7 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
             {showInstallBanner && (
                 <div style={{
                     position: 'fixed', bottom: 0, left: 0, right: 0,
-                    backgroundColor: '#1a7a1a', color: 'white',
+                    backgroundColor: '#2563eb', color: 'white',
                     padding: '12px 16px', textAlign: 'center',
                     zIndex: 9999, fontSize: '14px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
@@ -213,7 +210,7 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
                         <span>📲 لتثبيت التطبيق: اضغط ⬆️ ثم "إضافة إلى الشاشة الرئيسية"</span>
                     ) : (
                         <span onClick={handleInstallClick} style={{ cursor: 'pointer' }}>
-                            📲 ثبّت تطبيق Anatli على هاتفك - اضغط هنا!
+                            📲 ثبّت تطبيق Le plombier على هاتفك - اضغط هنا!
                         </span>
                     )}
                     <button onClick={() => setShowInstallBanner(false)} style={{
@@ -224,12 +221,22 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
                 </div>
             )}
             {/* --- نهاية شريط تثبيت PWA --- */}
+            
             {showPrivacy ? (
                 <PrivacyPolicy onBack={() => setShowPrivacy(false)} />
             ) : (
                 <>
                     {!user ? (
-                        showSignup ? (
+                        /* الفلترة الذكية للزوار غير المسجلين */
+                        currentView === 'landing' ? (
+                            <LandingPage 
+                                onLoginClick={() => setCurrentView('login')} 
+                                onRegisterClick={() => {
+                                    setCurrentView('login');
+                                    setShowSignup(true);
+                                }}
+                            />
+                        ) : showSignup ? (
                             <SignupScreen onBack={() => setShowSignup(false)} apiUrl={API_URL} />
                         ) : (
                             <LoginScreen 
@@ -237,6 +244,7 @@ const API_URL = 'https://anatli-server-production.up.railway.app';
                                 onLoginSuccess={handleLoginSuccess}
                                 apiUrl={API_URL}
                                 onPrivacyClick={() => setShowPrivacy(true)}
+                                onBackToLanding={() => setCurrentView('landing')} // للعودة إذا رغب العميل
                             />
                         )
                     ) : (
