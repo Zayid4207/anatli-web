@@ -132,7 +132,7 @@ function App() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentToken}`,
+                            'Authorization': `Bearer ${localStorage.getItem('userToken')}`
                         },
                         body: JSON.stringify({ userId: user.id, fcmToken: id })
                     });
