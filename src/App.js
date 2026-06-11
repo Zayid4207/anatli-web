@@ -107,16 +107,20 @@ function App() {
 
     // 2. منطق الإشعارات وتحديث التوكن
    // 2. منطق الإشعارات وتحديث التوكن بالسيرفر بعد الإصلاح
+    // 2. منطق الإشعارات وتحديث التوكن بالسيرفر بعد الإصلاح
     useEffect(() => {
         if (!user || !user.id || hasSyncedToken.current) return;
 
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async (OS) => {
             try {
+                // حل مشكلة المسار وتحديد مكان ملف الـ Worker لـ Vercel
                 await OS.init({
-                    appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9",
+                    appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9", // تم تصحيح الـ ID المكتوب خطأ
                     notifyButton: { enable: false },
                     allowLocalhostAsSecureOrigin: true,
+                    serviceWorkerPath: "OneSignalSDKWorker.js", // الإضافة المصيرية
+                    serviceWorkerParam: { scope: "/" }         // الإضافة المصيرية
                 });
 
                 await OS.login(user.id.toString());
@@ -125,22 +129,38 @@ function App() {
                 const saveToken = async (id) => {
                     if (!id || hasSyncedToken.current) return;
                     
-                    // جلب التوكن الصحيح لفك حظر صلاحيات السيرفر
-                    const currentToken = token || JSON.parse(localStorage.getItem('anatli_user'))?.token;
+                    // إصلاح الـ Authorization: قراءة التوكن الصحيح من الـ userData المخزن
+                    const savedUserData = localStorage.getItem('anatli_user');
+                    let currentToken = token;
+                    
+                    if (savedUserData) {
+                        try {
+                            currentToken = JSON.parse(savedUserData).token;
+                        } catch(e) {
+                            console.error(e);
+                        }
+                    }
+
+                    // إذا لم يتوفر أي توكن، لا ترسل طلب فارغاً للسيرفر
+                    if (!currentToken) {
+                        console.error("❌ No authorization token found to sync push subscription");
+                        return;
+                    }
 
                     await fetch(`${API_URL}/update-fcm-token`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                            'Authorization': `Bearer ${currentToken}` // تم إصلاح التوكن هنا
                         },
                         body: JSON.stringify({ userId: user.id, fcmToken: id })
                     });
+                    
                     hasSyncedToken.current = true;
                     console.log("✅ تم ربط الجهاز بنجاح");
                 };
 
-                // فحص آمن فوري لقراءة المعرف دون انهيار المتصفح
+                // فحص آمن فوري لقراءة المعرف
                 const subId = OS.User?.pushSubscription?.id;
                 if (subId) await saveToken(subId);
 
