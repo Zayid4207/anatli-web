@@ -137,11 +137,10 @@ function App() {
 
             // جرب تحميله فوراً
             await saveToken(OS.User.pushSubscription.id);
-
-            // أو انتظر التغيير إن لم يكن جاهزاً
-            OS.User.pushSubscription.addEventListener('change', (change) => {
-                saveToken(change.current.id);
-            });
+      setTimeout(async () => {
+                        await saveToken(OS.User.pushSubscription.id);
+                                                              }, 2000);
+           
 
         } catch (err) {
             console.error('❌ OneSignal Error:', err);
