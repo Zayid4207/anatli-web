@@ -106,48 +106,57 @@ function App() {
     }, []);
 
     // 2. منطق الإشعارات وتحديث التوكن
-   useEffect(() => {
-    if (!user || !user.id || hasSyncedToken.current) return;
+   // 2. منطق الإشعارات وتحديث التوكن بالسيرفر بعد الإصلاح
+    useEffect(() => {
+        if (!user || !user.id || hasSyncedToken.current) return;
 
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OS) => {
-        try {
-            await OS.init({
-                appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9",
-                notifyButton: { enable: false },
-                allowLocalhostAsSecureOrigin: true,
-            });
-
-            await OS.login(user.id.toString());
-            await OS.Notifications.requestPermission();
-
-            const saveToken = async (id) => {
-                if (!id || hasSyncedToken.current) return;
-                await fetch(`${API_URL}/update-fcm-token`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
-                    },
-                    body: JSON.stringify({ userId: user.id, fcmToken: id })
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async (OS) => {
+            try {
+                await OS.init({
+                    appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9",
+                    notifyButton: { enable: false },
+                    allowLocalhostAsSecureOrigin: true,
                 });
-                hasSyncedToken.current = true;
-                console.log("✅ تم ربط الجهاز بنجاح");
-            };
 
-            // جرب تحميله فوراً
-            const subId = OS.User.pushSubscription?.id;
-                    if (subId) await saveToken(subId);
-      setTimeout(async () => {
-                        await saveToken(OS.User.pushSubscription.id);
-                                                              }, 2000);
-        
-        } catch (err) {
-            console.error('❌ OneSignal Error:', err);
-        }
-    });
+                await OS.login(user.id.toString());
+                await OS.Notifications.requestPermission();
 
-}, [user, token, API_URL]);
+                const saveToken = async (id) => {
+                    if (!id || hasSyncedToken.current) return;
+                    
+                    // جلب التوكن الصحيح لفك حظر صلاحيات السيرفر
+                    const currentToken = token || JSON.parse(localStorage.getItem('anatli_user'))?.token;
+
+                    await fetch(`${API_URL}/update-fcm-token`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentToken}`,
+                        },
+                        body: JSON.stringify({ userId: user.id, fcmToken: id })
+                    });
+                    hasSyncedToken.current = true;
+                    console.log("✅ تم ربط الجهاز بنجاح");
+                };
+
+                // فحص آمن فوري لقراءة المعرف دون انهيار المتصفح
+                const subId = OS.User?.pushSubscription?.id;
+                if (subId) await saveToken(subId);
+
+                // فحص متأخر آمن يحمي التطبيق من التوقف المفاجئ
+                setTimeout(async () => {
+                    const delayedSubId = OS.User?.pushSubscription?.id;
+                    if (delayedSubId) {
+                        await saveToken(delayedSubId);
+                    }
+                }, 3000);
+            
+            } catch (err) {
+                console.error('❌ OneSignal Error:', err);
+            }
+        });
+    }, [user, token, API_URL]);
 
     const handleLogout = () => {
         if (window.plugins?.OneSignal) {
