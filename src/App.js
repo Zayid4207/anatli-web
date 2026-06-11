@@ -136,12 +136,12 @@ function App() {
             };
 
             // جرب تحميله فوراً
-            await saveToken(OS.User.pushSubscription.id);
+            const subId = OS.User.pushSubscription?.id;
+                    if (subId) await saveToken(subId);
       setTimeout(async () => {
                         await saveToken(OS.User.pushSubscription.id);
                                                               }, 2000);
-           
-
+        
         } catch (err) {
             console.error('❌ OneSignal Error:', err);
         }
