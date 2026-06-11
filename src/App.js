@@ -106,62 +106,49 @@ function App() {
     }, []);
 
     // 2. منطق الإشعارات وتحديث التوكن
-    useEffect(() => {
-        if (!user || !user.id || hasSyncedToken.current) return;
+   useEffect(() => {
+    if (!user || !user.id || hasSyncedToken.current) return;
 
-        const setupOneSignal = () => {
-            try {
-                const OS = window.plugins?.OneSignal;
-                
-                if (!OS) {
-                    console.error("❌ OneSignal غير موجود في window.plugins");
-                    return;
-                }
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OS) => {
+        try {
+            await OS.init({
+                appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9",
+                notifyButton: { enable: false },
+                allowLocalhostAsSecureOrigin: true,
+            });
 
-                // تهيئة OneSignal
-                OS.initialize("2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9");
+            await OS.login(user.id.toString());
+            await OS.Notifications.requestPermission();
 
-                // طلب إذن الإشعارات
-                OS.Notifications.requestPermission(true);
-
-                // ربط المستخدم
-                // امسح أي جلسة قديمة أولاً
-                OS.logout();
-
-                // انتظر ثانيتين ثم سجل دخول جديد
-                setTimeout(() => {
-                    OS.login(user.id.toString());
-                }, 2000);
-
-                // الحصول على التوكن
-                OS.User.pushSubscription.addEventListener('change', (change) => {
-                    const pushToken = change.current.id;
-                    if (pushToken && !hasSyncedToken.current) {
-                        fetch(`${API_URL}/update-fcm-token`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
-                            },
-                            body: JSON.stringify({ userId: user.id, fcmToken: pushToken })
-                        }).then(() => {
-                            hasSyncedToken.current = true;
-                            console.log("✅ تم ربط جهازك بنجاح");
-                        }).catch(err => console.error("❌ فشل إرسال التوكن:", err));
-                    }
+            const saveToken = async (id) => {
+                if (!id || hasSyncedToken.current) return;
+                await fetch(`${API_URL}/update-fcm-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                    },
+                    body: JSON.stringify({ userId: user.id, fcmToken: id })
                 });
+                hasSyncedToken.current = true;
+                console.log("✅ تم ربط الجهاز بنجاح");
+            };
 
-            } catch (error) {
-                console.error('❌ OneSignal Error:', error);
-            }
-        };
+            // جرب تحميله فوراً
+            await saveToken(OS.User.pushSubscription.id);
 
-        document.addEventListener('deviceready', setupOneSignal, false);
+            // أو انتظر التغيير إن لم يكن جاهزاً
+            OS.User.pushSubscription.addEventListener('change', (change) => {
+                saveToken(change.current.id);
+            });
 
-        return () => {
-            document.removeEventListener('deviceready', setupOneSignal);
-        };
-    }, [user, API_URL]);
+        } catch (err) {
+            console.error('❌ OneSignal Error:', err);
+        }
+    });
+
+}, [user, token, API_URL]);
 
     const handleLogout = () => {
         if (window.plugins?.OneSignal) {
