@@ -120,51 +120,55 @@ function App() {
     // 2. منطق الإشعارات وتحديث التوكن
    useEffect(() => {
     if (!user || !user.id || hasSyncedToken.current) return;
+const requestNotificationPermission = async () => {
+    try {
+        // 1. تسجيل ملف الـ Service Worker يدوياً للتأكد من أن Vercel تقرأه كملف برمجي صحيح
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('✅ تم تسجيل Service Worker بنجاح بالنطاق:', registration.scope);
 
-    const requestNotificationPermission = async () => {
-        try {
-            // طلب الإذن من المتصفح لاستقبال الإشعارات
-            const permission = await Notification.requestPermission();
-            
-            if (permission === 'granted') {
-                // جلب توكن الـ FCM الفريد للجهاز باستخدام الـ VAPID Key الذي نسخته في الخطوة السابقة
-                const currentFcmToken = await getToken(messaging, { 
-                    vapidKey: 'BMBDZUEh0rQ-ie5wqUWxEjh_OlfR8svQd_NAABdjcDpTG_fqlP_YZsQcW_9P8aPrXQ_eyT9CNGuwyaP3H3ph1_A' 
+        // 2. طلب الإذن من المتصفح لاستقبال الإشعارات
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            // 3. جلب التوكن مع تمرير التسجيل الصريح (serviceWorkerRegistration)
+            const currentFcmToken = await getToken(messaging, { 
+                vapidKey: 'BMBDZUEh0rQ-ie5wqUWxEjh_OlfR8svQd_NAABdjcDpTG_fqlP_YZsQcW_9P8aPrXQ_eyT9CNGuwyaP3H3ph1_A'.trim(),
+                serviceWorkerRegistration: registration // الربط المباشر هنا لحل مشكلة Vercel
+            });
+
+            if (currentFcmToken) {
+                const savedUserData = localStorage.getItem('anatli_user');
+                let currentToken = token;
+                
+                if (savedUserData) {
+                    try { currentToken = JSON.parse(savedUserData).token; } catch(e) {}
+                }
+
+                if (!currentToken) return;
+
+                // إرسال التوكن الجديد إلى السيرفر لحفظه
+                await fetch(`${API_URL}/update-fcm-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ userId: user.id, fcmToken: currentFcmToken })
                 });
 
-                if (currentFcmToken) {
-                    const savedUserData = localStorage.getItem('anatli_user');
-                    let currentToken = token;
-                    
-                    if (savedUserData) {
-                        try { currentToken = JSON.parse(savedUserData).token; } catch(e) {}
-                    }
-
-                    if (!currentToken) return;
-
-                    // إرسال التوكن الجديد إلى السيرفر لحفظه (نفس المسار القديم سيعمل تلقائياً)
-                    await fetch(`${API_URL}/update-fcm-token`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentToken}`
-                        },
-                        body: JSON.stringify({ userId: user.id, fcmToken: currentFcmToken })
-                    });
-
-                    hasSyncedToken.current = true;
-                    console.log("✅ تم ربط المتصفح بنجاح بـ Firebase Messaging");
-                } else {
-                    console.log('❌ فشل جلب توكن الـ FCM للمتصفح.');
-                }
+                hasSyncedToken.current = true;
+                console.log("✅ تم ربط المتصفح بنجاح بـ Firebase Messaging");
             } else {
-                console.log('❌ تم رفض إذن الإشعارات من قبل المستخدم.');
+                console.log('❌ فشل جلب توكن الـ FCM للمتصفح.');
             }
-        } catch (err) {
-            console.error('❌ خطأ أثناء إعداد Firebase إشعارات:', err);
+        } else {
+            console.log('❌ تم رفض إذن الإشعارات من قبل المستخدم.');
         }
-    };
-
+    } catch (err) {
+        console.error('❌ خطأ أثناء إعداد Firebase إشعارات:', err);
+    }
+};
+    
     requestNotificationPermission();
 
     // الاستماع للإشعارات الفورية عندما يكون التطبيق مفتوحاً في الواجهة (Foreground)
