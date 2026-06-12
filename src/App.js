@@ -137,6 +137,7 @@ const requestNotificationPermission = async () => {
             });
 
             if (currentFcmToken) {
+                console.log("🔥 التوكن الجديد المستخرج من Firebase هو:", currentFcmToken);
                 const savedUserData = localStorage.getItem('anatli_user');
                 let currentToken = token;
                 
