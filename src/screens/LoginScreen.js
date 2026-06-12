@@ -59,7 +59,7 @@ const handleContactUs = () => {
         localStorage.setItem('userToken', data.token); // حفظ مفتاح الأمان
         localStorage.setItem('userData', JSON.stringify(data.user)); // حفظ بيانات المستخدم
         localStorage.setItem('remembered_phone', phone); // تذكر الرقم للمرة القادمة
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token });
       } else {
         setError(data.error || content[lang].authError);
       }
