@@ -129,7 +129,7 @@ function App() {
             if (permission === 'granted') {
                 // جلب توكن الـ FCM الفريد للجهاز باستخدام الـ VAPID Key الذي نسخته في الخطوة السابقة
                 const currentFcmToken = await getToken(messaging, { 
-                    vapidKey: 'u-Zl2qCXiQlaghXgSyIY2Lu9UHb6N0h6V6kOoRTZFUo' 
+                    vapidKey: 'BMBDZUEh0rQ-ie5wqUWxEjh_OlfR8svQd_NAABdjcDpTG_fqlP_YZsQcW_9P8aPrXQ_eyT9CNGuwyaP3H3ph1_A' 
                 });
 
                 if (currentFcmToken) {
