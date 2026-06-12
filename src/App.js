@@ -7,9 +7,21 @@ import ProviderScreen from './screens/ProviderScreen';
 import SignupScreen from './screens/SignupScreen';
 import OrdersStatusScreen from './screens/OrdersStatusScreen';
 import PrivacyPolicy from './screens/PrivacyPolicy';
+import { initializeApp } from "firebase/app";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+const firebaseConfig = {
+    apiKey: "AIzaSyC1oNPF1cNNmQA57gK1XJX6Ljo-De3Ph-8",
+  authDomain: "anatli-466c7.firebaseapp.com",
+  projectId: "anatli-466c7",
+  storageBucket: "anatli-466c7.firebasestorage.app",
+  messagingSenderId: "1013365864559",
+  appId: "1:1013365864559:web:a052273bfba80cc506f59a",
+  measurementId: "G-BYPHQEQGR8"
+};
 
 function App() {
-    const OneSignal = window.plugins?.OneSignal;
+    const firebaseApp = initializeApp(firebaseConfig);
+    const messaging = getMessaging(firebaseApp);
     const [token, setToken] = useState(null); 
     const [showPrivacy, setShowPrivacy] = useState(false);
     const [initialOrderId, setInitialOrderId] = useState(null);
@@ -106,77 +118,63 @@ function App() {
     }, []);
 
     // 2. منطق الإشعارات وتحديث التوكن
-   // 2. منطق الإشعارات وتحديث التوكن بالسيرفر بعد الإصلاح
-    // 2. منطق الإشعارات وتحديث التوكن بالسيرفر بعد الإصلاح
-    useEffect(() => {
-        if (!user || !user.id || hasSyncedToken.current) return;
+   useEffect(() => {
+    if (!user || !user.id || hasSyncedToken.current) return;
 
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async (OS) => {
-            try {
-                // حل مشكلة المسار وتحديد مكان ملف الـ Worker لـ Vercel
-                await OS.init({
-                    appId: "2b3b3f1e-eb5b-4154-bf69-cf9e44297fa9", // تم تصحيح الـ ID المكتوب خطأ
-                    notifyButton: { enable: false },
-                    allowLocalhostAsSecureOrigin: true,
-                    serviceWorkerPath: "OneSignalSDKWorker.js", // الإضافة المصيرية
-                    serviceWorkerParam: { scope: "/" }         // الإضافة المصيرية
+    const requestNotificationPermission = async () => {
+        try {
+            // طلب الإذن من المتصفح لاستقبال الإشعارات
+            const permission = await Notification.requestPermission();
+            
+            if (permission === 'granted') {
+                // جلب توكن الـ FCM الفريد للجهاز باستخدام الـ VAPID Key الذي نسخته في الخطوة السابقة
+                const currentFcmToken = await getToken(messaging, { 
+                    vapidKey: 'u-Zl2qCXiQlaghXgSyIY2Lu9UHb6N0h6V6kOoRTZFUo' 
                 });
 
-                await OS.login(user.id.toString());
-                await OS.Notifications.requestPermission();
-
-                const saveToken = async (id) => {
-                    if (!id || hasSyncedToken.current) return;
-                    
-                    // إصلاح الـ Authorization: قراءة التوكن الصحيح من الـ userData المخزن
+                if (currentFcmToken) {
                     const savedUserData = localStorage.getItem('anatli_user');
                     let currentToken = token;
                     
                     if (savedUserData) {
-                        try {
-                            currentToken = JSON.parse(savedUserData).token;
-                        } catch(e) {
-                            console.error(e);
-                        }
+                        try { currentToken = JSON.parse(savedUserData).token; } catch(e) {}
                     }
 
-                    // إذا لم يتوفر أي توكن، لا ترسل طلب فارغاً للسيرفر
-                    if (!currentToken) {
-                        console.error("❌ No authorization token found to sync push subscription");
-                        return;
-                    }
+                    if (!currentToken) return;
 
+                    // إرسال التوكن الجديد إلى السيرفر لحفظه (نفس المسار القديم سيعمل تلقائياً)
                     await fetch(`${API_URL}/update-fcm-token`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentToken}` // تم إصلاح التوكن هنا
+                            'Authorization': `Bearer ${currentToken}`
                         },
-                        body: JSON.stringify({ userId: user.id, fcmToken: id })
+                        body: JSON.stringify({ userId: user.id, fcmToken: currentFcmToken })
                     });
-                    
+
                     hasSyncedToken.current = true;
-                    console.log("✅ تم ربط الجهاز بنجاح");
-                };
-
-                // فحص آمن فوري لقراءة المعرف
-                const subId = OS.User?.pushSubscription?.id;
-                if (subId) await saveToken(subId);
-
-                // فحص متأخر آمن يحمي التطبيق من التوقف المفاجئ
-                setTimeout(async () => {
-                    const delayedSubId = OS.User?.pushSubscription?.id;
-                    if (delayedSubId) {
-                        await saveToken(delayedSubId);
-                    }
-                }, 3000);
-            
-            } catch (err) {
-                console.error('❌ OneSignal Error:', err);
+                    console.log("✅ تم ربط المتصفح بنجاح بـ Firebase Messaging");
+                } else {
+                    console.log('❌ فشل جلب توكن الـ FCM للمتصفح.');
+                }
+            } else {
+                console.log('❌ تم رفض إذن الإشعارات من قبل المستخدم.');
             }
-        });
-    }, [user, token, API_URL]);
+        } catch (err) {
+            console.error('❌ خطأ أثناء إعداد Firebase إشعارات:', err);
+        }
+    };
+
+    requestNotificationPermission();
+
+    // الاستماع للإشعارات الفورية عندما يكون التطبيق مفتوحاً في الواجهة (Foreground)
+    const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('📱 إشعار فوري وصل والتطبيق مفتوح: ', payload);
+        alert(`${payload.notification.title}\n${payload.notification.body}`);
+    });
+
+    return () => unsubscribe();
+}, [user, token, API_URL]);
 
     const handleLogout = () => {
         if (window.plugins?.OneSignal) {
