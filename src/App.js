@@ -147,7 +147,10 @@ const requestNotificationPermission = async () => {
                     try { currentToken = JSON.parse(savedUserData).token; } catch(e) {}
                 }
 
-                if (!currentToken) return;
+                if (!currentToken) {
+                console.log("❌ لا يوجد JWT token محفوظ");
+                             return;
+}
 
                 // إرسال التوكن الجديد إلى السيرفر لحفظه
                 await fetch(`${API_URL}/update-fcm-token`, {
