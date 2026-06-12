@@ -67,7 +67,9 @@ function App() {
     // --- نهاية إضافة PWA Install Banner ---
     
     const hasSyncedToken = useRef(false);
-    const API_URL = 'https://anatli-server-production.up.railway.app';
+    // أضف https:// في بداية الرابط ليعمل بالشكل الصحيح مع المتصفح
+   const API_URL = 'https://thomas.proxy.rlwy.net:40911';
+   
     
     // 1. منطق الشاشة الترحيبية (5 ثوانٍ) + استعادة المستخدم
     useEffect(() => {
