@@ -18,8 +18,8 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification?.title || "إشعار جديد";
     const notificationOptions = {
         body: payload.notification?.body || "",
-        icon: '/icon-notif.svg',
-        badge: '/icon-notif.svg',
+        icon: '/icon-notif.png',
+        badge: '/icon-notif.png',
         vibrate: [200, 100, 200, 100, 200],
         sound: 'default',
         tag: 'anatli-notification',
