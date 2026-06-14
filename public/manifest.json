@@ -3,19 +3,19 @@
   "name": "Le Plombier",
   "icons": [
     {
-      "src": "icon.png.png",
+      "src": "icon-notif.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon.png.png",
+      "src": "icon-notif.png",
       "type": "image/png",
       "sizes": "512x512"
-    } 
+    }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#1a7a1a",
-  "background_color": "#ffffff",
+  "theme_color": "#0F6E56",
+  "background_color": "#0F6E56",
   "description": "خدماتك المنزلية بلمسة زر"
 }
