@@ -30,7 +30,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
 
   const content = {
     ar: {
-      title: 'انضم إلى أنعتلي', subtitle: 'أنشئ حسابك وابدأ الاستخدام الآن',
+      title: 'انضم إلى  Le plombier', subtitle: 'أنشئ حسابك وابدأ الاستخدام الآن',
       name: 'الاسم الكامل', phone: 'رقم الهاتف (مثلاً +222...)',
       pass: 'كلمة المرور', confirmPass: 'تأكيد كلمة المرور',
       roleLabel: 'كيف ستستخدم التطبيق؟', customer: 'أنا زبون',
@@ -43,7 +43,7 @@ const SignupScreen = ({ onBack, apiUrl }) => {
       whatsappNote: 'سيتم فتح واتساب لإرسال كود التفعيل: '
     },
     fr: {
-      title: 'Rejoindre ANATLI', subtitle: 'Créez votre compte et commencez',
+      title: 'Rejoindre Le plombier', subtitle: 'Créez votre compte et commencez',
       name: 'Nom Complet', phone: 'Téléphone (ex: +222...)',
       pass: 'Mot de passe', confirmPass: 'Confirmer',
       roleLabel: 'Comment utiliser l\'app ?', customer: 'Client',
@@ -274,13 +274,13 @@ if (response.ok) {
     {step === 4 && (
          <div style={styles.fadeAnim}>
          <p style={styles.roleTitleCenter}>
-          📱 {lang === 'ar' ? 'أدخل رمز التحقق الذي وصلك على هاتفك' : 'Entrez le code reçu sur votre téléphone'}
+          📱 {lang === 'ar' ? 'أدخل رمز التحقق الذي وصلك على  الواتساب' : 'Entrez le code reçu sur votre whatsapp'}
             </p>
     
            <div style={styles.inputWrapperOtp}>
                 <input
                type="text"
-        placeholder={lang === 'ar' ? 'الرمز المكون من 6 أرقام' : 'Code à 6 chiffres'}
+        placeholder={lang === 'ar' ? 'ادخل الرمز المستلم على واتساب' : 'Code à 6 chiffres via whatsapp'}
         value={otpCode}
         onChange={(e) => setOtpCode(e.target.value)}
         style={styles.inputOtp}
