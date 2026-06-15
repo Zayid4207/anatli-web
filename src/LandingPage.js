@@ -2,6 +2,23 @@ import React from 'react';
 
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
   // مصفوفة الخدمات لتسهيل إدارتها داخل React
+  // ميزة إشعار الآيفون: التحكم في ظهور النافذة المنبثقة
+  const [showIosBanner, setShowIosBanner] = React.useState(false);
+
+  React.useEffect(() => {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.navigator.standalone === true;
+    const isBannerDismissed = sessionStorage.getItem('iosBannerDismissed');
+
+    if (isIos && !isStandalone && !isBannerDismissed) {
+      setShowIosBanner(true);
+    }
+  }, []);
+
+  const closeIosBanner = () => {
+    setShowIosBanner(false);
+    sessionStorage.setItem('iosBannerDismissed', 'true');
+  };
   const services = [
     { name: 'سباكة', fr: 'Plomberie', icon: 'ti-droplet', bg: '#E1F5EE', color: '#0F6E56' },
     { name: 'كهرباء', fr: 'Électricité', icon: 'ti-bolt', bg: '#FAEEDA', color: '#BA7517' },
@@ -333,6 +350,36 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           <button className="btn-big btn-big-white" onClick={onRegisterClick}>👷 انضم كحرفي</button>
         </div>
       </section>
+      {/* نافذة تثبيت الموقع للآيفون */}
+      {showIosBanner && (
+        <div id="ios-install-banner" style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '400px', backgroundColor: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', borderRadius: '16px', padding: '16px', zIndex: 9999, direction: 'rtl', border: '1px solid #e5e5ea' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '48px', height: '48px', background: '#EF9F27', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2C2C2A' }}>
+                <i className="ti ti-tool" style={{ fontSize: '24px' }}></i>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <h4 style={{ margin: 0, fontSize: '16px', color: '#1c1c1e', fontWeight: '600' }}>تثبيت تطبيق Le Plombier</h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8e8e93' }}>قم بإضافته للشاشة الرئيسية للوصول السريع</p>
+              </div>
+            </div>
+            <button onClick={closeIosBanner} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#8e8e93', cursor: 'pointer', padding: '0 4px' }}>&times;</button>
+          </div>
+          
+          <hr style={{ border: 0, borderTop: '1px solid #e5e5ea', margin: '12px 0' }} />
+          
+          <div style={{ fontSize: '14px', color: '#3a3a3c', lineHeight: '1.5', textAlign: 'right' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+              <span style={{ backgroundColor: '#f2f2f7', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '12px', fontWeight: 'bold' }}>١</span>
+              <span>اضغط على زر"مشاركة" ⬆️ في أسفل المتصفح <img src="https://developer.apple.com/design/human-interface-guidelines/images/images-guide/icons/share_large_2x.png" width="16" style={{ verticalAlign: 'middle', margin: '0 4px' }} alt="share" /></span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ backgroundColor: '#f2f2f7', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '12px', fontWeight: 'bold' }}>٢</span>
+              <span>اختر **"إضافة إلى الشاشة الرئيسية"** من القائمة.</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer>
