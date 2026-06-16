@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 let socket;
 import OrdersStatusScreen from './OrdersStatusScreen'; // تأكد أن المسار صحيح
@@ -11,6 +11,8 @@ export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
     phone: user?.phone || '',
     password: '' 
   });
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const chatEndRef = useRef(null);
   const [selectedReceiverId, setSelectedReceiverId] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');

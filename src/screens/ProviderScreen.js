@@ -6,6 +6,7 @@ export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  t
   // الحفاظ على حالة المستخدم محلياً لتحديثها عند تفعيل الاشتراك
   const [chatMessages, setChatMessages] = useState([]); // مخزن لرسائل الدردشة الحالية
   const [typedMessage, setTypedMessage] = useState(''); // مخزن للنص الذي يكتبه الحرفي الآن في الحقل
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [user, setUser] = useState(initialUser);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ phone: user?.phone, password: '' });
