@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'; 
-import { io } from 'socket.io-client'; //الدردشة 
 import OrdersStatusScreen from './OrdersStatusScreen';
-let socket; // حجز مكان لمتغير الدردشة قبل بدء الدالة
 export default function ProviderScreen({ user: initialUser, apiUrl, onLogout,  targetOrderId,token }) {
   // الحفاظ على حالة المستخدم محلياً لتحديثها عند تفعيل الاشتراك
-  const [chatMessages, setChatMessages] = useState([]); // مخزن لرسائل الدردشة الحالية
-  const [typedMessage, setTypedMessage] = useState(''); // مخزن للنص الذي يكتبه الحرفي الآن في الحقل
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [user, setUser] = useState(initialUser);
   const [isEditing, setIsEditing] = useState(false);
@@ -201,50 +197,7 @@ useEffect(() => {
     }
   }
 }, [targetOrderId, orders]);
-// هذ جزء  الدردشة 
-// 2. الدالة الجديدة لتفعيل اتصال الدردشة الفورية عند فتح تفاصيل الطلب
-useEffect(() => {
-  if (selectedOrder && apiUrl) {
-    // تنظيف الرابط من كلمة /api إذا كانت موجودة ليتناسب مع السوكيت
-    const socketUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
-    
-    // إنشاء الاتصال الفعلي
-    socket = io(socketUrl);
 
-    // الإنضمام للغرفة الخاصة بهذا الطلب لمنع تداخل الرسائل مع طلبات أخرى
-    socket.emit('join_order_chat', selectedOrder.id);
-
-    console.log(`📡 متصل الآن بسيرفر الدردشة للطلب رقم: ${selectedOrder.id}`);
-  }
-
-  // تنظيف الأثر وإغلاق الاتصال فوراً عند إغلاق نافذة تفاصيل الطلب
-  return () => {
-    if (socket) {
-      socket.disconnect();
-      console.log('🔌 تم قطع اتصال الدردشة عند إغلاق النافذة');
-    }
-  };
-}, [selectedOrder, apiUrl]);
-// --- الاستماع للرسائل الجديدة القادمة من السيرفر وتخزينها في المتصفح ---
-useEffect(() => {
-  if (selectedOrder) {
-    // عندما يخبرنا السيرفر بأن هناك رسالة جديدة وصلت للغرفة
-    socket?.on('receive_message', (data) => {
-      // نتحقق أولاً أن الرسالة تخص هذا الطلب المفتوح حالياً
-      if (String(data.order_id) === String(selectedOrder.id)) {
-        // نضيف الرسالة الجديدة إلى قائمة الرسائل السابقة في المخزن
-        setChatMessages((prev) => [...prev, data]);
-      }
-    });
-  }
-
-  // تنظيف المستمع عند إغلاق النافذة لمنع التكرار
-  return () => {
-    socket?.off('receive_message');
-  };
-}, [selectedOrder]);
-
-// هنا ينتهي 
 const updateOrderStatus = async (id, newStatus) => {
   // 1. التحقق من وجود المعرفات المطلوبة
   const currentUserId = user?.id || initialUser?.id;
@@ -318,29 +271,6 @@ const ignoreOrder = async (orderId) => {
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 0;
   };
-  // الدردشة الان 
-// --- دالة إرسال رسالة جديدة للزبون ---
-const handleSendMessage = () => {
-  // إذا كان حقل الكتابة فارغاً، لا تفعل شيئاً
-  if (!typedMessage.trim() || !selectedOrder) return;
-
-  // تجهيز كائن البيانات الخاص بالرسالة
-  const messageData = {
-    order_id: selectedOrder.id,
-    sender_id: user?.id,
-    sender_role: 'provider', // تحديد أن المرسل هو مقدم الخدمة (الحرفي)
-    text: typedMessage.trim(),
-    timestamp: new Date().toISOString()
-  };
-
-  // إرسال الرسالة فوراً عبر السوكيت إلى السيرفر
-  socket?.emit('send_message', messageData);
-
-  // مسح حقل الكتابة فوراً ليكون جاهزاً للرسالة التالية
-  setTypedMessage('');
-};
-  // هنا ينتهي 
-
   const handleSubSubmit = async () => {
     // 1. التحقق من المدخلات الأساسية
     if (!subFile || !paymentMethod) {
@@ -410,7 +340,7 @@ const handleSendMessage = () => {
     <div style={{ ...styles.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
       
       {/* نافذة تفاصيل الطلب */}
-     {selectedOrder && (
+      {selectedOrder && (
         <div style={styles.detailsOverlay}>
           <div style={styles.detailsCard}>
             <button onClick={() => setSelectedOrder(null)} style={styles.closeBtn}>✕</button>
@@ -442,116 +372,61 @@ const handleSendMessage = () => {
                 <span style={styles.infoLabelM}>📝 {t.descLabel}</span>
                 <p style={styles.modalDescText}>{selectedOrder.description || selectedOrder.issue_description || 'لا يوجد وصف'}</p>
               </div>
-              <div style={{ 
-                marginTop: '15px', 
-                background: '#e3f2fd', 
-                padding: '12px', 
-                borderRadius: '15px', 
-                border: '1px solid #2196f3',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '5px'
-              }}>
-                <span style={{ ...styles.infoLabelM, color: '#1976d2' }}>{lang === 'ar'? 'موقع الزبون:' : 'Lieu de client:'}</span>
-                <p style={{ margin: 0, fontWeight: 'bold', color: '#0d47a1', fontSize: '1rem' }}>
-                  {selectedOrder.location || (lang === 'ar' ? 'لم يتم تحديد موقع' : 'Non spécifié')}
-                </p>
-              </div>
-            </div>
+<div style={{ 
+  marginTop: '15px', 
+  background: '#e3f2fd', 
+  padding: '12px', 
+  borderRadius: '15px', 
+  border: '1px solid #2196f3',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '5px'
+}}>
+  <span style={{ ...styles.infoLabelM, color: '#1976d2' }}>{lang === 'ar'? 'موقع الزبون:' : 'Lieu de client:'}</span>
+  <p style={{ margin: 0, fontWeight: 'bold', color: '#0d47a1', fontSize: '1rem' }}>
+    {selectedOrder.location || (lang === 'ar' ? 'لم يتم تحديد موقع' : 'Non spécifié')}
+  </p>
+</div>
 
-            {/* --- نظام الدردشة المدمج الفوري --- */}
-            <div style={{
-              marginTop: '20px',
-              borderTop: '1px solid #eee',
-              paddingTop: '15px',
-              display: 'flex',
-              flexDirection: 'column',
-              height: '220px', 
-              backgroundColor: '#f9f9f9',
-              borderRadius: '16px',
-              overflow: 'hidden'
-            }}>
-              <div style={{ padding: '6px', background: '#e8eaf6', textAlign: 'center', fontWeight: 'bold', color: '#1a237e', fontSize: '0.85rem' }}>
-                {lang === 'ar' ? '💬 المحادثة المباشرة مع الزبون' : '💬 Chat en direct'}
-              </div>
-
-              <div style={{ flex: 1, padding: '10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {chatMessages.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#999', fontSize: '0.8rem', marginTop: '25px' }}>
-                    {lang === 'ar' ? 'لا توجد رسائل بعد. ابدأ النقاش مع الزبون!' : 'Aucun message.'}
-                  </p>
-                ) : (
-                  chatMessages.map((msg, index) => {
-                    const isMe = msg.sender_role === 'provider';
-                    return (
-                      <div key={index} style={{
-                        alignSelf: isMe ? 'flex-start' : 'flex-end',
-                        backgroundColor: isMe ? '#006400' : '#e0e0e0',
-                        color: isMe ? '#fff' : '#333',
-                        padding: '8px 12px',
-                        borderRadius: '12px',
-                        maxWidth: '80%',
-                        fontSize: '0.85rem'
-                      }}>
-                        {msg.text}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div style={{ display: 'flex', padding: '6px', background: '#fff', borderTop: '1px solid #eee', gap: '6px' }}>
-                <input 
-                  type="text" 
-                  placeholder={lang === 'ar' ? 'اكتب رسالتك...' : 'Votre message...'}
-                  value={typedMessage}
-                  onChange={(e) => setTypedMessage(e.target.value)}
-                  onKeyDown={(e) => { if(e.key === 'Enter') handleSendMessage(); }}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.85rem', outline: 'none' }}
-                />
-                <button 
-                  onClick={handleSendMessage}
-                  style={{ padding: '8px 15px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-                >
-                  {lang === 'ar' ? 'إرسال' : 'Envoyer'}
-                </button>
-              </div>
-            </div>
-
-            <div style={styles.actionRowM}>
-              {(() => {
-                const currentStatus = (selectedOrder.request_status || selectedOrder.status || 'pending').toLowerCase();
-                
-                if (currentStatus === 'pending' || currentStatus === 'active') {
-                  return (
-                    <>
-                      <button style={{ ...styles.confirmActionBtn, backgroundColor: '#e74c3c', flex: 1 }} onClick={() => ignoreOrder(selectedOrder.id)}>{t.refuser}</button>
-                      <button style={{ ...styles.confirmActionBtn, flex: 2 }} onClick={() => updateOrderStatus(selectedOrder.id, 'negotiating')}>{t.accept}</button>
-                    </>
-                  );
-                } 
-                else if (currentStatus === 'negotiating') {
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                      <p style={{ textAlign: 'center', color: '#2980b9', fontSize: '0.85rem', fontWeight: 'bold' }}>{t.reservedForYou}</p>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <button style={{ ...styles.confirmActionBtn, backgroundColor: '#e67e22', flex: 1 }} onClick={() => updateOrderStatus(selectedOrder.id, 'pending')}>{t.cancelNegotiation}</button>
-                        <button style={{ ...styles.confirmActionBtn, backgroundColor: '#27ae60', flex: 1 }} onClick={() => updateOrderStatus(selectedOrder.id, 'in_progress')}>{t.confirmAgreement}</button>
-                      </div>
-                    </div>
-                  );
-                }
-                else if (currentStatus === 'in_progress') {
-                  return <button style={{ ...styles.confirmActionBtn, backgroundColor: '#2c3e50', width: '100%' }} onClick={() => updateOrderStatus(selectedOrder.id, 'completed')}>{t.end}</button>;
-                } 
-                else {
-                  return <button disabled style={{ ...styles.confirmActionBtn, backgroundColor: '#95a5a6', width: '100%' }}> مكتمل</button>;
-                }
-              })()}
-            </div>
+</div>
+ <div style={styles.actionRowM}>
+  {(() => {
+    const currentStatus = (selectedOrder.request_status || selectedOrder.status || 'pending').toLowerCase();
+    
+    // الحالة 1: طلب جديد
+    if (currentStatus === 'pending' || currentStatus === 'active') {
+      return (
+        <>
+          <button style={{ ...styles.confirmActionBtn, backgroundColor: '#e74c3c', flex: 1 }} onClick={() => ignoreOrder(selectedOrder.id)}>{t.refuser}</button>
+          <button style={{ ...styles.confirmActionBtn, flex: 2 }} onClick={() => updateOrderStatus(selectedOrder.id, 'negotiating')}>{t.accept}</button>
+        </>
+      );
+    } 
+    // الحالة 2: قيد التفاوض (الميزة الجديدة)
+    else if (currentStatus === 'negotiating') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+          <p style={{ textAlign: 'center', color: '#2980b9', fontSize: '0.85rem', fontWeight: 'bold' }}>{t.reservedForYou}</p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button style={{ ...styles.confirmActionBtn, backgroundColor: '#e67e22', flex: 1 }} onClick={() => updateOrderStatus(selectedOrder.id, 'pending')}>{t.cancelNegotiation}</button>
+            <button style={{ ...styles.confirmActionBtn, backgroundColor: '#27ae60', flex: 1 }} onClick={() => updateOrderStatus(selectedOrder.id, 'in_progress')}>{t.confirmAgreement}</button>
+          </div>
+        </div>
+      );
+    }
+    // الحالة 3: تم الاتفاق وبدء العمل
+    else if (currentStatus === 'in_progress') {
+      return <button style={{ ...styles.confirmActionBtn, backgroundColor: '#2c3e50', width: '100%' }} onClick={() => updateOrderStatus(selectedOrder.id, 'completed')}>{t.end}</button>;
+    } 
+    else {
+      return <button disabled style={{ ...styles.confirmActionBtn, backgroundColor: '#95a5a6', width: '100%' }}> مكتمل</button>;
+    }
+  })()}
+</div>
           </div>
         </div>
       )}
+
 
       <main style={styles.mainContent}>
         {activeTab === 'home' && (
