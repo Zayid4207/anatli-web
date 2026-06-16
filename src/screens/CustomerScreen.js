@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { io } from 'socket.io-client';
+let socket;
 import OrdersStatusScreen from './OrdersStatusScreen'; // تأكد أن المسار صحيح
 export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
+   const [chatMessages, setChatMessages] = useState([]); // مخزن لرسائل الدردشة بين الزبون والحرفي
+   const [typedMessage, setTypedMessage] = useState(''); // مخزن للنص الذي يكتبه الزبون الآن في الحقل
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     full_name: user?.full_name || '',
@@ -196,9 +200,70 @@ React.useEffect(() => {
 }, [user?.id]); // سيعيد التشغيل إذا تغير المستخدم
 
 // --------------------------------------------------------
+// --- تفعيل اتصال الدردشة للزبون عند فتح تفاصيل الطلب ---
+useEffect(() => {
+  // إذا كان هناك طلب محدد مفتوح ورابط السيرفر موجود
+  if (selectedOrder && apiUrl) {
+    // تنظيف الرابط من كلمة /api إذا كانت موجودة ليتناسب مع السوكيت
+    const socketUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+    
+    // إنشاء الاتصال الفعلي بالسيرفر
+    socket = io(socketUrl);
 
+    // الإنضمام للغرفة الخاصة بهذا الطلب (نفس الرقم ليلتقي مع الحرفي)
+    socket.emit('join_order_chat', selectedOrder.id);
 
-// -----------------------
+    console.log(`📡 الزبون متصل الآن بغرفة الدردشة للطلب رقم: ${selectedOrder.id}`);
+  }
+
+  // قطع الاتصال فوراً عند إغلاق الزبون لنافذة تفاصيل الطلب
+  return () => {
+    if (socket) {
+      socket.disconnect();
+      console.log('🔌 تم قطع اتصال دردشة الزبون عند إغلاق النافذة');
+    }
+  };
+}, [selectedOrder, apiUrl]);
+// --- الاستماع للرسائل القادمة من الحرفي وتخزينها عند الزبون ---
+useEffect(() => {
+  if (selectedOrder) {
+    // عندما يرسل السيرفر رسالة جديدة للغرفة
+    socket?.on('receive_message', (data) => {
+      // نتحقق أن الرسالة تخص هذا الطلب المفتوح حالياً أمام الزبون
+      if (String(data.order_id) === String(selectedOrder.id)) {
+        // إضافة الرسالة الجديدة إلى قائمة الرسائل السابقة
+        setChatMessages((prev) => [...prev, data]);
+      }
+    });
+  }
+
+  // تنظيف المستمع عند إغلاق النافذة لمنع التكرار
+  return () => {
+    socket?.off('receive_message');
+  };
+}, [selectedOrder]);
+// --- دالة إرسال رسالة جديدة من الزبون إلى الحرفي ---
+const handleSendMessage = () => {
+  // إذا كان حقل الكتابة فارغاً، لا تفعل شيئاً
+  if (!typedMessage.trim() || !selectedOrder) return;
+
+  // تجهيز كائن البيانات الخاص بالرسالة
+  const messageData = {
+    order_id: selectedOrder.id,
+    sender_id: user?.id,     // معرف الزبون الحالي
+    sender_role: 'customer', // تحديد أن المرسل هو الزبون (Customer)
+    text: typedMessage.trim(),
+    timestamp: new Date().toISOString()
+  };
+
+  // إرسال الرسالة فوراً عبر السوكيت إلى السيرفر
+  socket?.emit('send_message', messageData);
+
+  // مسح حقل الكتابة فوراً ليكون جاهزاً للرسالة التالية
+  setTypedMessage('');
+};
+
+// هنا ينتهي 
 
   const handleFinalSubmit = async () => {
     // 1. التحقق من الأهلية (مشترك أو لديه طلبات مجانية)
@@ -779,55 +844,194 @@ const handleSubscriptionSubmit = async () => {
 
 
         {/* 5. شاشة حالة الطلبات (بدلاً من المراسلات) */}
-        {activeTab === 'messages' && (
-         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8f9fa' }}>
-            
-            {/* ترويسة "طلباتي" المحدثة */}
-            <div style={{
-              padding: '20px 15px',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)',
-              borderBottom: '1px solid #e0e0e0',
+       {/* 5. شاشة حالة الطلبات والمراسلات */}
+{activeTab === 'messages' && (
+  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8f9fa' }}>
+    
+    {/* ترويسة "طلباتي" */}
+    <div style={{
+      padding: '20px 15px',
+      background: 'linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)',
+      borderBottom: '1px solid #e0e0e0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{
+          width: '45px',
+          height: '45px',
+          borderRadius: '12px',
+          backgroundColor: '#1a237e',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          fontSize: '1.4rem',
+          boxShadow: '0 4px 12px rgba(26, 35, 126, 0.2)'
+        }}>
+          📋
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#1a237e', fontWeight: 'bold' }}>
+            {selectedOrderId ? (lang === 'ar' ? `محادثة الطلب` : `Chat Commande`) : (lang === 'ar' ? 'طلباتي' : 'Mes Commandes')}
+          </h2>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>
+            {selectedOrderId ? (lang === 'ar' ? 'متابعة مباشرة مع الدعم الفني' : 'Suivi en direct avec le support') : (lang === 'ar' ? 'إدارة ومتابعة أعمالك الحالية' : 'Gérez vos missions en cours')}
+          </p>
+        </div>
+      </div>
+
+      {/* زر العودة من المحادثة إلى قائمة الطلبات */}
+      {selectedOrderId && (
+        <button 
+          onClick={() => setSelectedOrderId(null)} 
+          style={{
+            padding: '6px 12px',
+            backgroundColor: '#1a237e',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {lang === 'ar' ? 'رجوع ➡️' : '⬅️ Retour'}
+        </button>
+      )}
+    </div>
+
+    {/* منطقة العرض الديناميكية */}
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {!selectedOrderId ? (
+        /* أ) قائمة الطلبات التي يراها الزبون أولاً */
+        <div style={{ padding: '15px' }}>
+          
+          {/* تنبيه ارشادي بسيط للمستخدم */}
+          <p style={{ textAlign: 'center', color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
+            {lang === 'ar' ? 'اضغط على أي طلب متاح بالأسفل لبدء المحادثة الفورية مع الإدارة ومتابعة حالته:' : 'Cliquez sur une demande pour ouvrir le chat :'}
+          </p>
+
+          {/* كرت تجريبي ثابت للطلب الحالي - يفتح الشات فوراً عند الضغط عليه */}
+          <div 
+            onClick={() => setSelectedOrderId("CURRENT_ORDER_ID")} // هنا يفتح الشات مباشرة عند الضغط
+            style={{
+              padding: '15px',
+              backgroundColor: '#fff',
+              borderRadius: '15px',
+              border: '1px solid #e0e0e0',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+              cursor: 'pointer',
               display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '12px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{
+              marginBottom: '10px',
+              transition: 'transform 0.2s'
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '0.8rem', color: '#1a237e', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
+                {lang === 'ar' ? '💬 اضغط لفتح المحادثة ومتابعة الطلب' : '💬 Cliquer pour ouvrir le chat'}
+              </span>
+              <strong style={{ color: '#333' }}>{lang === 'ar' ? 'طلب الخدمة الحالي' : 'Demande de service actuelle'}</strong>
+            </div>
+            <span style={{ fontSize: '1.2rem' }}>{lang === 'ar' ? '⬅️' : '➡️'}</span>
+          </div>
+
+          {/* استدعاء المكون القديم الخاص بك ليبقى احتياطاً في الأسفل */}
+          <div style={{ marginTop: '20px', borderTop: '1px dashed #ccc', paddingTop: '20px' }}>
+            <OrdersStatusScreen user={user} apiUrl={apiUrl} lang={lang} onSelectOrder={(id) => setSelectedOrderId(id)}/>
+          </div>
+
+        </div>
+      ) : (
+        /* ب) صندوق شات الدردشة المرئي الحي للطلب المحدد */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#efeae2', height: '100%' }}>
+          
+          {/* مساحة رسائل الدردشة المتموجة والمتحركة */}
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {chatMessages.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#777', marginTop: '30px', fontSize: '0.9rem', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', margin: '20px' }}>
+                {lang === 'ar' ? '💬 لا توجد رسائل بعد. اكتب رسالة لبدء المحادثة مع الإدارة حول هذا الطلب.' : '💬 Pas encore de messages. Écrivez un message pour lancer la conversation.'}
+              </div>
+            ) : (
+              chatMessages.map((msg, index) => {
+                const isMe = msg.sender_type === 'user';
+                return (
+                  <div 
+                    key={index} 
+                    style={{
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      backgroundColor: isMe ? '#d9fdd3' : '#ffffff',
+                      color: '#333',
+                      padding: '10px 14px',
+                      borderRadius: isMe ? '15px 15px 0px 15px' : '15px 15px 15px 0px',
+                      maxWidth: '75%',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      position: 'relative',
+                      wordBreak: 'break-word',
+                      direction: lang === 'ar' ? 'rtl' : 'ltr'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#888', textAlign: 'left', marginTop: '4px' }}>
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* شريط مدخلات إرسال الرسالة السفلي */}
+          <div style={{ padding: '10px', backgroundColor: '#f0f0f0', display: 'flex', gap: '8px', alignItems: 'center', borderTop: '1px solid #ddd' }}>
+            <input 
+              type="text"
+              value={typedMessage}
+              onChange={(e) => setTypedMessage(e.target.value)}
+              onKeyDown={(e) => { if(e.key === 'Enter') handleSendMessage(); }}
+              placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Écrivez votre message...'}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '24px',
+                border: '1px solid #ccc',
+                outline: 'none',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                boxSizing: 'border-box'
+              }}
+            />
+            <button 
+              onClick={handleSendMessage}
+              style={{
                 width: '45px',
                 height: '45px',
-                borderRadius: '12px',
+                borderRadius: '50%',
                 backgroundColor: '#1a237e',
+                color: '#fff',
+                border: 'none',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '1.4rem',
-                boxShadow: '0 4px 12px rgba(26, 35, 126, 0.2)'
-              }}>
-                📋
-              </div>
-              <div>
-                <h2 style={{ 
-                  margin: 0, 
-                  fontSize: '1.4rem', 
-                  color: '#1a237e', 
-                  fontWeight: 'bold',
-                  fontFamily: 'Tajawal, sans-serif' // إذا كنت تستخدم خط تجوال، وإلا سيعمل الخط الافتراضي
-                }}>
-                  {lang === 'ar' ? 'طلباتي' : 'Mes Commandes'}
-                </h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>
-                  {lang === 'ar' ? 'إدارة ومتابعة أعمالك الحالية' : 'Gérez vos missions en cours'}
-                </p>
-              </div>
-            </div>
-        
-            {/* شاشة الحالات */}
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              <OrdersStatusScreen user={user} apiUrl={apiUrl} lang={lang} />
-            </div>
-            
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+              }}
+            >
+              {lang === 'ar' ? '➡️' : '⬅️'}
+            </button>
           </div>
-        )}
+
+        </div>
+      )}
+    </div>
+    
+  </div>
+)}
       </main>
 
       {/* الشريط السفلي */}

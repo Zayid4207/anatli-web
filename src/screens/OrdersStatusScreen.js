@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token }) {
+export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token, onSelectOrder }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
-  const [showReviewForm, setShowReviewForm] = useState(false); // للتحكم في مسار التقييم المنفصل
+  const [showReviewForm, setShowReviewForm] = useState(false); 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
@@ -98,7 +98,6 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
       });
   };
 
-
   const toggleSelectOrder = (orderId, e) => {
     if (e) e.stopPropagation();
     setSelectedOrderIds(prev =>
@@ -135,7 +134,6 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
       if (data.success) {
         alert(lang === 'ar' ? "تم التقييم بنجاح" : "Évaluation réussie");
         setShowReviewForm(false);
-        // تحديث الطلب محلياً ليعرف أنه قُيّم
         setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, has_review: true } : o));
         setSelectedOrder(null);
       } else {
@@ -213,8 +211,14 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
                 if (isSelectionMode) {
                   if (canDelete(order)) toggleSelectOrder(order.id);
                 } else {
-                  setSelectedOrder(order);
-                  setShowReviewForm(false); // تصفير الحالة عند فتح طلب جديد
+                  // التعديل السحري هنا: عند الضغط على الطلب يفتح الشات مباشرة بدلاً من النافذة المنبثقة
+                  if (typeof onSelectOrder === 'function') {
+                    onSelectOrder(order.id);
+                  } else {
+                    // حل احتياطي في حال عدم تمرير الدالة بعد
+                    setSelectedOrder(order);
+                    setShowReviewForm(false);
+                  }
                 }
               }}
             >
@@ -274,7 +278,6 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
             </div>
 
             <div style={orderStyles.modalBody}>
-              {/* المسار الأول: واجهة التقييم المستقلة */}
               {showReviewForm ? (
                 <div style={orderStyles.fullReviewView}>
                    <button onClick={() => setShowReviewForm(false)} style={orderStyles.backBtn}>
@@ -299,7 +302,6 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
                   </div>
                 </div>
               ) : (
-                /* المسار الثاني: واجهة تفاصيل الطلب الأصلية */
                 <>
                   {selectedOrder.image_url ? (
                     <img src={`${apiUrl}${selectedOrder.image_url}`} alt="Order" style={orderStyles.orderImg} />
@@ -316,7 +318,6 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
                     </div>
                   </div>
 
-                  {/* زر التقييم يظهر فقط إذا لم يتم التقييم مسبقاً */}
                   {user.user_role === 'customer' && 
                    (selectedOrder.request_status === 'completed' || selectedOrder.status === 'completed') && 
                    !selectedOrder.has_review && (
@@ -345,31 +346,28 @@ export default function OrdersStatusScreen({ user, apiUrl, lang, onLogout, token
                       </button>
                     )}
                   </div>
-{!isSelectionMode && (
-  <button
-    onClick={() => {
-      const reason = prompt(lang === 'ar' ? "ما هي مشكلتك مع هذا الطلب؟" : "Quel هو le problème avec cette commande ?");
-      if (reason) {
-        fetch(`${apiUrl}/reports`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-         body: JSON.stringify({ 
-    reported_user_id: user.user_role === 'customer' 
-        ? selectedOrder.provider_id 
-        : selectedOrder.customer_id,
-    order_id: selectedOrder.id, 
-    reason: reason 
-})
-        }).then(() => alert(lang === 'ar' ? "تم إبلاغ الإدارة، سنراجع الأمر فوراً" : "Signalé à l'admin"));
-      }
-    }}
-    style={orderStyles.reportLink} // تأكد من تغيير الاسم هنا إلى reportBtn
-  >
-    <span>⚠️</span>
-    {lang === 'ar' ? 'الإبلاغ عن مشكلة في هذا الطلب' : 'Signaler un problème'}
-  </button>
-)}
-
+                  {!isSelectionMode && (
+                    <button
+                      onClick={() => {
+                        const reason = prompt(lang === 'ar' ? "ما هي مشكلتك مع هذا الطلب؟" : "Quel est le problème avec cette commande ?");
+                        if (reason) {
+                          fetch(`${apiUrl}/reports`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
+                            body: JSON.stringify({ 
+                              reported_user_id: user.user_role === 'customer' ? selectedOrder.provider_id : selectedOrder.customer_id,
+                              order_id: selectedOrder.id, 
+                              reason: reason 
+                            })
+                          }).then(() => alert(lang === 'ar' ? "تم إبلاغ الإدارة، سنراجع الأمر فوراً" : "Signalé à l'admin"));
+                        }
+                      }}
+                      style={orderStyles.reportLink}
+                    >
+                      <span>⚠️</span>
+                      {lang === 'ar' ? 'الإبلاغ عن مشكلة في هذا الطلب' : 'Signaler un problème'}
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -386,7 +384,6 @@ const orderStyles = {
   selectBtn: { padding: '8px 18px', borderRadius: '8px', border: '1.5px solid #006400', color: '#006400', background: '#fff', fontWeight: 'bold', cursor: 'pointer' },
   cancelBtn: { padding: '8px 18px', borderRadius: '8px', border: '1.5px solid #666', color: '#666', background: '#fff', fontWeight: 'bold', cursor: 'pointer' },
   bulkDeleteBtn: { padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#dc3545', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
-
   orderCard: { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid #eee' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
   serviceType: { fontWeight: 'bold', color: '#006400', fontSize: '1.05rem' },
@@ -396,7 +393,6 @@ const orderStyles = {
   actionGroup: { display: 'flex', alignItems: 'center', gap: '12px' },
   contactBtn: { padding: '7px 15px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' },
   deleteIconBtn: { background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '1rem', color: '#c53030' },
-
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', backdropFilter: 'blur(3px)' },
   modalContent: { background: '#fff', width: '100%', maxWidth: '450px', borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' },
   modalHeader: { padding: '18px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fcfcfc' },
@@ -406,34 +402,30 @@ const orderStyles = {
   noImg: { width: '100%', height: '120px', background: '#f0f0f0', borderRadius: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', border: '1px dashed #ccc', marginBottom: '15px' },
   infoSection: { textAlign: 'right', direction: 'rtl' },
   metaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px', fontSize: '0.85rem', color: '#777', padding: '10px', background: '#f9f9f9', borderRadius: '8px' },
-
-  // التنسيقات الجديدة للمسار المنفصل
   goToReviewBtn: { width: '100%', marginTop: '15px', padding: '12px', background: '#fff8e1', border: '1px solid #ffe082', borderRadius: '12px', color: '#856404', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.95rem' },
   fullReviewView: { textAlign: 'right', direction: 'rtl' },
   backBtn: { background: 'none', border: 'none', color: '#006400', cursor: 'pointer', marginBottom: '15px', fontWeight: 'bold' },
   reviewBox: { padding: '10px' },
   reviewTextAreaLarge: { width: '100%', borderRadius: '12px', border: '1px solid #ddd', padding: '12px', minHeight: '120px', marginBottom: '20px', fontSize: '1rem' },
   reviewSubmitBtnLarge: { width: '100%', padding: '15px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' },
-
   modalActionRow: { display: 'flex', gap: '10px', marginTop: '20px' },
   modalCallBtn: { flex: 2, padding: '14px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' },
   modalDeleteBtn: { flex: 1, padding: '14px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' },
-// استبدل reportLink بهذا التنسيق الجديد في قسم orderStyles
-reportLink: {
-  marginTop: '26px',        // مسافة كافية لتبتعد عن الأزرار التي فوقها
-  padding: '14px',          // ليصبح حجم الزر مريحاً للضغط (مثل زر اتصال)
-  backgroundColor: '#fff',  // خلفية بيضاء ليكون هادئاً
-  color: '#d9534f',         // لون النص أحمر تحذيري
-  border: '1.5px solid #d9534f', // إطار أحمر واضح
-  borderRadius: '12px',     // زوايا دائرية متناسقة مع بقية الأزرار
-  cursor: 'pointer',
-  fontSize: '0.9rem',
-  fontWeight: 'bold',
-  width: '100%',            // يأخذ العرض الكامل لمنع التداخل
-  textAlign: 'center',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  gap: '8px'
-},
+  reportLink: {
+    marginTop: '26px',
+    padding: '14px',
+    backgroundColor: '#fff',
+    color: '#d9534f',
+    border: '1.5px solid #d9534f',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    fontWeight: 'bold',
+    width: '100%',
+    textAlign: 'center',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '8px'
+  },
 };
