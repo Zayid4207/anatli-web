@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-let socket;
 import OrdersStatusScreen from './OrdersStatusScreen'; // تأكد أن المسار صحيح
+let socket;
 export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
    const [chatMessages, setChatMessages] = useState([]); // مخزن لرسائل الدردشة بين الزبون والحرفي
    const [typedMessage, setTypedMessage] = useState(''); // مخزن للنص الذي يكتبه الزبون الآن في الحقل
@@ -12,6 +12,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
     password: '' 
   });
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const chatEndRef = useRef(null);
   const [selectedReceiverId, setSelectedReceiverId] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
