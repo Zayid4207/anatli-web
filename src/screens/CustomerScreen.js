@@ -463,7 +463,7 @@ const handleSubscriptionSubmit = async () => {
         <span style={{ fontSize: '1.5rem' }}>{isSubscribed ? '🌟' : '🎁'}</span>
         <div style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
           <p style={{ margin: 0, fontWeight: 'bold', color: '#006400' }}>
-            {isSubscribed ? t.subStatus : (lang === 'ar' ? "هدايا البداية من أنعتلي" : "Cadeau de bienvenue")}
+            {isSubscribed ? t.subStatus : (lang === 'ar' ? "هدايا البداية" : "Cadeau de bienvenue")}
           </p>
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#006400' }}>
             {isSubscribed
@@ -477,13 +477,33 @@ const handleSubscriptionSubmit = async () => {
     ) : (
       /* تظهر هذه الواجهة فقط للزبون غير المشترك الذي استهلك محاولاته الـ 3 */
       <>
-        <div style={styles.feeBanner}>
-          <span style={{ fontSize: '1.5rem' }}></span>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ margin: 0, fontWeight: 'bold', color: '#856404' }}>{t.payNote.split('-')[0]}</p>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>{t.payNote.split('-')[1]}</p>
+        {/* بانر ملخص الرسوم ورقم التحويل مع زر النسخ الذكي */}
+        <div style={{ ...styles.feeBanner, backgroundColor: '#fff3cd', borderColor: '#ffeeba', flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #856404', paddingBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold', color: '#856404' }}>{lang === 'ar' ? '📋 رسوم الطلب:' : '📋 Frais de commande:'}</span>
+            <span style={{ fontWeight: 'bold', color: '#856404', backgroundColor: '#fff', padding: '2px 8px', borderRadius: '6px' }}>40 MRU</span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.9rem', color: '#333', textAlign: lang === 'ar' ? 'right' : 'left' }}>
+              {lang === 'ar' ? 'التحويل للرقم:' : 'Transférer au :'} <b style={{ color: '#d32f2f', fontSize: '1.1rem' }}>42072952</b>
+            </span>
+            <button 
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText('42072952');
+                alert(lang === 'ar' ? '📋 تم نسخ رقم التحويل بنجاح!' : '📋 Numéro copié !');
+              }}
+              style={{ padding: '4px 10px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              {lang === 'ar' ? 'نسخ الرقم' : 'Copier'}
+            </button>
           </div>
         </div>
+
+        <p style={{ margin: '2px 0', fontSize: '0.8rem', color: '#666', textAlign: 'center', fontStyle: 'italic' }}>
+          {lang === 'ar' ? '💡 حوّل المبلغ للرقم أعلاه عبر تطبيقك البنكي، ثم ارفع الإثبات أدناه.' : '💡 Transférez le montant au numéro ci-dessus, puis joignez la preuve.'}
+        </p>
 
         <p style={styles.sectionLabel}>{t.selectPayTitle}</p>
 
@@ -504,44 +524,57 @@ const handleSubscriptionSubmit = async () => {
           ))}
         </div>
 
+        {/* حقل رفع الملف المحسن والتفاعلي */}
         <label style={{
           ...styles.fileLabel,
           borderColor: orderData.payProof ? '#28a745' : '#006400',
-          backgroundColor: orderData.payProof ? '#f0fff0' : '#fff'
+          backgroundColor: orderData.payProof ? '#f0fff0' : '#fff',
+          borderStyle: orderData.payProof ? 'solid' : 'dashed',
+          cursor: 'pointer'
         }}>
-          <span>{orderData.payProof ? '' : ''}</span>
-          {orderData.payProof ? orderData.payProof.name.substring(0, 20) : t.uploadProof}
+          <span>{orderData.payProof ? '✅' : '📁'}</span>
+          <span style={{ color: orderData.payProof ? '#28a745' : '#006400', fontWeight: 'bold' }}>
+            {orderData.payProof ? `${lang === 'ar' ? 'تم اختيار: ' : 'Choisi: '}${orderData.payProof.name.substring(0, 15)}...` : t.uploadProof}
+          </span>
           <input
             type="file"
             style={{ display: 'none' }}
             accept="image/*"
-            onChange={(e) => setOrderData({ ...orderData, payProof: e.target.files[0] })}
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                  alert(lang === 'ar' ? '❌ حجم الصورة كبير جداً! يرجى اختيار لقطة شاشة أصغر.' : '❌ Image trop grande !');
+                  return;
+                }
+                setOrderData({ ...orderData, payProof: file });
+              }
+            }}
           />
         </label>
       </>
     )}
 
-    {/* زر الإرسال النهائي: نستخدم أيضاً الحالة المحلية هنا لتحديد النص الظاهر */}
+    {/* زر الإرسال النهائي مع مؤشر تحميل لمنع الضغط المتكرر */}
     <button
-      style={styles.primaryBtn}
+      style={{ ...styles.primaryBtn, backgroundColor: loading ? '#cccccc' : '#006400', cursor: loading ? 'not-allowed' : 'pointer' }}
       disabled={loading}
       onClick={handleFinalSubmit}
     >
-      {loading ? '...' : (isSubscribed || freeRequestsUsed < 3) ? `🚀 ${t.autoSend}` : `🚀 ${t.send}`}
+      {loading ? (lang === 'ar' ? '⏳ جاري إرسال الطلب...' : '⏳ Envoi en cours...') : (isSubscribed || freeRequestsUsed < 3) ? `🚀 ${t.autoSend}` : `🚀 ${t.send}`}
     </button>
   </div>
 )}
-                
 
-            {/* زر الرجوع يظهر أسفل جميع المراحل */}
-            <button
-              onClick={() => step === 1 ? setActiveTab('home') : setStep(step - 1)}
-              style={styles.backLink}
-            >
-              {t.back}
-            </button>
-          </div>
-        )}
+{/* زر الرجوع المحسّن الذي يظهر أسفل جميع المراحل */}
+<button
+  onClick={() => step === 1 ? setActiveTab('home') : setStep(step - 1)}
+  style={styles.backLink}
+>
+  {lang === 'ar' ? '⬅️ رجوع' : '⬅️ Retour'}
+</button>
+</div>
+)}
 
         {/* 3. واجهة الاشتراك */}
         {activeTab === 'sub' && (
@@ -931,7 +964,23 @@ const styles = {
   sectionLabel: { fontSize: '0.95rem', fontWeight: 'bold', color: '#333', textAlign: 'center' },
   payButtonsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
   payOptionBtn: { padding: '12px 5px', borderRadius: '12px', border: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.8rem' },
-  backLink: { background: 'none', border: 'none', color: '#666', textDecoration: 'underline', width: '100%', padding: '8px', fontSize: '0.9rem' },
+  backLink: { 
+  background: '#f1f1f1', 
+  border: '1px solid #ddd', 
+  color: '#333', 
+  borderRadius: '10px',
+  width: '100%', 
+  padding: '10px', 
+  fontSize: '0.9rem',
+  fontWeight: 'bold',
+  marginTop: '5px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '5px',
+  transition: 'all 0.2s'
+},
   bottomNav: {
     position: 'fixed',
     bottom: 0,
