@@ -13,32 +13,34 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] إشعار في الخلفية: ', payload);
-
     const notificationTitle = payload.notification?.title || "إشعار جديد";
     const notificationOptions = {
         body: payload.notification?.body || "",
         icon: '/icon-notif.png',
         badge: '/icon-notif.png',
         vibrate: [200, 100, 200, 100, 200],
-        sound: 'default',
-        tag: 'anatli-notification',
+        tag: 'homefix-notification',
         renotify: true,
         requireInteraction: true,
-        actions: [
-            { action: 'open', title: 'فتح التطبيق' }
-        ],
-        data: {
-            url: 'https://anatli-web.vercel.app'
-        }
+        actions: [{ action: 'open', title: 'فتح التطبيق' }],
+        data: { url: 'https://leplombiermr.com' }
     };
-
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const urlToOpen = event.notification.data?.url || 'https://leplombiermr.com';
     event.waitUntil(
-        clients.openWindow('https://anatli-web.vercel.app')
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            for (let client of windowClients) {
+                if (client.url === urlToOpen && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen);
+            }
+        })
     );
 });

@@ -1,5 +1,5 @@
 {
-  "short_name": "Le plombier",
+  "short_name": "Le Plombier",
   "name": "Le Plombier",
   "icons": [
     {
@@ -15,7 +15,8 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#0F6E56",
-  "background_color": "#0F6E56",
-  "description": "خدماتك المنزلية بلمسة زر"
+  "theme_color": "#006400",
+  "background_color": "#006400",
+  "description": "خدماتك المنزلية بلمسة زر",
+  "gcm_sender_id": "1013365864559"
 }
