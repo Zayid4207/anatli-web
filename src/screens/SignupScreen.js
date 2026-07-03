@@ -1,379 +1,490 @@
 import React, { useState } from 'react';
-
-const SignupScreen = ({ onBack, apiUrl }) => {
-  const [step, setStep] = useState(1); 
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+import { useTranslation } from '../translations';
+ 
+export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
+  const [step, setStep] = useState(1);
   const [role, setRole] = useState('customer');
-  const [serviceType, setServiceType] = useState('');
-  const [lang, setLang] = useState('ar');
+  const [coveredDistricts, setCoveredDistricts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // توليد كود عشوائي للتحقق يظهر للمستخدم ليرسله عبر الواتساب
-  const [verificationCode] = useState(Math.floor(1000 + Math.random() * 9000).toString());
-
-  // --- جديد: state الخاص بـ OTP ---
+  const [error, setError] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-
-  const services = [
-    { id: 'plumbing', ar: 'أعمال السباكة', fr: 'Plomberie', icon: '🚰' },
-    { id: 'electricity', ar: 'أعمال الكهرباء', fr: 'Électricité', icon: '⚡' },
-    { id: 'maintenance', ar: 'أعمال الصيانة', fr: 'Maintenance', icon: '🛠️' },
-    { id: 'cleaning', ar: 'أعمال التنظيف', fr: 'Nettoyage', icon: '🧹' },
-    { id: 'air_conditioning', ar: 'أعمال التكييف', fr: 'Climatisation', icon: '❄️' },
-    { id: 'construction', ar: 'أعمال البناء', fr: 'Construction', icon: '🏗️' },
-  ];
-
-  const content = {
-    ar: {
-      title: 'انضم إلى  Le plombier', subtitle: 'أنشئ حسابك وابدأ الاستخدام الآن',
-      name: 'الاسم الكامل', phone: 'رقم الهاتف (مثلاً +222...)',
-      pass: 'كلمة المرور', confirmPass: 'تأكيد كلمة المرور',
-      roleLabel: 'كيف ستستخدم التطبيق؟', customer: 'أنا زبون',
-      customerDesc: 'أبحث عن خدمات', provider: 'مقدم خدمة',
-      providerDesc: 'أريد تقديم خدماتي', serviceLabel: 'ما هو تخصصك المهني؟',
-      btn:'إنشاء وتفعيل الحساب ', next :'التالي', prev:'رجوع',
-      back: 'لديك حساب؟ سجل دخولك', success: 'تم تسجيل بياناتك! يرجى إرسال رسالة الواتساب الآن لتفعيل حسابك.',
-      errorMatch: 'كلمات المرور غير متطابقة', 
-      errorFields: 'يرجى ملء جميع الحقول', errorService: 'يرجى اختيار نوع الخدمة',
-      whatsappNote: 'سيتم فتح واتساب لإرسال كود التفعيل: '
-    },
-    fr: {
-      title: 'Rejoindre Le plombier', subtitle: 'Créez votre compte et commencez',
-      name: 'Nom Complet', phone: 'Téléphone (ex: +222...)',
-      pass: 'Mot de passe', confirmPass: 'Confirmer',
-      roleLabel: 'Comment utiliser l\'app ?', customer: 'Client',
-      customerDesc: 'Je cherche des services', provider: 'Prestataire',
-      providerDesc: 'Je propose mes services', serviceLabel: 'Quelle est votre spécialité ?',
-      btn: 'S\'inscrire et valider le compte', next: 'Suivant', prev: 'Retour',
-      back: 'Déjà inscrit? Connexion', success: 'Inscription réussie! Envoyez le message WhatsApp pour activer.',
-      errorMatch: 'Mots de passe non identiques', 
-      errorFields: 'Veuillez remplir tous les champs', errorService: 'Veuillez choisir un service',
-      whatsappNote: 'WhatsApp va s\'ouvrir avec le code: '
+  const [lang, setLang] = useState('ar');
+  const t = useTranslation(lang);
+ 
+  const [form, setForm] = useState({
+    full_name: '',
+    phone: '',
+    password: '',
+    confirm_password: '',
+    district: '',
+    address: '',
+    bank_phone: '',
+    bank_type: 'bankily'
+  });
+ 
+  const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+ 
+  const handleStep1 = () => {
+    if (!form.full_name || !form.phone || !form.password || !form.confirm_password) {
+      setError(t.fillAllFields); return;
     }
-  };
-
-  const c = content[lang];
-
-  const handleNextStep = () => {
-    if (!fullName || !phone || !password || !confirmPassword) {
-      setError(c.errorFields); return;
+    if (form.password !== form.confirm_password) {
+      setError(t.passwordMismatch); return;
     }
-    if (password !== confirmPassword) {
-      setError(c.errorMatch); return;
+    if (form.phone.length < 8) {
+      setError(t.phoneInvalid); return;
     }
-    setError(null);
+    setError('');
     setStep(2);
   };
-
-  // --- جديد: إرسال OTP ---
-  // 1. الدالة الأولى: إرسال البيانات للسيرفر لإنشاء الحساب وتوليد الـ OTP
-  const handleSignupAndSendOtp = async () => {
-    if (role === 'provider' && !serviceType) {
-      setError(c.errorService); return;
+ const handleStep2 = () => {
+    if (role === 'customer') {
+      if (!form.district || !form.address) {
+        setError(lang === 'ar' ? 'يرجى تحديد المقاطعة والعنوان' : 'Veuillez choisir la commune et l\'adresse'); return;
+      }
     }
-    
+    if (role === 'provider') {
+      if (!form.bank_phone) {
+        setError(lang === 'ar' ? 'يرجى إدخال رقم الهاتف البنكي' : 'Veuillez entrer le numéro bancaire'); return;
+      }
+      if (coveredDistricts.length === 0) {
+        setError(lang === 'ar' ? 'يرجى اختيار مقاطعة واحدة على الأقل' : 'Veuillez choisir au moins une commune'); return;
+      }
+    }
+    setError('');
+    handleSignup();
+  };
+ 
+  const handleSignup = async () => {
     setLoading(true);
-    setError(null);
-
     try {
-      const cleanedPhone = phone.trim().replace(/\s+/g, '');
-      
-      const response = await fetch('https://anatli-server-production.up.railway.app/signup', {
+      const res = await fetch(`${apiUrl}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: fullName,
-          phone: cleanedPhone,
-          password: password,
-          role: role,
-          service_type: role === 'provider' ? serviceType : null
-        }),
+          full_name: form.full_name,
+          phone: form.phone,
+          password: form.password,
+          user_role: role,
+          district: role === 'customer' ? form.district : null,
+          address: role === 'customer' ? form.address : null,
+          bank_phone: role === 'provider' ? form.bank_phone : null,
+          bank_type: role === 'provider' ? form.bank_type : null,
+           covered_districts: role === 'provider' ? coveredDistricts.join(',') : null
+        })
       });
-
-      const data = await response.json();
-if (response.ok) {
-        // توليد رمز OTP وإرساله للسيرفر
-        const otpRes = await fetch('https://anatli-server-production.up.railway.app/send-otp', {
+      const data = await res.json();
+      if (res.ok) {
+        await fetch(`${apiUrl}/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: cleanedPhone }),
+          body: JSON.stringify({ phone: form.phone })
         });
-        const otpData = await otpRes.json();
-
-        if (otpRes.ok) {
-          // فتح واتساب برسالة تحتوي الرمز
-          const message = `أنعتلي - رمز التحقق الخاص بي: ${otpData.otp}`;
-          const formattedPhone = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : '222' + cleanedPhone;
-          const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
-          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-           window.location.href = whatsappUrl;
-                  } else {
-                window.open(whatsappUrl, '_blank');
-                                                      }
-          setStep(4);
-        } else {
-          setError(otpData.error || "فشل توليد رمز التحقق");
-        }
+        setStep(3);
       } else {
-        setError(data.error || "خطأ في السيرفر أثناء التسجيل");
+        setError(data.error || t.error);
       }
-     
     } catch (err) {
-      console.error("Signup Error:", err);
-      setError("فشل الاتصال بالسيرفر");
+      setError(t.serverError);
     } finally {
       setLoading(false);
     }
   };
-
-  // 2. الدالة الثانية: التحقق من كود الـ OTP المدخل وتفعيل الحساب نهائياً
+ 
   const handleVerifyOtp = async () => {
-    if (!otpCode) { 
-      setError(lang === 'ar' ? "يرجى إدخال الرمز" : "Veuillez entrer le code"); 
-      return; 
-    }
-    
+    if (!otpCode) { setError(lang === 'ar' ? 'يرجى إدخال الرمز' : 'Veuillez entrer le code'); return; }
     setLoading(true);
-    setError(null);
-
     try {
-      const cleanedPhone = phone.trim().replace(/\s+/g, '');
-
-      const response = await fetch('https://anatli-server-production.up.railway.app/verify-otp', {
+      const res = await fetch(`${apiUrl}/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: cleanedPhone,
-          code: otpCode
-        }),
+        body: JSON.stringify({ phone: form.phone, code: otpCode })
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(lang === 'ar' ? "🎉 تم تفعيل حسابك بنجاح! يمكنك الآن تسجيل الدخول." : "🎉 Votre compte a été activé avec succès!");
-        onBack(); 
+      const data = await res.json();
+      if (res.ok) {
+        alert(t.accountCreated);
+        onSuccess();
       } else {
-        setError(data.error || "الرمز غير صحيح أو انتهت صلاحيته");
+        setError(data.error || lang === 'ar' ? 'الرمز غير صحيح' : 'Code incorrect');
       }
     } catch (err) {
-      console.error("Verification Error:", err);
-      setError("فشل الاتصال بالسيرفر");
+      setError(t.serverError);
     } finally {
       setLoading(false);
     }
   };
-
+ 
   return (
-    <div style={styles.container}>
-      <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={styles.langBtn}>
+    <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+ 
+      {/* زر اللغة */}
+      <button
+        onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')}
+        style={{
+          position: 'fixed', top: '15px', left: '15px',
+          padding: '6px 14px', borderRadius: '10px',
+          border: '1px solid #006400', background: '#fff',
+          color: '#006400', fontWeight: 'bold', cursor: 'pointer',
+          zIndex: 1000
+        }}
+      >
         {lang === 'ar' ? 'FR' : 'AR'}
       </button>
+ 
+      <div style={s.card}>
+ 
+        {/* الرأسية */}
+        <div style={s.header}>
+          <div style={s.logoIcon}>🏠</div>
+          <h2 style={s.title}>{t.createAccount}</h2>
+          <div style={s.steps}>
+            {[1, 2, 3].map(n => (
+              <div key={n} style={{ ...s.stepDot, backgroundColor: step >= n ? '#006400' : '#ddd' }} />
+            ))}
+          </div>
+        </div>
+ 
+        {/* الخطوة 1 */}
+        {step === 1 && (
+          <div style={s.form}>
+            <p style={s.stepTitle}>{t.basicInfo}</p>
+ 
+            <div style={s.roleRow}>
+              <div
+                style={{ ...s.roleCard, borderColor: role === 'customer' ? '#006400' : '#ddd', backgroundColor: role === 'customer' ? '#f0fff0' : '#fff' }}
+                onClick={() => setRole('customer')}
+              >
+                <span style={{ fontSize: '2rem' }}>🏠</span>
+                <span style={s.roleLabel}>{t.iAmCustomer}</span>
+                <span style={s.roleDesc}>{t.customerDesc}</span>
+              </div>
+              <div
+                style={{ ...s.roleCard, borderColor: role === 'provider' ? '#006400' : '#ddd', backgroundColor: role === 'provider' ? '#f0fff0' : '#fff' }}
+                onClick={() => setRole('provider')}
+              >
+                <span style={{ fontSize: '2rem' }}>🔧</span>
+                <span style={s.roleLabel}>{t.iAmProvider}</span>
+                <span style={s.roleDesc}>{t.providerDesc}</span>
+              </div>
+            </div>
+ 
+            <input style={s.input} placeholder={t.enterName} value={form.full_name} onChange={e => update('full_name', e.target.value)} />
+            <input style={s.input} placeholder={t.phone} type="text" value={form.phone} onChange={e => update('phone', e.target.value)} />
+            <input style={s.input} placeholder={t.password} type="password" value={form.password} onChange={e => update('password', e.target.value)} />
+            <input style={s.input} placeholder={t.confirmPassword} type="password" value={form.confirm_password} onChange={e => update('confirm_password', e.target.value)} />
+ 
+            {error && <p style={s.error}>{error}</p>}
+            <button style={s.btnPrimary} onClick={handleStep1}>{t.next}</button>
+            <button style={s.backLink} onClick={onBack}>{t.haveAccount}</button>
+          </div>
+        )}
+ 
+        {/* الخطوة 2 */}
+       {step === 2 && (
+     <div style={s.form}>
+      {role === 'customer' ? (
+      <>
+        <p style={s.stepTitle}>{t.locationInfo}</p>
+        <p style={s.stepDesc}>{t.locationDesc}</p>
 
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <h1 style={styles.logo}>Le Plombier</h1>
-          <p style={styles.subtitle}>{c.subtitle}</p>
+        <label style={s.label}>{t.district}</label>
+        <select style={s.input} value={form.district} onChange={e => update('district', e.target.value)}>
+          <option value="">{t.chooseDistrict}</option>
+          {t.districts.map((d, i) => <option key={i} value={d}>{d}</option>)}
+        </select>
+
+        <label style={s.label}>{t.address}</label>
+        <textarea
+          style={{ ...s.input, height: '80px', resize: 'none' }}
+          placeholder={t.addressPlaceholder}
+          value={form.address}
+          onChange={e => update('address', e.target.value)}
+        />
+      </>
+    ) : (
+      <>
+        <p style={s.stepTitle}>{t.paymentInfo}</p>
+        <p style={s.stepDesc}>{t.paymentDesc}</p>
+
+        <label style={s.label}>{t.bankType}</label>
+        <div style={s.bankRow}>
+          {[
+            { key: 'bankily', label: lang === 'ar' ? 'بنكيلي' : 'Bankily' },
+            { key: 'sadad', label: lang === 'ar' ? 'سداد' : 'Sadad' },
+            { key: 'masrivi', label: lang === 'ar' ? 'مصرفي' : 'Masrivi' }
+          ].map(b => (
+            <div
+              key={b.key}
+              style={{ ...s.bankCard, borderColor: form.bank_type === b.key ? '#006400' : '#ddd', backgroundColor: form.bank_type === b.key ? '#f0fff0' : '#fff' }}
+              onClick={() => update('bank_type', b.key)}
+            >
+              <span style={{ fontSize: '1.5rem' }}>📱</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{b.label}</span>
+            </div>
+          ))}
         </div>
 
-        <div style={styles.form}>
-          {step === 1 && (
-            <div style={styles.fadeAnim}>
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}>👤</span>
-                <input type="text" placeholder={c.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={styles.input} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}>📞</span>
-                <input type="text" placeholder={c.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={styles.input} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}>🔒</span>
-                <input type="password" placeholder={c.pass} value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}>🔄</span>
-                <input type="password" placeholder={c.confirmPass} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={styles.input} />
-              </div>
-              {error && <p style={styles.errorText}>{error}</p>}
-              <button onClick={handleNextStep} style={styles.button}>{c.next}</button>
-            </div>
-          )}
+        <label style={s.label}>{t.bankPhone}</label>
+        <input style={s.input} placeholder={t.bankPhonePlaceholder} value={form.bank_phone} onChange={e => update('bank_phone', e.target.value)} />
 
-          {step === 2 && (
-            <div style={styles.fadeAnim}>
-              <p style={styles.roleTitle}>{c.roleLabel}</p>
-              <div style={styles.roleContainer}>
-                <div 
-                  onClick={() => setRole('customer')}
-                  style={{...styles.roleCard, borderColor: role === 'customer' ? '#006400' : '#eee', backgroundColor: role === 'customer' ? '#f0fff0' : '#fff'}}
-                >
-                  <span style={styles.roleIcon}>🛍️</span>
-                  <span style={styles.roleName}>{c.customer}</span>
-                  <span style={styles.roleDesc}>{c.customerDesc}</span>
-                </div>
-                <div 
-                  onClick={() => setRole('provider')}
-                  style={{...styles.roleCard, borderColor: role === 'provider' ? '#006400' : '#eee', backgroundColor: role === 'provider' ? '#f0fff0' : '#fff'}}
-                >
-                  <span style={styles.roleIcon}>🛠️</span>
-                  <span style={styles.roleName}>{c.provider}</span>
-                  <span style={styles.roleDesc}>{c.providerDesc}</span>
-                </div>
-              </div>
-              <div style={styles.buttonGroup}>
-                <button onClick={() => setStep(1)} style={styles.secondaryButton}>{c.prev}</button>
-                <button 
-                  onClick={() => role === 'provider' ? setStep(3) : handleSignupAndSendOtp()}
-                  disabled={loading}
-                  style={styles.button}
-                >
-                  {loading ? '...' : (role === 'customer' ? c.next : c.next)}
-                </button>
-              </div>
-              {error && <p style={styles.errorText}>{error}</p>}
-            </div>
-          )}
+        {/* اختيار المقاطعات */}
+        <label style={s.label}>
+          {lang === 'ar' ? 'المقاطعات التي تغطيها' : 'Communes que vous couvrez'}
+        </label>
+        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-8px', marginBottom: '5px' }}>
+          {lang === 'ar' ? 'اختر كل المقاطعات التي يمكنك العمل فيها' : 'Sélectionnez les communes où vous pouvez travailler'}
+        </p>
 
-          {step === 3 && (
-            <div style={styles.fadeAnim}>
-              <p style={styles.roleTitle}>{c.serviceLabel}</p>
-              <div style={styles.servicesGrid}>
-                {services.map((s) => (
-                  <div 
-                    key={s.id}
-                    onClick={() => setServiceType(s.id)}
-                    style={{
-                      ...styles.serviceBox,
-                      borderColor: serviceType === s.id ? '#006400' : '#eee',
-                      backgroundColor: serviceType === s.id ? '#f0fff0' : '#fff'
-                    }}
-                  >
-                    <span style={{fontSize: '1.5rem'}}>{s.icon}</span>
-                    <span style={{fontSize: '0.85rem', fontWeight: 'bold', marginTop: '5px'}}>{lang === 'ar' ? s.ar : s.fr}</span>
-                  </div>
-                ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {t.districts.map((district, i) => {
+            const isSelected = coveredDistricts.includes(district);
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  if (isSelected) {
+                    setCoveredDistricts(prev => prev.filter(d => d !== district));
+                  } else {
+                    setCoveredDistricts(prev => [...prev, district]);
+                  }
+                }}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: `2px solid ${isSelected ? '#006400' : '#ddd'}`,
+                  backgroundColor: isSelected ? '#f0fff0' : '#fff',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: isSelected ? 'bold' : 'normal',
+                  color: isSelected ? '#006400' : '#555',
+                  textAlign: 'center'
+                }}
+              >
+                {isSelected ? '✓ ' : ''}{district}
               </div>
-              <div style={styles.buttonGroup}>
-                <button onClick={() => setStep(2)} style={styles.secondaryButton}>{c.prev}</button>
-                <button onClick={handleSignupAndSendOtp} disabled={loading} style={styles.button}>
-                  {loading ? '...' : c.next}
-                </button>
-              </div>
-              {error && <p style={styles.errorText}>{error}</p>}
-            </div>
-          )}
+            );
+          })}
+        </div>
 
-          {/* --- جديد: Step 4 — إدخال رمز OTP --- */}
-         {/* --- واجهة إدخال رمز التحقق (Step 4) المحسنة --- */}
-    {step === 4 && (
-         <div style={styles.fadeAnim}>
-         <p style={styles.roleTitleCenter}>
-          📱 {lang === 'ar' ? 'أدخل رمز التحقق الذي وصلك على  الواتساب' : 'Entrez le code reçu sur votre whatsapp'}
-            </p>
-    
-           <div style={styles.inputWrapperOtp}>
-                <input
-               type="text"
-        placeholder={lang === 'ar' ? 'ادخل الرمز المستلم على واتساب' : 'Code à 6 chiffres via whatsapp'}
-        value={otpCode}
-        onChange={(e) => setOtpCode(e.target.value)}
-        style={styles.inputOtp}
-        maxLength={6}
-      />
-      <span style={styles.iconOtp}>🔑</span>
-    </div>
-    
-    {error && <p style={styles.errorText}>{error}</p>}
-    
-    <div style={styles.buttonGroup}>
-      <button onClick={handleVerifyOtp} disabled={loading} style={styles.button}>
-        {loading ? '...' : (lang === 'ar' ? 'تفعيل الحساب ✅' : 'Activer ✅')}
-      </button>
-      <button onClick={() => setStep(role === 'provider' ? 3 : 2)} style={styles.secondaryButton}>
-        {lang === 'ar' ? 'رجوع' : 'Retour'}
-      </button>
-    </div>
+        {/* زر تحديد الكل */}
+        <button
+          type="button"
+          onClick={() => {
+            if (coveredDistricts.length === t.districts.length) {
+              setCoveredDistricts([]);
+            } else {
+              setCoveredDistricts([...t.districts]);
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '8px',
+            background: 'none',
+            border: '1px dashed #006400',
+            borderRadius: '8px',
+            color: '#006400',
+            cursor: 'pointer',
+            fontSize: '0.85rem'
+          }}
+        >
+          {coveredDistricts.length === t.districts.length
+            ? (lang === 'ar' ? 'إلغاء تحديد الكل' : 'Tout désélectionner')
+            : (lang === 'ar' ? 'تحديد كل المقاطعات' : 'Sélectionner tout')}
+        </button>
+      </>
+    )}
+
+    {error && <p style={s.error}>{error}</p>}
+    <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }} onClick={handleStep2} disabled={loading}>
+      {loading ? (lang === 'ar' ? 'جاري التسجيل...' : 'Inscription...') : t.createBtn}
+    </button>
+    <button style={s.backLink} onClick={() => { setStep(1); setError(''); }}>{t.back}</button>
   </div>
 )}
-          
-          <button type="button" onClick={onBack} style={styles.linkBtn}>{c.back}</button>
-        </div>
+ 
+        {/* الخطوة 3 */}
+        {step === 3 && (
+          <div style={s.form}>
+            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '3rem' }}>📱</span>
+              <p style={s.stepTitle}>{t.otpTitle}</p>
+              <p style={s.stepDesc}>{t.otpDesc}<br /><strong>{form.phone}</strong></p>
+            </div>
+ 
+            <input
+              style={{ ...s.input, textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
+              placeholder={t.otpPlaceholder}
+              maxLength={6}
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value)}
+            />
+ 
+            {error && <p style={s.error}>{error}</p>}
+ 
+            <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }} onClick={handleVerifyOtp} disabled={loading}>
+              {loading ? (lang === 'ar' ? 'جاري التحقق...' : 'Vérification...') : t.activateBtn}
+            </button>
+ 
+            <button style={s.backLink} onClick={async () => {
+              await fetch(`${apiUrl}/send-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: form.phone })
+              });
+              alert(t.otpResent);
+            }}>
+              {t.resendOtp}
+            </button>
+          </div>
+        )}
+ 
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f4f7f6', direction: 'rtl', padding: '20px' },
-  langBtn: { position: 'absolute', top: '20px', right: '20px', padding: '8px 12px', borderRadius: '10px', border: 'none', background: '#006400', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' },
-  card: { background: '#fff', padding: '30px 25px', borderRadius: '35px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 15px 35px rgba(0,0,0,0.05)' },
-  logo: { color: '#006400', fontSize: '2.2rem', fontWeight: '900', margin: '0' },
-  subtitle: { color: '#777', fontSize: '0.9rem', marginBottom: '25px' },
-  form: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  inputWrapper: { display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: '15px', padding: '0 15px', border: '1px solid #f0f0f0', marginBottom: '10px' },
-  icon: { fontSize: '1.1rem', marginLeft: '10px' },
-  input: { flex: 1, padding: '14px 0', border: 'none', background: 'none', outline: 'none', fontSize: '0.95rem', textAlign: 'right', color: '#333' },
-  roleTitle: { textAlign: 'right', fontSize: '0.9rem', color: '#444', fontWeight: 'bold', margin: '10px 5px 10px 0' },
-  roleContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
-  roleCard: { flex: 1, padding: '15px 10px', borderRadius: '20px', border: '2px solid', cursor: 'pointer', transition: '0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  roleIcon: { fontSize: '1.8rem', marginBottom: '5px' },
-  roleName: { fontSize: '0.9rem', fontWeight: 'bold', color: '#006400' },
-  roleDesc: { fontSize: '0.7rem', color: '#888', textAlign: 'center' },
-  buttonGroup: { display: 'flex', gap: '10px', marginTop: '10px' },
-  button: { flex: 2, padding: '16px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '18px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 8px 20px rgba(0,100,0,0.2)' },
-  secondaryButton: { flex: 1, padding: '16px', backgroundColor: '#f0f0f0', color: '#444', border: 'none', borderRadius: '18px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' },
-  servicesGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '15px' },
-  serviceBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '15px', borderRadius: '18px', border: '2px solid', cursor: 'pointer', transition: '0.2s' },
-  linkBtn: { background: 'none', border: 'none', color: '#006400', cursor: 'pointer', marginTop: '15px', fontSize: '0.9rem', fontWeight: '600' },
-  errorText: { color: '#e74c3c', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' },
-  fadeAnim: { animation: 'fadeIn 0.5s ease' },
-  // أضف هذه الأسطر داخل كائن styles المتواجد في أسفل ملفك:
-  roleTitleCenter: {
-    textAlign: 'center', 
-    fontSize: '0.95rem', 
-    color: '#334155', 
-    fontWeight: '600', 
-    margin: '10px 0 20px 0' 
+}
+ 
+const s = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f4f0',
+    padding: '20px'
   },
-  inputWrapperOtp: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    backgroundColor: '#f8fafc', 
-    borderRadius: '16px', 
-    padding: '0 20px', 
-    border: '1px solid #e2e8f0', 
-    marginBottom: '12px',
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: '24px',
+    padding: '30px 25px',
+    width: '100%',
+    maxWidth: '420px',
+    boxShadow: '0 10px 40px rgba(0,100,0,0.1)'
   },
-  iconOtp: {
-    fontSize: '1.2rem',
-    color: '#ffb703',
-    marginLeft: '10px'
+  header: {
+    textAlign: 'center',
+    marginBottom: '25px'
   },
-  inputOtp: {
-    flex: 1, 
-    padding: '18px 0', 
-    border: 'none', 
-    background: 'none', 
-    outline: 'none', 
-    fontSize: '1.2rem', 
-    textAlign: 'center', 
-    color: '#1e293b',
+  logoIcon: {
+    fontSize: '2.5rem'
+  },
+  title: {
+    margin: '8px 0',
+    color: '#006400',
+    fontSize: '1.5rem',
+    fontWeight: '900'
+  },
+  steps: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '8px',
+    marginTop: '10px'
+  },
+  stepDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  stepTitle: {
+    fontSize: '1.1rem',
     fontWeight: 'bold',
-    letterSpacing: '4px' // يعطي مسافة جمالية بين أرقام الكود أثناء الكتابة
+    color: '#333',
+    margin: 0,
+    textAlign: 'center'
   },
-  buttonGroup: { 
-    display: 'flex', 
-    gap: '12px', 
-    marginTop: '10px',
-    flexDirection: 'row-reverse' // ليتناسب الترتيب بشكل صحيح من اليمين لليسار (التفعيل أولاً ثم الرجوع)
+  stepDesc: {
+    fontSize: '0.85rem',
+    color: '#888',
+    margin: 0,
+    textAlign: 'center',
+    lineHeight: '1.5'
   },
+  roleRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px'
+  },
+  roleCard: {
+    border: '2px solid',
+    borderRadius: '16px',
+    padding: '15px 10px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  roleLabel: {
+    fontWeight: 'bold',
+    color: '#006400',
+    fontSize: '1rem'
+  },
+  roleDesc: {
+    fontSize: '0.7rem',
+    color: '#888',
+    textAlign: 'center'
+  },
+  label: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#444',
+    marginBottom: '2px'
+  },
+  input: {
+    padding: '13px 15px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '1rem',
+    outline: 'none',
+    textAlign: 'right',
+    backgroundColor: '#fafafa',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  bankRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px'
+  },
+  bankCard: {
+    border: '2px solid',
+    borderRadius: '12px',
+    padding: '12px 5px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  error: {
+    color: '#e53e3e',
+    fontSize: '0.85rem',
+    textAlign: 'center',
+    margin: 0
+  },
+  btnPrimary: {
+    padding: '14px',
+    backgroundColor: '#006400',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    width: '100%'
+  },
+  backLink: {
+    background: 'none',
+    border: 'none',
+    color: '#888',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    textAlign: 'center'
+  }
 };
-
-export default SignupScreen;

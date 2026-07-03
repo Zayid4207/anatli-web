@@ -1,1171 +1,1444 @@
 import React, { useState, useEffect, useRef } from 'react';
-import OrdersStatusScreen from './OrdersStatusScreen'; 
-export default function CustomerScreen({ user, apiUrl, onLogout, token }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    full_name: user?.full_name || '',
-    phone: user?.phone || '',
-    password: '' 
-  });
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const chatEndRef = useRef(null);
-  const [selectedReceiverId, setSelectedReceiverId] = useState(null);
-  const [activeTab, setActiveTab] = useState('home');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [lang, setLang] = useState('ar');
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [subStep, setSubStep] = useState(1);
- // --- الجزئية المحدثة ---
-const [freeRequestsUsed, setFreeRequestsUsed] = useState(user?.free_requests_used || 0);
-const [isSubscribed, setIsSubscribed] = useState(user?.is_subscribed || false);
-const [subscriptionPending, setSubscriptionPending] = useState(user?.subscription_pending || false);
-const [expiryDate, setExpiryDate] = useState(user?.subscription_end_date ? new Date(user.subscription_end_date) : null);
-// -----------------------
-  const [orderData, setOrderData] = useState({
-    type: '',
-    desc: '',
-    image: null,
-    location: '',
-    payMethod: 'bankily',
-    payProof: null
-  });
-
-  // تحديث حالة الاشتراك من بيانات المستخدم القادمة من السيرفر
+import { useTranslation } from '../translations';
  
-  const translations = {
-    ar: {
-      subStatus: 'أنت مشترك في الباقة الذهبية',
-      subStatusDesc: 'هذا الطلب مجاني وسيتم تفعيله فوراً.',
-      autoSend: 'إرسال وتفعيل تلقائي',
-      editTitle: 'تعديل الحساب',
-      fullNameLabel: 'الاسم الكامل:',
-      fullNameImmutable: 'الاسم الكامل (لا يمكن تغييره)',
-      phoneLabel: 'رقم الهاتف:',
-      newPhoneLabel: 'رقم الهاتف الجديد',
-      passLabel: 'كلمة المرور:',
-      newPassLabel: 'كلمة المرور الجديدة (اختياري)',
-      passPlaceholder: 'اتركها فارغة إذا لا تريد التغيير',
-      saveBtn: 'حفظ التغييرات',
-      cancelBtn: 'إلغاء',
-      editBtn: ' تعديل البيانات',
-      successUpdate: ' تم تحديث بياناتك بنجاح. سيتم تسجيل خروجك لتطبيق التغييرات.',
-      errorUpdate: ' فشل التحديث: ',
-      serverError: 'تعذر الاتصال بالسيرفر',
-      phoneRequired: 'رقم الهاتف مطلوب',
-      logout: 'تسجيل الخروج',
-      version: 'الإصدار 1.0.0',
-      daysRemaining: 'متبقي على نهاية اشتراكك:',
-      day: 'يوم',
-      expired: 'انتهى اشتراكك، يرجى التجديد',
-      subscribe: 'الاشتراك',
-      subTitle: 'باقة التوفير الذهبية 🌟',
-      subPrice: '150 MRU / شهرياً',
-      subFeatures: [
-        ' عدم دفع رسوم الطلب نهائياً',
-        ' الطلب في أي وقت ومن أي مكان',
-        ' وصول طلبك مباشرة لمقدمي الخدمة'
-      ],
-      subNow: 'اشترك الآن',
-      subPaymentTitle: 'تفعيل الاشتراك المميز',
-      subNote: 'رسوم الاشتراك: 150 MRU - يرجى التحويل للرقم: 42072952',
-      selectPayTitle: 'اختر وسيلة الدفع المناسبة:',
-      payError: 'يرجى اختيار وسيلة الدفع وإرفاق صورة الإثبات!',
-      serviceLabel: 'الخدمة',
-      descPlaceholder: 'اشرح المشكلة هنا بالتفصيل...',
-      requiredError: 'يرجى كتابة وصف وإرفاق صورة للمتابعة!',
-      home: 'الرئيسية', messages: 'طلباتي', profile: 'حسابي', phone: 'رقم الهاتف',
-      search: 'ابحث عن خدمة...', newOrder: 'طلب خدمة جديد',
-      next: 'التالي', back: 'رجوع', send: 'إرسال الطلب النهائي',
-      step1: 'اختر نوع الخدمة', step2: 'وصف المشكلة وصورة', step3: 'الدفع وتأكيد الطلب',
-      payNote: 'رسوم الطلب هي 40 MRU - يرجى التحويل للرقم: 42072952',
-      uploadImg: 'إرفاق صورة المشكلة', uploadProof: 'إرفاق إثبات الدفع (لقطة شاشة)',
-      success: 'تم إرسال طلبك بنجاح! سيتم مراجعته وتفعيله فوراً.',
-      services: {
-        plumbing: 'أعمال السباكة', electricity: 'أعمال الكهرباء', cleaning: 'أعمال التنظيف',
-        maintenance: 'أعمال الصيانة', cooling: 'أعمال التكييف', building: 'أعمال البناء'
-      },
-      payMethods: { bankily: 'بنكيلي', sadad: 'السداد', masrivi: 'مصرفي' }
+export default function CustomerScreen({ user, apiUrl, onLogout }) {
+  const [lang, setLang] = useState('ar');
+  const t = useTranslation(lang);
+  const [activeTab, setActiveTab] = useState('home');
+  const [requests, setRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = useState(user);
+ 
+  // بيانات الطلب الجديد
+  const [location, setLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [subStep, setSubStep] = useState(1);
+  const [image, setImage] = useState(null);
+  const [voiceBlob, setVoiceBlob] = useState(null);
+  const [voiceUrl, setVoiceUrl] = useState(null);
+  const [description, setDescription] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [step, setStep] = useState(1);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+ 
+  // بيانات الاشتراك
+  const [packages, setPackages] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [subProof, setSubProof] = useState(null);
+ 
+  const token = localStorage.getItem('userToken');
+ 
+  useEffect(() => {
+    fetchUserData();
+    fetchRequests();
+    fetchPackages();
+    const interval = setInterval(() => {
+      fetchRequests();
+      fetchUserData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+ 
+  const fetchUserData = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/users/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setUserData(await res.json());
+    } catch (err) {}
+  };
+ 
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/customer/requests/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setRequests(await res.json());
+    } catch (err) {}
+  };
+ 
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/packages`);
+      if (res.ok) setPackages(await res.json());
+    } catch (err) {}
+  };
+ 
+  // --- تسجيل الصوت ---
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = e => chunksRef.current.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setVoiceBlob(blob);
+        setVoiceUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
+    }
+  };
+ 
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+  const getLocation = () => {
+  setLocationLoading(true);
+  setLocationError('');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      setLocation({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      });
+      setLocationLoading(false);
     },
-    fr: {
-      subStatus: 'Vous êtes abonné au Pack Gold',
-      subStatusDesc: 'Cette demande est gratuite et sera activée immédiatement.',
-      autoSend: 'Envoyer et Activer Automatiquement',
-      editTitle: 'Modifier le compte',
-      fullNameLabel: 'Nom Complet:',
-      fullNameImmutable: 'Nom Complet (non modifiable)',
-      phoneLabel: 'Téléphone:',
-      newPhoneLabel: 'Nouveau numéro de téléphone',
-      passLabel: 'Mot de passe:',
-      newPassLabel: 'Nouveau mot de passe (optionnel)',
-      passPlaceholder: 'Laisser vide pour ne pas changer',
-      saveBtn: 'Enregistrer',
-      cancelBtn: 'Annuler',
-      editBtn: 'Modifier les données',
-      successUpdate: ' Profil mis à jour. Vous allez être déconnecté pour appliquer les changements.',
-      errorUpdate: ' Échec de la mise à jour: ',
-      serverError: 'Impossible de contacter le serveur',
-      phoneRequired: 'Le numéro de téléphone est requis',
-      logout: 'Déconnexion',
-      version: 'Version 1.0.0',
-      daysRemaining: 'Il reste pour votre abonnement :',
-      day: 'Jour',
-      expired: 'Abonnement expiré, veuillez renouveler',
-      subscribe: 'S\'abonner',
-      subTitle: 'Forfait Économique Or 🌟',
-      subPrice: '150 MRU / Mois',
-      subFeatures: [
-        ' Zéro frais de commande',
-        ' Commander partout et à tout moment',
-        ' Accès direct aux prestataires'
-      ],
-      subNow: 'S\'abonner maintenant',
-      subPaymentTitle: 'Activer l\'abonnement Premium',
-      subNote: 'Frais: 150 MRU - Transfert vers: 42072952',
-      selectPayTitle: 'Choisir la méthode de paiement :',
-      payError: 'Veuillez choisir une méthode et joindre la preuve !',
-      serviceLabel: 'Service',
-      descPlaceholder: 'Décrivez le problème ici en detail...',
-      requiredError: 'Veuillez écrire une description et joindre une image !',
-      home: 'Accueil', messages: 'Mes commandes', profile: 'Profil', phone: 'Téléphone',
-      search: 'Chercher une service .....', newOrder: 'Nouvelle commande',
-      next: 'Suivant', back: 'Retour', send: 'Envoyer la commande',
-      step1: 'Type de service', step2: 'Description & Image', step3: 'Paiement & Confirmation',
-      payNote: 'Frais: 40 MRU - Transférer au: 42072952',
-      uploadImg: 'Image du problème', uploadProof: 'Preuve de paiement',
-      success: 'Commande envoyée avec succès!',
-      services: {
-        plumbing: 'Plomberie', electricity: 'électricité', cleaning: 'Nettoyage',
-        maintenance: 'Menuiserie', cooling: 'Climatisation', building: 'Construction'
-      },
-      payMethods: { bankily: 'Bankily', sadad: 'Sadad', masrivi: 'Masrivi' }
-    }
-  };
-
-  const t = translations[lang];
-
-  const toggleLanguage = () => {
-    setLang(lang === 'ar' ? 'fr' : 'ar');
-  };
-
-  const getDaysLeft = () => {
-    if (!expiryDate) return 0;
-    const today = new Date();
-    const diffTime = expiryDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-// --- الجزئية المحدثة ---
-// --- الجزئية المصححة بالكامل لتحديث البيانات كل 10 ثوان ---
-
-// 1. دالة التحديث (يجب أن تكون خارج useEffect ليتم استدعاؤها في أي مكان)
-const refreshUserData = async () => {
-  if (!user?.id) return; // تأكد من وجود مستخدم
-  try {
-   const res = await fetch(`${apiUrl}/users/${user.id}`, {
-  headers: {
-    'Authorization': `Bearer ${localStorage.getItem('userToken')}` // إرسال التوكن للسيرفر
-  }
-});
-    if (res.ok) {
-      const updatedUser = await res.json();
-      // تحديث الواجهة فوراً بالبيانات الجديدة
-      setSubscriptionPending(!!updatedUser.subscription_pending);
-      setIsSubscribed(!!updatedUser.is_subscribed);
-      setFreeRequestsUsed(updatedUser.free_requests_used || 0);
-      if (updatedUser.subscription_end_date) {
-        setExpiryDate(new Date(updatedUser.subscription_end_date));
-      }
-      console.log("🔄 التحديث الدوري ناجح: ", updatedUser.free_requests_used);
-    }
-  } catch (err) {
-    console.log("خطأ في تحديث البيانات:", err);
-  }
+    err => {
+      setLocationError(lang === 'ar'
+        ? 'فشل تحديد موقعك، يرجى السماح بالوصول للموقع'
+        : 'Impossible de localiser, veuillez autoriser la géolocalisation');
+      setLocationLoading(false);
+    },
+    { timeout: 10000, enableHighAccuracy: true }
+  );
 };
-
-// 2. تفعيل المؤقت الدوري (هذا هو المحرك)
-React.useEffect(() => {
-  // تحديث أولي عند فتح الشاشة
-  refreshUserData();
-
-  // ضبط المؤقت للعمل كل 10 ثوان
-  const interval = setInterval(() => {
-    refreshUserData();
-  }, 10000);
-
-  // تنظيف المؤقت عند إغلاق التطبيق أو الشاشة
-  return () => clearInterval(interval);
-}, [user?.id]); // سيعيد التشغيل إذا تغير المستخدم
-
-
-  const handleFinalSubmit = async () => {
-    // 1. التحقق من الأهلية (مشترك أو لديه طلبات مجانية)
-    const hasFreeTrial = freeRequestsUsed < 3;
-    const skipPayment = isSubscribed || hasFreeTrial;
-
-   // 2. منع الإرسال إذا لم يرفق إثبات الدفع
-if (!skipPayment && !orderData.payProof) {
-  alert(t.requiredError);
-  return;
-}
-
+ 
+  // --- إرسال الطلب ---
+  const handleSendRequest = async () => {
+    if (!image && !voiceBlob) {
+      alert(lang === 'ar' ? 'يرجى إرفاق صورة أو وصف صوتي' : 'Veuillez joindre une photo ou un message vocal');
+      return;
+    }
+     if (!location) {
+    alert(lang === 'ar' ? 'يرجى تحديد موقعك أولاً' : 'Veuillez d\'abord localiser votre position');
+    return;
+  }
     setLoading(true);
     try {
       const formData = new FormData();
+      formData.append('latitude', location.lat);
+      formData.append('longitude', location.lng);
       formData.append('customer_id', user.id);
-      formData.append('service_type', orderData.type);
-      formData.append('description', orderData.desc);
-      formData.append('image', orderData.image);
-      formData.append('location', orderData.location); // 👈 أضف هذا السط
-      // 3. تحديد منطق الدفع والحالة
-      if (isSubscribed) {
-        formData.append('payment_method', 'subscription');
-        formData.append('amount', 0);
-        formData.append('status', 'active');
-      } else if (hasFreeTrial) {
-        formData.append('payment_method', 'free_trial');
-        formData.append('amount', 0);
-        formData.append('status', 'active');
-      } else {
-        formData.append('payment_method', orderData.payMethod);
-        formData.append('amount', 40);
-        formData.append('status', 'pending');
-        if (orderData.payProof) {
-          formData.append('payment_proof', orderData.payProof);
-        }
-      }
-
-      // 4. إرسال الطلب للسيرفر
-     const res = await fetch(`${apiUrl}/api/admin/pending-orders-new`, {
+      if (description) formData.append('description', description);
+      if (image) formData.append('image', image);
+      if (voiceBlob) formData.append('voice_note', voiceBlob, 'voice.webm');
+ 
+      const res = await fetch(`${apiUrl}/requests`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('userToken')}` // إرسال التوكن هنا أيضاً
-        },
-        body: formData,
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       });
+      const data = await res.json();
       if (res.ok) {
-        // تحديث البيانات في الخلفية فوراً قبل إغلاق النافذة
-        await refreshUserData();
-        // 5. إظهار رسالة النجاح المناسبة
-        if (isSubscribed) {
-          alert("تم تفعيل طلبكم وإرساله للمزودين (اشتراك ذهبي)!");
-        } else if (hasFreeTrial) {
-          // استخدام الرقم المحدث من السيرفر أو الحساب المحلي المباشر
-          const remaining = 2 - freeRequestsUsed;
-          alert(`🎁 تم إرسال طلبك مجاناً! متبقي لديك ${remaining > 0 ? remaining : 0} طلبات مجانية.`);
-        } else {
-          alert(t.success);
-        }
-
-        // 6. إعادة ضبط الواجهة والرجوع للرئيسية
-        setActiveTab('home');
+        alert(t.requestSent + '\n' + t.requestSentDesc);
+        setImage(null);
+        setVoiceBlob(null);
+        setVoiceUrl(null);
+        setDescription('');
         setStep(1);
-        setOrderData({ type: '', desc: '', image: null, payMethod: 'bankily', payProof: null });
+        setActiveTab('requests');
+        fetchRequests();
+      } else if (data.error === 'subscription_required') {
+        alert(lang === 'ar' ? 'يجب الاشتراك أولاً لإرسال الطلبات' : 'Vous devez vous abonner d\'abord');
+        setActiveTab('subscription');
       } else {
-        const errorData = await res.json();
-        alert("فشل إرسال الطلب: " + (errorData.error || "خطأ غير معروف"));
+        alert(data.error || t.error);
       }
     } catch (err) {
-      alert("خطأ في الاتصال بالسيرفر");
+      alert(t.serverError);
     } finally {
       setLoading(false);
     }
   };
+ 
+ const handleSubscriptionRequest = async () => {
+    if (!selectedPackage) {
+        alert(lang === 'ar' ? 'يرجى اختيار الباقة' : 'Veuillez choisir un forfait');
+        return;
+    }
+    if (!subProof) {
+        alert(lang === 'ar' ? 'يرجى إرفاق صورة إثبات الدفع' : 'Veuillez joindre la preuve de paiement');
+        return;
+    }
+    setLoading(true);
+    try {
+        const formData = new FormData();
+        formData.append('user_id', user.id);
+        formData.append('package_id', selectedPackage);
+        formData.append('proof_image', subProof);
 
-const handleSubscriptionSubmit = async () => {
-    // 1. التحقق من وجود وسيلة الدفع وصورة الإثبات
-    if (orderData.payMethod && orderData.payProof) {
-        setLoading(true);
-
-        try {
-            const formData = new FormData();
-            formData.append('user_id', user.id);
-            formData.append('user_role', 'customer');
-            formData.append('transaction_id', "TRX-" + Date.now());
-            formData.append('proof_image', orderData.payProof);
-
-            // 2. إرسال طلب الاشتراك للسيرفر
-            const res = await fetch(`${apiUrl}/api/subscriptions/submit`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                },
-                body: formData,
-            });
-
-            if (res.ok) {
-                // 3. تحديث البيانات فوراً من السيرفر
-                // نقوم بهذه الخطوة للتأكد من أن أي تغيير في حالة المستخدم يظهر فوراً
-                setSubscriptionPending(true);
-                const userRes = await fetch(`${apiUrl}/api/users/${user.id}`,{headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                }});
-                if (userRes.ok) {
-                    const updatedUser = await userRes.json();
-                    
-                    // تحديث الحالات المحلية الموحدة
-                    setIsSubscribed(!!updatedUser.is_subscribed);
-                    setFreeRequestsUsed(updatedUser.free_requests_used || 0);
-                    if (updatedUser.subscription_end_date) {
-                        setExpiryDate(new Date(updatedUser.subscription_end_date));
-                    }
-                }
-
-                alert(lang === 'ar' 
-                    ? 'تم إرسال إثبات الدفع بنجاح! سيتم تفعيل طلبكم الان .' 
-                    : ' Preuve de paiement envoyée ! Votre commande sera activé bientot .');
-
-                // 4. العودة للرئيسية وتصفير البيانات الحساسة
-                setActiveTab('home');
-                setOrderData(prev => ({ 
-                    ...prev, 
-                    payProof: null,
-                    payMethod: 'bankily' // إعادة التعيين للقيمة الافتراضية
-                }));
-            } else {
-                const data = await res.json();
-                alert(data.error || (lang === 'ar' ? "حدث خطأ في السيرفر" : "Erreur serveur"));
-            }
-        } catch (err) {
-            console.error("Subscription Submit Error:", err);
-            alert(lang === 'ar' ? "خطأ في الاتصال بالسيرفر" : "Erreur de connexion");
-        } finally {
-            setLoading(false);
+        const res = await fetch(`${apiUrl}/subscription/request`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        if (res.ok) {
+            alert(lang === 'ar' ? 'تم إرسال طلب الاشتراك، سيتم تفعيله قريباً' : 'Demande envoyée, activation prochaine');
+            fetchUserData();
+            setSubStep(1);
+            setActiveTab('home');
+            setSubProof(null);
+            setSelectedPackage(null);
+        } else {
+            const data = await res.json();
+            alert(data.error || t.error);
         }
-    } else {
-        alert(lang === 'ar' 
-            ? "يرجى اختيار وسيلة الدفع ورفع صورة الإثبات" 
-            : "Veuillez choisirl'outil de paiment et télécharger la preuve.");
+    } catch (err) {
+        alert(t.serverError);
+    } finally {
+        setLoading(false);
     }
 };
-  return (
-    <div style={{ ...styles.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
- <main style={styles.viewContainer}>
-
-        {/* 1. الصفحة الرئيسية */}
-       {activeTab === 'home' && (
-  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-    {/* الرأسية الجديدة للرئيسية */}
-    <div style={{
-      padding: '15px',
-      background: 'linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)',
-      borderBottom: '1px solid #e0e0e0',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#006400', fontWeight: '900', letterSpacing: '1px' }}>Le Plombier</h2>
-        <button onClick={toggleLanguage} style={{ ...styles.langBtn, margin: 0, padding: '5px 12px' }}>
-          {lang === 'ar' ? 'FR' : 'AR'}
-        </button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          placeholder={t.search}
-          style={{ ...styles.searchInput, flex: 1, margin: 0 }}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <button style={{ ...styles.newOrderBtn, margin: 0, width: 'auto', padding: '0 15px' }} onClick={() => { setStep(1); setActiveTab('new_order'); }}>
-          ➕
-        </button>
-      </div>
-    </div>
  
-            <div style={styles.scrollableArea}>
-              <div style={styles.servicesGrid}>
-                {[
-                  { id: 'plumbing', icon: '🚰' },
-                  { id: 'electricity', icon: '⚡' },
-                  { id: 'cleaning', icon: '🧹' },
-                  { id: 'maintenance', icon: '🛠️' },
-                  { id: 'cooling', icon: '❄️' },
-                  { id: 'building', icon: '🏗️' }
-                ].filter(s =>
-                  t.services[s.id].toLowerCase().includes(searchQuery.toLowerCase())
-                ).map((s) => (
-                  <div key={s.id} style={styles.serviceItem} onClick={() => { setOrderData({ ...orderData, type: s.id }); setStep(2); setActiveTab('new_order'); }}>
-                    <span style={styles.serviceIcon}>{s.icon}</span>
-                    <span style={styles.serviceName}>{t.services[s.id]}</span>
-                  </div>
-                ))}
+  // --- الإبلاغ عن مشكلة ---
+  const handleReport = async (orderId) => {
+    const reason = prompt(lang === 'ar' ? 'اشرح المشكلة:' : 'Décrivez le problème:');
+    if (!reason) return;
+    try {
+      await fetch(`${apiUrl}/reports`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, reason })
+      });
+      alert(t.reportSent);
+    } catch (err) {}
+  };
+ 
+  const getDaysLeft = () => {
+    if (!userData?.subscription_end_date) return 0;
+    const diff = new Date(userData.subscription_end_date) - new Date();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+ 
+  const isSubscribed = userData?.package_id && getDaysLeft() > 0;
+ 
+  const getStatusStyle = (status) => {
+    const map = {
+      pending_admin: { bg: '#fff3cd', color: '#856404' },
+      quoted: { bg: '#d1ecf1', color: '#0c5460' },
+      assigned: { bg: '#d4edda', color: '#155724' },
+      completed: { bg: '#e2e3e5', color: '#383d41' }
+    };
+    return map[status] || { bg: '#f8f9fa', color: '#333' };
+  };
+ 
+  return (
+    <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+ 
+      {/* المحتوى الرئيسي */}
+      <main style={s.main}>
+ 
+        {/* ===== الرئيسية ===== */}
+        {activeTab === 'home' && (
+          <div style={s.screen}>
+            {/* الرأسية */}
+            <div style={s.homeHeader}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, color: '#fff', fontSize: '0.9rem', opacity: 0.85 }}>{t.welcomeBack}</p>
+                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.3rem', fontWeight: 'bold' }}>{userData?.full_name}</h2>
+                </div>
+                <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
+                  {lang === 'ar' ? 'FR' : 'AR'}
+                </button>
+              </div>
+ 
+              {/* رمز العميل */}
+              <div style={s.clientCodeBox}>
+                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{t.clientCode}</span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', letterSpacing: '2px' }}>
+                  {userData?.client_code || '---'}
+                </span>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* 2. واجهة طلب خدمة جديد */}
-        {activeTab === 'new_order' && (
-          <div style={styles.scrollableArea}>
-            <h3 style={styles.newOrderViewTitle}>{t[`step${step}`]}</h3>
-
-            {step === 1 && (
-              <div style={styles.newOrderCardGrid}>
-                {Object.keys(t.services).map(key => {
-                  const icons = { plumbing: '🚰', electricity: '⚡', maintenance: '🔧', building: '🏗️', cleaning: '🧹', cooling: '❄️' };
+ 
+            {/* حالة الاشتراك */}
+            {isSubscribed ? (
+              <div style={s.subActiveCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#155724' }}>{t.currentPackage}</p>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#155724' }}>
+                      {userData?.package_name}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#006400' }}>{getDaysLeft()}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#555' }}>
+                      {lang === 'ar' ? 'يوم متبقي' : 'jours restants'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={s.subWarningCard} onClick={() => setActiveTab('subscription')}>
+                <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 'bold', color: '#856404' }}>
+                    {userData?.subscription_pending
+                      ? t.subscriptionPending
+                      : t.subscriptionExpired}
+                  </p>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#856404' }}>
+                    {userData?.subscription_pending
+                      ? t.subscriptionPendingDesc
+                      : (lang === 'ar' ? 'اضغط هنا للاشتراك' : 'Appuyez pour s\'abonner')}
+                  </p>
+                </div>
+              </div>
+            )}
+ 
+            {/* زر الطلب */}
+            <button
+              style={{ ...s.requestBtn, opacity: isSubscribed ? 1 : 0.6 }}
+              onClick={() => {
+                if (!isSubscribed) {
+                  alert(lang === 'ar' ? 'يجب الاشتراك أولاً' : 'Abonnement requis');
+                  setActiveTab('subscription');
+                  return;
+                }
+                setActiveTab('newRequest');
+                setStep(1);
+              }}
+            >
+              <span style={{ fontSize: '2rem' }}>🔧</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{t.requestNow}</span>
+              <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                {lang === 'ar' ? 'اطلب فنياً الآن' : 'Demander un technicien'}
+              </span>
+            </button>
+ 
+            {/* آخر الطلبات */}
+            {requests.length > 0 && (
+              <div>
+                <h3 style={s.sectionTitle}>
+                  {lang === 'ar' ? 'آخر طلباتك' : 'Vos dernières demandes'}
+                </h3>
+                {requests.slice(0, 3).map(r => {
+                  const st = getStatusStyle(r.status);
                   return (
-                    <div key={key} style={styles.newOrderServiceCard} onClick={() => { setOrderData({ ...orderData, type: key }); setStep(2); }}>
-                      <span style={styles.newOrderCardIcon}>{icons[key] || '🛠️'}</span>
-                      <p style={styles.newOrderCardName}>{t.services[key]}</p>
+                    <div key={r.id} style={s.requestCard} onClick={() => { setSelectedRequest(r); setActiveTab('requestDetail'); }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 'bold', color: '#333' }}>
+                          {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {r.id}
+                        </span>
+                        <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
+                          {t[`status_${r.status}`] || r.status}
+                        </span>
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
+                        {new Date(r.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                      </p>
                     </div>
                   );
                 })}
               </div>
             )}
-
-            {step === 2 && (
-  <div style={styles.stepContent}>
-    {/* شارة نوع الخدمة المختارة */}
-    <div style={styles.infoBadge}>{t.serviceLabel}: <b>{t.services[orderData.type] || orderData.type}</b></div>
-    
-    {/* 1. حقل وصف المشكلة */}
-    <textarea
-      placeholder={t.descPlaceholder}
-      style={styles.enhancedTextarea}
-      value={orderData.desc}
-      onChange={(e) => setOrderData(prev => ({ ...prev, desc: e.target.value }))}
-    />
-
-    {/* 2. الحقل الجديد: العنوان والمكان (تمت إضافته بأسلوب يتناسب مع التصميم) */}
-    <textarea
-      placeholder={lang === 'ar' ? "اكتب موقعك الدقيق هنا (الحي، المنزل، الطابق...)" : "Adresse précise (Quartier, Maison, Étage...)"}
-      style={{
-        ...styles.enhancedTextarea, 
-        height: '80px', 
-        marginTop: '10px', 
-        borderColor: orderData.location ? '#28a745' : '#006400',
-        borderWidth: '2px'
-      }}
-      value={orderData.location}
-      onChange={(e) => setOrderData(prev => ({ ...prev, location: e.target.value }))}
-    />
-
-    {/* 3. إرفاق صورة المشكلة */}
-    <label style={{ ...styles.fileLabel, borderColor: orderData.image ? '#28a745' : '#006400', backgroundColor: orderData.image ? '#f0fff0' : '#fff', marginTop: '10px' }}>
-      <span>{orderData.image ? '' :  ''}</span>
-      {orderData.image ? (orderData.image.name.substring(0, 20) + "...") : t.uploadImg}
-      <input type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) setOrderData(prev => ({ ...prev, image: file })); }} />
-    </label>
-
-    {/* 4. زر الانتقال للمرحلة التالية مع تحديث شرط التحقق ليشمل الموقع */}
-    <button style={styles.primaryBtn} onClick={() => setStep(3)}>
-      {t.next}
-    </button>
-  </div>
-)}
-{step === 3 && (
-  <div style={styles.stepContent}>
-    {/* التحقق: نعتمد هنا على الحالة المحلية freeRequestsUsed التي يتم تحديثها فورياً */}
-    {(isSubscribed || freeRequestsUsed < 3) ? (
-      <div style={{ ...styles.feeBanner, backgroundColor: '#f0fff0', borderColor: '#006400' }}>
-        <span style={{ fontSize: '1.5rem' }}>{isSubscribed ? '🌟' : '🎁'}</span>
-        <div style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
-          <p style={{ margin: 0, fontWeight: 'bold', color: '#006400' }}>
-            {isSubscribed ? t.subStatus : (lang === 'ar' ? "هدايا البداية" : "Cadeau de bienvenue")}
-          </p>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#006400' }}>
-            {isSubscribed
-              ? t.subStatusDesc
-              : (lang === 'ar'
-                ? `لديك ${3 - freeRequestsUsed} طلبات مجانية متبقية.` 
-                : `Il vous reste ${3 - freeRequestsUsed} demandes gratuites.`)}
-          </p>
-        </div>
-      </div>
-    ) : (
-      /* تظهر هذه الواجهة فقط للزبون غير المشترك الذي استهلك محاولاته الـ 3 */
-      <>
-        {/* بانر ملخص الرسوم ورقم التحويل مع زر النسخ الذكي */}
-        <div style={{ ...styles.feeBanner, backgroundColor: '#fff3cd', borderColor: '#ffeeba', flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #856404', paddingBottom: '6px' }}>
-            <span style={{ fontWeight: 'bold', color: '#856404' }}>{lang === 'ar' ? '📋 رسوم الطلب:' : '📋 Frais de commande:'}</span>
-            <span style={{ fontWeight: 'bold', color: '#856404', backgroundColor: '#fff', padding: '2px 8px', borderRadius: '6px' }}>40 MRU</span>
           </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.9rem', color: '#333', textAlign: lang === 'ar' ? 'right' : 'left' }}>
-              {lang === 'ar' ? 'التحويل للرقم:' : 'Transférer au :'} <b style={{ color: '#d32f2f', fontSize: '1.1rem' }}>42072952</b>
-            </span>
-            <button 
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText('42072952');
-                alert(lang === 'ar' ? '📋 تم نسخ رقم التحويل بنجاح!' : '📋 Numéro copié !');
-              }}
-              style={{ padding: '4px 10px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              {lang === 'ar' ? 'نسخ الرقم' : 'Copier'}
-            </button>
-          </div>
-        </div>
-
-        <p style={{ margin: '2px 0', fontSize: '0.8rem', color: '#666', textAlign: 'center', fontStyle: 'italic' }}>
-          {lang === 'ar' ? '💡 حوّل المبلغ للرقم أعلاه عبر تطبيقك البنكي، ثم ارفع الإثبات أدناه.' : '💡 Transférez le montant au numéro ci-dessus, puis joignez la preuve.'}
-        </p>
-
-        <p style={styles.sectionLabel}>{t.selectPayTitle}</p>
-
-        <div style={styles.payButtonsGrid}>
-          {Object.keys(t.payMethods).map((method) => (
-            <button
-              key={method}
-              onClick={() => setOrderData({ ...orderData, payMethod: method })}
-              style={{
-                ...styles.payOptionBtn,
-                borderColor: orderData.payMethod === method ? '#006400' : '#ddd',
-                backgroundColor: orderData.payMethod === method ? '#f0fff0' : '#fff'
-              }}
-            >
-              {method === 'bankily' && '📱'} {method === 'sadad' && '📱'} {method === 'masrivi' && '📱'}
-              <span>{t.payMethods[method]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* حقل رفع الملف المحسن والتفاعلي */}
-        <label style={{
-          ...styles.fileLabel,
-          borderColor: orderData.payProof ? '#28a745' : '#006400',
-          backgroundColor: orderData.payProof ? '#f0fff0' : '#fff',
-          borderStyle: orderData.payProof ? 'solid' : 'dashed',
-          cursor: 'pointer'
-        }}>
-          <span>{orderData.payProof ? '✅' : '📁'}</span>
-          <span style={{ color: orderData.payProof ? '#28a745' : '#006400', fontWeight: 'bold' }}>
-            {orderData.payProof ? `${lang === 'ar' ? 'تم اختيار: ' : 'Choisi: '}${orderData.payProof.name.substring(0, 15)}...` : t.uploadProof}
-          </span>
-          <input
-            type="file"
-            style={{ display: 'none' }}
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              if (file) {
-                if (file.size > 5 * 1024 * 1024) {
-                  alert(lang === 'ar' ? '❌ حجم الصورة كبير جداً! يرجى اختيار لقطة شاشة أصغر.' : '❌ Image trop grande !');
-                  return;
-                }
-                setOrderData({ ...orderData, payProof: file });
-              }
-            }}
-          />
-        </label>
-      </>
-    )}
-
-    {/* زر الإرسال النهائي مع مؤشر تحميل لمنع الضغط المتكرر */}
-    <button
-      style={{ ...styles.primaryBtn, backgroundColor: loading ? '#cccccc' : '#006400', cursor: loading ? 'not-allowed' : 'pointer' }}
-      disabled={loading}
-      onClick={handleFinalSubmit}
-    >
-      {loading ? (lang === 'ar' ? '⏳ جاري إرسال الطلب...' : '⏳ Envoi en cours...') : (isSubscribed || freeRequestsUsed < 3) ? `🚀 ${t.autoSend}` : `🚀 ${t.send}`}
-    </button>
-  </div>
-)}
-
-{/* زر الرجوع المحسّن الذي يظهر أسفل جميع المراحل */}
-<button
-  onClick={() => step === 1 ? setActiveTab('home') : setStep(step - 1)}
-  style={styles.backLink}
->
-  {lang === 'ar' ? '⬅️ رجوع' : '⬅️ Retour'}
-</button>
+        )}
+ 
+        {/* ===== طلب جديد ===== */}
+        {activeTab === 'newRequest' && (
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <button style={s.backBtn} onClick={() => setActiveTab('home')}>
+                {lang === 'ar' ? '← رجوع' : '← Retour'}
+              </button>
+              <h2 style={s.screenTitle}>{t.newRequest}</h2>
+            </div>
+ 
+            <div style={s.form}>
+              {/* صورة المشكلة */}
+              <label style={s.uploadLabel}>
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => setImage(e.target.files[0])} />
+                <span style={{ fontSize: '2rem' }}>{image ? '✅' : '📷'}</span>
+                <span style={{ fontWeight: 'bold', color: '#006400' }}>
+                  {image ? image.name.substring(0, 25) + '...' : t.uploadImage}
+                </span>
+              </label>
+ 
+              {/* الوصف الصوتي */}
+              <div style={s.voiceBox}>
+                {!voiceUrl ? (
+                  <button
+                    style={{ ...s.voiceBtn, backgroundColor: isRecording ? '#dc3545' : '#006400' }}
+                    onClick={isRecording ? stopRecording : startRecording}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>{isRecording ? '⏹' : '🎙'}</span>
+                    <span>{isRecording ? t.stopRecording : t.recordVoice}</span>
+                  </button>
+                ) : (
+                  <div style={s.voicePlayBox}>
+                    <span style={{ color: '#006400', fontWeight: 'bold' }}>{t.voiceRecorded}</span>
+                    <audio controls src={voiceUrl} style={{ width: '100%', marginTop: '8px' }} />
+                    <button style={s.reRecordBtn} onClick={() => { setVoiceBlob(null); setVoiceUrl(null); }}>
+                      {t.reRecord}
+                    </button>
+                  </div>
+                )}
+              </div>
+ 
+              {/* وصف نصي اختياري */}
+              <textarea
+                style={s.textarea}
+                placeholder={t.descPlaceholder}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
+              {/* تحديد الموقع */}
+        <div style={{
+               border: `2px solid ${location ? '#28a745' : '#dc3545'}`,
+                   borderRadius: '14px',
+                      padding: '15px',
+               backgroundColor: location ? '#f0fff0' : '#fff5f5',
+              textAlign: 'center'
+                                  }}>
+                   {location ? (
+                     <div>
+      <p style={{ margin: 0, color: '#28a745', fontWeight: 'bold', fontSize: '1rem' }}>
+        ✅ {lang === 'ar' ? 'تم تحديد موقعك بنجاح' : 'Position localisée avec succès'}
+      </p>
+      <p style={{ margin: '5px 0 0', fontSize: '0.8rem', color: '#888' }}>
+        {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+      </p>
+      <button
+        style={{ marginTop: '8px', background: 'none', border: '1px solid #28a745', color: '#28a745', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}
+        onClick={() => { setLocation(null); }}
+      >
+        {lang === 'ar' ? 'إعادة التحديد' : 'Relocaliser'}
+      </button>
+    </div>
+  ) : (
+    <div>
+      <p style={{ margin: '0 0 10px', color: '#dc3545', fontWeight: 'bold', fontSize: '0.95rem' }}>
+        📍 {lang === 'ar' ? 'تحديد موقعك مطلوب' : 'Localisation requise'}
+      </p>
+      <p style={{ margin: '0 0 12px', fontSize: '0.8rem', color: '#888' }}>
+        {lang === 'ar'
+          ? 'نحتاج موقعك لإرشاد الفني إليك بدقة'
+          : 'Nous avons besoin de votre position pour guider le technicien'}
+      </p>
+      {locationError && (
+        <p style={{ color: '#dc3545', fontSize: '0.8rem', margin: '0 0 10px' }}>{locationError}</p>
+      )}
+      <button
+        style={{
+          padding: '12px 20px',
+          backgroundColor: '#dc3545',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '12px',
+          fontWeight: 'bold',
+          fontSize: '0.95rem',
+          cursor: locationLoading ? 'not-allowed' : 'pointer',
+          opacity: locationLoading ? 0.7 : 1
+        }}
+        onClick={getLocation}
+        disabled={locationLoading}
+      >
+        {locationLoading
+          ? (lang === 'ar' ? '⏳ جاري التحديد...' : '⏳ Localisation...')
+          : (lang === 'ar' ? '📍 تحديد موقعي الآن' : '📍 Me localiser maintenant')}
+      </button>
+    </div>
+  )}
 </div>
-)}
+ 
+              <button
+                style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
+                onClick={handleSendRequest}
+                disabled={loading}
+              >
+                {loading ? (lang === 'ar' ? 'جاري الإرسال...' : 'Envoi...') : t.sendRequest}
+              </button>
+            </div>
+          </div>
+        )}
+ 
+        {/* ===== طلباتي ===== */}
+        {activeTab === 'requests' && (
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <h2 style={s.screenTitle}>{t.myRequests}</h2>
+              <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtnSm}>
+                {lang === 'ar' ? 'FR' : 'AR'}
+              </button>
+            </div>
+ 
+            {requests.length === 0 ? (
+              <div style={s.emptyBox}>
+                <span style={{ fontSize: '3rem' }}>📋</span>
+                <p style={{ color: '#888' }}>{t.noRequests}</p>
+              </div>
+            ) : (
+              requests.map(r => {
+                const st = getStatusStyle(r.status);
+                return (
+                  <div key={r.id} style={s.requestCard}
+                    onClick={() => { setSelectedRequest(r); setActiveTab('requestDetail'); }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 'bold' }}>
+                        {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {r.id}
+                      </span>
+                      <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
+                        {t[`status_${r.status}`] || r.status}
+                      </span>
+                    </div>
+                    {r.description && (
+                      <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
+                        {r.description.substring(0, 60)}...
+                      </p>
+                    )}
+                    <p style={{ margin: '5px 0 0', fontSize: '0.8rem', color: '#999' }}>
+                      {new Date(r.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+ 
+        {/* ===== تفاصيل الطلب ===== */}
+        {activeTab === 'requestDetail' && selectedRequest && (
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <button style={s.backBtn} onClick={() => setActiveTab('requests')}>
+                {lang === 'ar' ? '← رجوع' : '← Retour'}
+              </button>
+              <h2 style={s.screenTitle}>
+                {lang === 'ar' ? 'تفاصيل الطلب' : 'Détails de la demande'}
+              </h2>
+            </div>
+ 
+            {/* الحالة */}
+            {(() => {
+              const st = getStatusStyle(selectedRequest.status);
+              return (
+                <div style={{ ...s.statusBigBox, backgroundColor: st.bg, borderColor: st.color }}>
+                  <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: st.color }}>
+                    {t[`status_${selectedRequest.status}`]}
+                  </p>
+                </div>
+              );
+            })()}
+ 
+            {/* الصورة */}
+            {selectedRequest.image_url && (
+              <img
+                src={selectedRequest.image_url}
+                alt="problem"
+                style={{ width: '100%', borderRadius: '16px', marginBottom: '15px', maxHeight: '200px', objectFit: 'cover' }}
+              />
+            )}
+ 
+            {/* الوصف الصوتي */}
+            {selectedRequest.voice_note_url && (
+              <div style={s.voicePlayBox}>
+                <p style={{ margin: '0 0 8px', fontWeight: 'bold', color: '#333' }}>
+                  {lang === 'ar' ? '🎙 الوصف الصوتي:' : '🎙 Note vocale:'}
+                </p>
+                <audio controls src={selectedRequest.voice_note_url} style={{ width: '100%' }} />
+              </div>
+            )}
+ 
+            {/* الوصف النصي */}
+            {selectedRequest.description && (
+              <div style={s.infoBox}>
+                <p style={s.infoLabel}>{lang === 'ar' ? 'الوصف:' : 'Description:'}</p>
+                <p style={s.infoValue}>{selectedRequest.description}</p>
+              </div>
+            )}
+            {/* بيانات الفني */}
+            {selectedRequest.provider_name && (
+              <div style={s.infoBox}>
+                <p style={s.infoLabel}>{lang === 'ar' ? 'الفني المسؤول:' : 'Technicien:'}</p>
+                <p style={s.infoValue}>{selectedRequest.provider_name}</p>
+                {selectedRequest.provider_phone && (
+                  <a href={`tel:${selectedRequest.provider_phone}`} style={s.callBtn}>
+                    📞 {selectedRequest.provider_phone}
+                  </a>
+                )}
+              </div>
+            )}
+ 
+            {/* التاريخ */}
+            <div style={s.infoBox}>
+              <p style={s.infoLabel}>{lang === 'ar' ? 'تاريخ الطلب:' : 'Date:'}</p>
+              <p style={s.infoValue}>
+                {new Date(selectedRequest.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+              </p>
+            </div>
+ 
+            {/* زر الإبلاغ */}
+            <button style={s.reportBtn} onClick={() => handleReport(selectedRequest.id)}>
+              ⚠️ {t.reportProblem}
+            </button>
+          </div>
+        )}
+ 
+        {/* ===== الاشتراك ===== */}
+                {activeTab === 'subscription' && (
+          <div style={{ ...s.screen, paddingBottom: '100px' }}>
+ 
+            {/* ===== إذا كان مشتركاً بالفعل ===== */}
+            {isSubscribed ? (
+              <div style={{
+                background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)',
+                borderRadius: '24px',
+                padding: '30px 20px',
+                textAlign: 'center',
+                color: '#fff',
+                marginBottom: '15px'
+              }}>
+                <span style={{ fontSize: '4rem' }}>✅</span>
+                <h2 style={{ margin: '15px 0 5px', color: '#fff', fontSize: '1.5rem' }}>
+                  {lang === 'ar' ? 'اشتراكك فعال' : 'Abonnement actif'}
+                </h2>
+                <p style={{ margin: '0 0 15px', opacity: 0.9, fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  {userData?.package_name}
+                </p>
+                <div style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  borderRadius: '16px',
+                  padding: '15px',
+                  marginBottom: '15px'
+                }}>
+                  <div style={{ fontSize: '3rem', fontWeight: '900' }}>{getDaysLeft()}</div>
+                  <div style={{ opacity: 0.85, fontSize: '0.9rem' }}>
+                    {lang === 'ar' ? 'يوم متبقي' : 'jours restants'}
+                  </div>
+                </div>
+                <p style={{ margin: 0, opacity: 0.75, fontSize: '0.85rem' }}>
+                  {t.expiresOn}: {new Date(userData?.subscription_end_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                </p>
+              </div>
+ 
+            ) : userData?.subscription_pending ? (
+              /* ===== شاشة الانتظار ===== */
+              <div style={{
+                background: '#fff',
+                borderRadius: '24px',
+                padding: '30px 20px',
+                textAlign: 'center',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '2px solid #ffc107'
+              }}>
+                <span style={{ fontSize: '4rem' }}>⏳</span>
+                <h2 style={{ color: '#856404', margin: '15px 0 5px', fontSize: '1.3rem' }}>
+                  {lang === 'ar' ? 'طلبك قيد المراجعة' : 'Demande en cours de traitement'}
+                </h2>
+ 
+                {userData?.package_name && (
+                  <div style={{
+                    background: '#fff3cd',
+                    borderRadius: '14px',
+                    padding: '15px',
+                    margin: '15px 0',
+                    border: '1px solid #ffc107'
+                  }}>
+                    <p style={{ margin: '0 0 5px', fontSize: '0.85rem', color: '#856404' }}>
+                      {lang === 'ar' ? 'الباقة المطلوبة:' : 'Forfait demandé:'}
+                    </p>
+                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.2rem', color: '#856404' }}>
+                      {userData.package_name}
+                    </p>
+                  </div>
+                )}
+ 
+                <p style={{ color: '#888', lineHeight: '1.7', fontSize: '0.9rem', margin: '0 0 20px' }}>
+                  {lang === 'ar'
+                    ? 'تم استلام إثبات دفعك بنجاح. ستقوم الإدارة بمراجعته وتفعيل اشتراكك في أقرب وقت.'
+                    : 'Votre preuve de paiement a été reçue. L\'administration va l\'examiner et activer votre abonnement prochainement.'}
+                </p>
+ 
+                <div style={{
+                  background: '#f0fff0',
+                  border: '1px dashed #006400',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '0.85rem',
+                  color: '#006400',
+                  marginBottom: '20px'
+                }}>
+                  🔔 {lang === 'ar' ? 'سيصلك إشعار فور التفعيل' : 'Vous serez notifié dès l\'activation'}
+                </div>
+ 
+                <button
+                  style={{ ...s.btnPrimary, backgroundColor: '#ffc107', color: '#333' }}
+                  onClick={() => setActiveTab('home')}
+                >
+                  {lang === 'ar' ? 'العودة للرئيسية' : 'Retour à l\'accueil'}
+                </button>
+              </div>
+ 
+            ) : subStep === 1 ? (
+              /* ===== الخطوة 1: اختيار الباقة ===== */
+              <div>
+                <div style={s.screenHeader}>
+                  <h2 style={s.screenTitle}>
+                    {lang === 'ar' ? 'اختر باقتك' : 'Choisissez votre forfait'}
+                  </h2>
+                  <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtnSm}>
+                    {lang === 'ar' ? 'FR' : 'AR'}
+                  </button>
+                </div>
+ 
+                {/* بطاقات الباقات — من قاعدة البيانات */}
+                {packages.map(pkg => {
+                  const styles = {
+                    3: { color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: lang === 'ar' ? '⭐ الأكثر شمولاً' : '⭐ Le plus complet' },
+                    2: { color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: lang === 'ar' ? '🔥 الأكثر طلباً' : '🔥 Le plus demandé' },
+                    1: { color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: lang === 'ar' ? '✅ للبداية' : '✅ Pour commencer' }
+                  };
+                  const ps = styles[pkg.id] || { color: '#f5f5f5', border: '#999', icon: '📦', badge: '' };
+                  const items = pkg.coverage_items ? pkg.coverage_items.split('|') : [];
+ 
+                  return (
+                    <div key={pkg.id} style={{
+                      border: `2px solid ${ps.border}`,
+                      borderRadius: '20px',
+                      marginBottom: '20px',
+                      marginTop: '18px',
+                      overflow: 'visible',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.07)',
+                      backgroundColor: ps.color,
+                      position: 'relative'
+                    }}>
+ 
+                      {/* شارة مميزة */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '-14px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: ps.border,
+                        color: '#fff',
+                        padding: '5px 18px',
+                        borderRadius: '20px',
+                        fontSize: '0.78rem',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        boxShadow: `0 3px 10px ${ps.border}66`
+                      }}>
+                        {ps.badge}
+                      </div>
+ 
+                      {/* رأسية الباقة */}
+                      <div style={{
+                        padding: '20px',
+                        paddingTop: '28px',
+                        borderBottom: `2px solid ${ps.border}`,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '2.5rem' }}>{ps.icon}</span>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: '900', fontSize: '1.2rem', color: ps.border }}>
+                              {pkg.name}
+                            </p>
+                            <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#666' }}>
+                              {lang === 'ar' ? '∞ طلبات غير محدودة' : '∞ Demandes illimitées'}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: ps.border, lineHeight: 1 }}>
+                            {pkg.price}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#888' }}>
+                            MRU/{lang === 'ar' ? 'شهر' : 'mois'}
+                          </div>
+                        </div>
+                      </div>
+ 
+                      {/* قائمة التغطية */}
+                      <div style={{ padding: '15px 20px' }}>
+                        {items.map((item, i) => (
+                          <div key={i} style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            marginBottom: '8px'
+                          }}>
+                            <span style={{ color: ps.border, fontWeight: 'bold', fontSize: '1rem', flexShrink: 0 }}>✓</span>
+                            <span style={{ fontSize: '0.88rem', color: '#444', lineHeight: '1.5' }}>{item}</span>
+                          </div>
+                        ))}
+ 
+                        {/* تنبيه اليد العاملة */}
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '10px 12px',
+                          background: 'rgba(0,0,0,0.04)',
+                          borderRadius: '10px',
+                          fontSize: '0.78rem',
+                          color: '#777',
+                          textAlign: 'center',
+                          borderTop: `1px dashed ${ps.border}`
+                        }}>
+                          ⚠️ {lang === 'ar'
+                            ? 'تأمين اليد العاملة فقط — قطع الغيار على عاتق الزبون'
+                            : 'Main d\'œuvre uniquement — pièces à la charge du client'}
+                        </div>
+                      </div>
+ 
+                      {/* زر الاختيار */}
+                      <div style={{ padding: '0 20px 20px' }}>
+                        <button
+                          style={{
+                            width: '100%',
+                            padding: '14px',
+                            backgroundColor: ps.border,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            fontSize: '1rem',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => {
+                            setSelectedPackage(pkg.id);
+                            setSubStep(2);
+                          }}
+                        >
+                          {lang === 'ar' ? 'اختر هذه الباقة ←' : 'Choisir ce forfait →'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+ 
+            ) : subStep === 2 ? (
+              /* ===== الخطوة 2: تفاصيل الدفع ===== */
+              <div>
+                <div style={s.screenHeader}>
+                  <button style={s.backBtn} onClick={() => { setSubStep(1); setSubProof(null); }}>
+                    {lang === 'ar' ? '← رجوع' : '← Retour'}
+                  </button>
+                  <h2 style={s.screenTitle}>
+                    {lang === 'ar' ? 'تفاصيل الدفع' : 'Détails du paiement'}
+                  </h2>
+                </div>
+ 
+                {/* ملخص الباقة المختارة */}
+                {(() => {
+                  const selectedPkg = packages.find(p => p.id === selectedPackage);
+                  const pkgStyles = {
+                    3: { border: '#f59e0b', icon: '🥇' },
+                    2: { border: '#3b82f6', icon: '🥈' },
+                    1: { border: '#22c55e', icon: '🥉' }
+                  };
+                  const ps = pkgStyles[selectedPackage] || { border: '#006400', icon: '📦' };
+                  return (
+                    <div style={{
+                      background: `linear-gradient(135deg, ${ps.border} 0%, ${ps.border}cc 100%)`,
+                      borderRadius: '16px',
+                      padding: '18px 20px',
+                      color: '#fff',
+                      marginBottom: '20px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '2rem' }}>{ps.icon}</span>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.85 }}>
+                            {lang === 'ar' ? 'الباقة المختارة' : 'Forfait sélectionné'}
+                          </p>
+                          <p style={{ margin: '4px 0 0', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                            {selectedPkg?.name || '-'}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>
+                          {selectedPkg?.price || '-'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>MRU</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+ 
+                {/* أرقام التحويل */}
+                <div style={{
+                  background: '#fff3cd',
+                  border: '1px solid #ffc107',
+                  borderRadius: '16px',
+                  padding: '18px',
+                  marginBottom: '15px'
+                }}>
+                  <p style={{ margin: '0 0 14px', fontWeight: 'bold', color: '#856404', fontSize: '0.95rem', textAlign: 'center' }}>
+                    {lang === 'ar' ? '💳 حوّل المبلغ عبر أحد هذه الأرقام:' : '💳 Transférez via l\'un de ces numéros:'}
+                  </p>
+ 
+                  {[
+                    { name: lang === 'ar' ? 'بنكيلي' : 'Bankily', num: '42072952', emoji: '📱' },
+                    { name: lang === 'ar' ? 'سداد' : 'Sadad', num: '42072952', emoji: '📱' },
+                    { name: lang === 'ar' ? 'مصرفي' : 'Masrivi', num: '42072952', emoji: '📱' }
+                  ].map((b, i) => (
+                    <div key={i} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: '#fff',
+                      padding: '12px 15px',
+                      borderRadius: '12px',
+                      marginBottom: '8px',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+                    }}>
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{b.emoji} {b.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontWeight: '900', color: '#006400', fontSize: '1.15rem', letterSpacing: '1px' }}>
+                          {b.num}
+                        </span>
+                        <button
+                          onClick={() => {
+                            try {
+                              if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(b.num);
+                              } else {
+                                const el = document.createElement('textarea');
+                                el.value = b.num;
+                                el.style.position = 'fixed';
+                                el.style.opacity = '0';
+                                document.body.appendChild(el);
+                                el.focus();
+                                el.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(el);
+                              }
+                              alert(lang === 'ar' ? '✅ تم نسخ الرقم' : '✅ Numéro copié');
+                            } catch (err) {
+                              alert(lang === 'ar' ? `الرقم: ${b.num}` : `Numéro: ${b.num}`);
+                            }
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            background: '#006400',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {lang === 'ar' ? 'نسخ' : 'Copier'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+ 
+                  <p style={{ margin: '12px 0 0', fontSize: '0.8rem', color: '#856404', textAlign: 'center', fontStyle: 'italic' }}>
+                    💡 {lang === 'ar'
+                      ? 'بعد إتمام التحويل، ارفع صورة الإثبات أدناه'
+                      : 'Après le transfert, joignez la preuve ci-dessous'}
+                  </p>
+                </div>
+ 
+                {/* رفع إثبات الدفع */}
+                <label style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  padding: '25px 20px',
+                  border: `2px dashed ${subProof ? '#28a745' : '#006400'}`,
+                  borderRadius: '16px',
+                  cursor: 'pointer',
+                  backgroundColor: subProof ? '#f0fff0' : '#fafffe',
+                  marginBottom: '15px',
+                  minHeight: '120px'
+                }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file && file.size > 5 * 1024 * 1024) {
+                        alert(lang === 'ar' ? 'حجم الصورة كبير جداً (أقل من 5MB)' : 'Image trop grande (max 5MB)');
+                        return;
+                      }
+                      setSubProof(file);
+                    }}
+                  />
+                  <span style={{ fontSize: '2.5rem' }}>{subProof ? '✅' : '📁'}</span>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: subProof ? '#28a745' : '#006400', fontSize: '1rem' }}>
+                      {subProof
+                        ? subProof.name.substring(0, 30) + '...'
+                        : (lang === 'ar' ? 'إرفاق صورة إثبات الدفع' : 'Joindre la preuve de paiement')}
+                    </p>
+                    {!subProof && (
+                      <p style={{ margin: '5px 0 0', fontSize: '0.8rem', color: '#888' }}>
+                        {lang === 'ar' ? 'اضغط هنا لرفع لقطة الشاشة' : 'Appuyez pour télécharger'}
+                      </p>
+                    )}
+                  </div>
+                </label>
+ 
+                {/* زر الإرسال */}
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    opacity: (loading || !subProof) ? 0.5 : 1,
+                    fontSize: '1.05rem',
+                    padding: '16px'
+                  }}
+                  onClick={handleSubscriptionRequest}
+                  disabled={loading || !subProof}
+                >
+                  {loading
+                    ? (lang === 'ar' ? '⏳ جاري الإرسال...' : '⏳ Envoi...')
+                    : (lang === 'ar' ? '🚀 إرسال طلب الاشتراك' : '🚀 Envoyer la demande')}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        {/* 3. واجهة الاشتراك */}
-        {activeTab === 'sub' && (
 
-          <div style={styles.scrollableArea}>
-            <h3 style={styles.newOrderViewTitle}>{t.subscribe}</h3>
-            {subscriptionPending && !isSubscribed ? (
-  // واجهة "قيد المعالجة"
-  <div style={{
+        {/* ===== حسابي ===== */}
+        {activeTab === 'profile' && (
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <h2 style={s.screenTitle}>{t.myAccount}</h2>
+              <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtnSm}>
+                {lang === 'ar' ? 'FR' : 'AR'}
+              </button>
+            </div>
+ 
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={s.avatar}>👤</div>
+              <h3 style={{ margin: '10px 0 5px', color: '#333' }}>{userData?.full_name}</h3>
+              <p style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>{userData?.phone}</p>
+            </div>
+ 
+            <div style={s.infoCard}>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{t.clientCode}</span>
+                <span style={{ ...s.infoValue, fontWeight: 'bold', letterSpacing: '2px', color: '#006400' }}>
+                  {userData?.client_code}
+                </span>
+              </div>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{t.district}</span>
+                <span style={s.infoValue}>{userData?.district || '-'}</span>
+              </div>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{t.address}</span>
+                <span style={s.infoValue}>{userData?.address || '-'}</span>
+              </div>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{t.currentPackage}</span>
+                <span style={s.infoValue}>{userData?.package_name || '-'}</span>
+              </div>
+            </div>
+ 
+            <button style={s.logoutBtn} onClick={onLogout}>{t.logout}</button>
+          </div>
+        )}
+ 
+      </main>
+ 
+      {/* شريط التنقل السفلي */}
+      <nav style={s.bottomNav}>
+        {[
+          { id: 'home', icon: '🏠', label: t.home },
+          { id: 'requests', icon: '📋', label: t.myRequests },
+          { id: 'subscription', icon: '💳', label: t.subscription },
+          { id: 'profile', icon: '👤', label: t.myAccount }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            style={activeTab === tab.id || (activeTab === 'newRequest' && tab.id === 'home') || (activeTab === 'requestDetail' && tab.id === 'requests')
+              ? s.navActive : s.navBtn}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span style={{ fontSize: '1.4rem' }}>{tab.icon}</span>
+            <span style={{ fontSize: '0.7rem' }}>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+ 
+    </div>
+  );
+}
+ 
+const s = {
+  container: {
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#f5f7fa',
+    overflow: 'hidden',
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0
+  },
+  main: {
+    flex: 1,
+    overflowY: 'auto',
+    paddingBottom: '80px'
+  },
+  screen: {
+    padding: '15px',
+    maxWidth: '500px',
+    margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  homeHeader: {
+    background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)',
+    borderRadius: '20px',
+    padding: '20px',
+    marginBottom: '15px',
+    color: '#fff'
+  },
+  langBtn: {
+    padding: '5px 12px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.6)',
+    background: 'transparent',
+    color: '#fff',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem'
+  },
+  langBtnSm: {
+    padding: '5px 12px',
+    borderRadius: '10px',
+    border: '1.5px solid #006400',
+    background: '#fff',
+    color: '#006400',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem'
+  },
+  clientCodeBox: {
+    marginTop: '15px',
+    background: 'rgba(255,255,255,0.15)',
+    borderRadius: '12px',
+    padding: '10px 15px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    color: '#fff'
+  },
+  subActiveCard: {
+    background: '#d4edda',
+    border: '1px solid #c3e6cb',
+    borderRadius: '16px',
+    padding: '15px',
+    marginBottom: '15px'
+  },
+  subWarningCard: {
+    background: '#fff3cd',
+    border: '1px solid #ffeeba',
+    borderRadius: '16px',
+    padding: '15px',
+    marginBottom: '15px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    cursor: 'pointer'
+  },
+  requestBtn: {
+    width: '100%',
+    background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '20px',
+    padding: '25px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    marginBottom: '20px',
+    boxShadow: '0 8px 25px rgba(0,100,0,0.25)'
+  },
+  sectionTitle: {
+    color: '#333',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    marginBottom: '10px'
+  },
+  requestCard: {
+    background: '#fff',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '10px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    cursor: 'pointer',
+    border: '1px solid #f0f0f0'
+  },
+  statusBadge: {
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold'
+  },
+  statusBigBox: {
+    border: '2px solid',
+    borderRadius: '14px',
+    padding: '15px',
+    textAlign: 'center',
+    marginBottom: '15px'
+  },
+  screenHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px'
+  },
+  screenTitle: {
+    margin: 0,
+    fontSize: '1.3rem',
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  backBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#006400',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.95rem'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px'
+  },
+  uploadLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '18px',
+    border: '2px dashed #006400',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    background: '#f9fff9'
+  },
+  voiceBox: {
+    borderRadius: '14px',
+    overflow: 'hidden'
+  },
+  voiceBtn: {
+    width: '100%',
+    padding: '18px',
+    border: 'none',
+    borderRadius: '14px',
+    color: '#fff',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px'
+  },
+  voicePlayBox: {
+    background: '#f0fff0',
+    border: '1px solid #c3e6cb',
+    borderRadius: '14px',
+    padding: '15px'
+  },
+  reRecordBtn: {
+    background: 'none',
+    border: '1px solid #006400',
+    color: '#006400',
+    borderRadius: '8px',
+    padding: '6px 12px',
+    cursor: 'pointer',
+    marginTop: '8px',
+    fontSize: '0.85rem'
+  },
+  textarea: {
+    width: '100%',
+    padding: '13px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '0.95rem',
+    resize: 'none',
+    height: '90px',
+    boxSizing: 'border-box',
+    outline: 'none',
+    backgroundColor: '#fafafa'
+  },
+  btnPrimary: {
+    padding: '15px',
+    backgroundColor: '#006400',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    width: '100%'
+  },
+  emptyBox: {
+    textAlign: 'center',
+    padding: '50px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  infoBox: {
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '12px 15px',
+    marginBottom: '10px'
+  },
+  infoCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '5px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    marginBottom: '20px'
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 10px',
+    borderBottom: '1px solid #f5f5f5'
+  },
+  infoLabel: {
+    color: '#888',
+    fontSize: '0.85rem',
+    margin: 0
+  },
+  infoValue: {
+    color: '#333',
+    fontSize: '0.9rem',
+    margin: 0
+  },
+  callBtn: {
+    display: 'block',
+    marginTop: '8px',
+    color: '#006400',
+    fontWeight: 'bold',
+    textDecoration: 'none',
+    fontSize: '1rem'
+  },
+  reportBtn: {
+    width: '100%',
+    padding: '12px',
+    background: '#fff',
+    border: '1.5px solid #dc3545',
+    color: '#dc3545',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    marginTop: '10px'
+  },
+  packageCard: {
+    border: '2px solid',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '12px',
+    cursor: 'pointer',
+    transition: '0.2s'
+  },
+  pendingBox: {
+    textAlign: 'center',
     padding: '30px 20px',
-    border: '2px solid #f0a500',
-    backgroundColor: '#fffbf0',
+    background: '#fffbf0',
+    border: '2px solid #ffc107',
     borderRadius: '20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '15px',
-    textAlign: 'center'
-  }}>
-    <span style={{ fontSize: '3rem' }}>⏳</span>
-    <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#b8860b' }}>
-      {lang === 'ar' ? 'طلبك قيد المعالجة' : 'Demande en cours de traitement'}
-    </p>
-    <p style={{ margin: 0, fontSize: '0.9rem', color: '#888', lineHeight: '1.6' }}>
-      {lang === 'ar' 
-        ? 'تم استلام إثبات دفعك بنجاح، وسيتم تفعيل اشتراكك من قبل الإدارة  الان .  شكراً لصبرك!' 
-        : 'Votre preuve de paiement a bien été reçue. Votre abonnement sera activé bientot par l\'administration.'}
-    </p>
-    <div style={{
-      background: '#fff',
-      border: '1px dashed #f0a500',
-      borderRadius: '12px',
-      padding: '10px 20px',
-      fontSize: '0.85rem',
-      color: '#b8860b'
-    }}>
-      {lang === 'ar' ? '🔔 سيصلك إشعار فور التفعيل' : '🔔 Vous serez notifié dès l\'activation'}
-    </div>
-    <button onClick={() => setActiveTab('home')} style={{ ...styles.primaryBtn, width: '100%', backgroundColor: '#f0a500' }}>
-      {lang === 'ar' ? 'العودة للرئيسية' : 'Retour à l\'accueil'}
-    </button>
-  </div>
-) : isSubscribed && getDaysLeft() > 0 ? (
-              <div style={{
-                ...styles.countdownContainer,
-                flexDirection: 'column',
-                padding: '30px 20px',
-                gap: '15px',
-                border: '2px solid #006400',
-                backgroundColor: '#f0fff0',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ fontSize: '2.5rem' }}>🌟</span>
-                  <p style={{ margin: '10px 0 0 0', fontSize: '1.2rem', fontWeight: 'bold', color: '#006400' }}>{t.subPaymentTitle}</p>
-                  <p style={{ margin: '5px 0', color: '#666', fontSize: '0.9rem' }}>{t.daysRemaining}</p>
-                </div>
-
-                <div style={{ ...styles.daysCircle, width: '90px', height: '90px', boxShadow: '0 4px 12px rgba(0,100,0,0.15)', borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                  <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#006400' }}>{getDaysLeft()}</span>
-                  <span style={{ fontSize: '0.8rem', color: '#666' }}>{t.day}</span>
-                </div>
-
-                <div style={{ textAlign: 'center', background: '#fff', padding: '10px', borderRadius: '12px', width: '100%', border: '1px dashed #006400' }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#444' }}>
-                    {lang === 'ar' ? 'اشتراكك ينتهي بتاريخ:' : 'Expire le :'} <br />
-                    <b>{expiryDate?.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}</b>
-                  </p>
-                </div>
-                <button onClick={() => setActiveTab('home')} style={{ ...styles.primaryBtn, width: '100%', marginTop: '10px' }}>{t.home}</button>
-              </div>
-            ) : (
-              <>
-                {isSubscribed && getDaysLeft() <= 0 && (
-                  <div style={{ background: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '12px', marginBottom: '15px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #ef9a9a' }}>
-                    ⚠️ {t.expired}
-                  </div>
-                )}
-
-                {subStep === 1 && (
-                  <div style={{ ...styles.subCard, background: '#fff', padding: '20px', borderRadius: '20px', border: '1px solid #eee' }}>
-                    <h2 style={{ color: '#006400', margin: '0 0 5px 0', textAlign: 'center' }}>{t.subTitle}</h2>
-                    <div style={{ ...styles.priceTag, textAlign: 'center', fontSize: '1.5rem', fontWeight: 'bold', margin: '10px 0' }}>{t.subPrice}</div>
-                    <div style={styles.featuresList}>
-                      {t.subFeatures.map((f, i) => <p key={i} style={{ ...styles.featureItem, margin: '8px 0' }}>✔️ {f}</p>)}
-                    </div>
-                    <button style={{ ...styles.primaryBtn, width: '100%' }} onClick={() => setSubStep(2)}>✨ {t.subNow}</button>
-                    <button onClick={() => setActiveTab('home')} style={styles.backLink}>{t.back}</button>
-                  </div>
-                )}
-
-                {subStep === 2 && (
-                  <div style={styles.stepContent}>
-                    <div style={{ ...styles.feeBanner, backgroundColor: '#e8f5e9', borderColor: '#2e7d32' }}>
-                      <span style={{ fontSize: '1.8rem' }}>💰</span>
-                      <div style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
-                        <p style={{ margin: 0, fontWeight: 'bold', color: '#1b5e20' }}>{t.subPaymentTitle}</p>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#1b5e20' }}>{t.subNote}</p>
-                      </div>
-                    </div>
-
-                    <div style={styles.payButtonsGrid}>
-                      {Object.keys(t.payMethods).map((m) => (
-                        <button key={m} onClick={() => setOrderData({ ...orderData, payMethod: m })}
-                          style={{ ...styles.payOptionBtn, borderColor: orderData.payMethod === m ? '#006400' : '#ddd', backgroundColor: orderData.payMethod === m ? '#f0fff0' : '#fff' }}>
-                          <span>{m === 'bankily' ? '📱' : m === 'sadad' ? '📱' : '📱'}</span>
-                          <span style={{ fontSize: '0.8rem' }}>{t.payMethods[m]}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <label style={{ ...styles.fileLabel, borderColor: orderData.payProof ? '#28a745' : '#006400', backgroundColor: orderData.payProof ? '#f0fff0' : '#fff' }}>
-                      <span>{orderData.payProof ? '' : ''}</span>
-                      {orderData.payProof ? orderData.payProof.name.substring(0, 20) : t.uploadProof}
-                      <input type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => setOrderData({ ...orderData, payProof: e.target.files[0] })} />
-                    </label>
-
-                    <button style={styles.primaryBtn} disabled={loading} onClick={handleSubscriptionSubmit}>
-                      {loading ? '...' : `🚀 ${t.send}`}
-                    </button>
-                    <button onClick={() => setSubStep(1)} style={styles.backLink}>{t.back}</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* 4. شاشة الملف الشخصي */}
-        {activeTab === 'profile' && (
-          <div style={styles.profileContainer}>
-            <div style={styles.profileHeader}>
-              <div style={styles.avatarLarge}>👤</div>
-              <h2 style={styles.userName}>{isEditing ? t.editTitle : (user?.full_name || t.profileTitle)}</h2>
-            </div>
-
-            {!isEditing ? (
-              /* --- وضع العرض (View Mode) --- */
-              <>
-                <div style={styles.menuSection}>
-                  <div style={styles.displayItem}>
-                    <span style={styles.infoLabel}>{t.fullNameLabel}</span>
-                    <span style={styles.infoValue}>{user?.full_name || '...'}</span>
-                  </div>
-                  <div style={styles.displayItem}>
-                    <span style={styles.infoLabel}>{t.phoneLabel}</span>
-                    <span style={styles.infoValue}>{user?.phone}</span>
-                  </div>
-                  <div style={styles.displayItem}>
-                    <span style={styles.infoLabel}>{t.passLabel}</span>
-                    <span style={styles.infoValue}>********</span>
-                  </div>
-                </div>
-
-                <button style={styles.primaryEditBtn} onClick={() => {
-                  setEditData({ full_name: user?.full_name, phone: user?.phone, password: '' });
-                  setIsEditing(true);
-                }}>
-                  {t.editBtn}
-                </button>
-
-                <button onClick={() => onLogout()} style={styles.logoutSimpleBtn}>
-              {t.logout}
-                </button>
-              </>
-            ) : (
-              /* --- وضع التعديل (Edit Mode) --- */
-              <div style={styles.editForm}>
-                <div style={styles.inputGroup}>
-                  <label style={styles.fieldLabel}>{t.fullNameImmutable}</label>
-                  <input
-                    style={{ ...styles.profileInput, backgroundColor: '#f0f0f0', color: '#888' }}
-                    value={user?.full_name}
-                    readOnly
-                  />
-                </div>
-
-                <div style={styles.inputGroup}>
-                  <label style={styles.fieldLabel}>{t.newPhoneLabel}</label>
-                  <input
-                    style={styles.profileInput}
-                    value={editData.phone}
-                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                  />
-                </div>
-
-                <div style={styles.inputGroup}>
-                  <label style={styles.fieldLabel}>{t.newPassLabel}</label>
-                  <input
-                    type="password"
-                    style={styles.profileInput}
-                    placeholder={t.passPlaceholder}
-                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                  />
-                </div>
-
-                <div style={styles.actionButtons}>
-                  <button style={styles.saveBtn} onClick={async () => {
-                    if (!editData.phone) { alert(t.phoneRequired); return; }
-                    try {
-                      const response = await fetch(`${apiUrl}/update-profile`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' ,
-                         'Authorization': `Bearer ${localStorage.getItem('userToken')}`},
-                        body: JSON.stringify({
-                          userId: user.id,
-                          phone: editData.phone,
-                          password: editData.password
-                        }),
-                      });
-
-                      const data = await response.json();
-                      if (response.ok) {
-                        alert(t.successUpdate); // الرسالة مترجمة الآن
-                        onLogout();
-                      } else {
-                        alert(t.errorUpdate + (data.error || "Error"));
-                      }
-                    } catch (err) {
-                      alert(t.serverError);
-                    }
-                  }}>{t.saveBtn}</button>
-
-                  <button style={styles.cancelBtn} onClick={() => setIsEditing(false)}>{t.cancelBtn}</button>
-                </div>
-              </div>
-            )}
-
-            <div style={styles.appVersion}>{t.version}</div>
-          </div>
-        )}
-
-
-        {/* 5. شاشة حالة الطلبات (بدلاً من المراسلات) */}
-       {activeTab === 'messages' && (
-         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8f9fa' }}>
-            
-            {/* ترويسة "طلباتي" المحدثة */}
-            <div style={{
-              padding: '20px 15px',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{
-                width: '45px',
-                height: '45px',
-                borderRadius: '12px',
-                backgroundColor: '#1a237e',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '1.4rem',
-                boxShadow: '0 4px 12px rgba(26, 35, 126, 0.2)'
-              }}>
-                📋
-              </div>
-              <div>
-                <h2 style={{ 
-                  margin: 0, 
-                  fontSize: '1.4rem', 
-                  color: '#1a237e', 
-                  fontWeight: 'bold',
-                  fontFamily: 'Tajawal, sans-serif' // إذا كنت تستخدم خط تجوال، وإلا سيعمل الخط الافتراضي
-                }}>
-                  {lang === 'ar' ? 'طلباتي' : 'Mes Commandes'}
-                </h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>
-                  {lang === 'ar' ? 'إدارة ومتابعة أعمالك الحالية' : 'Gérez vos missions en cours'}
-                </p>
-              </div>
-            </div>
-        
-            {/* شاشة الحالات */}
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              <OrdersStatusScreen user={user} apiUrl={apiUrl} lang={lang} />
-            </div>
-            
-          </div>
-        )}
-
-      </main>
-
-      {/* الشريط السفلي */}
-      <div style={styles.bottomNav}>
-        <button style={activeTab === 'profile' ? styles.activeNav : styles.navBtn} onClick={() => setActiveTab('profile')}>
-          <span style={styles.navIcon}>👤</span>
-          <span style={{fontSize: '0.75rem'}}>{t.profile}</span>
-        </button>
-
-        <button style={activeTab === 'messages' ? styles.activeNav : styles.navBtn} onClick={() => setActiveTab('messages')}>
-          <span style={styles.navIcon}>📋</span>
-          <span style={{fontSize: '0.75rem'}}>{t.messages}</span>
-        </button>
-
-        <button style={activeTab === 'sub' ? styles.activeNav : styles.navBtn} onClick={() => setActiveTab('sub')}>
-          <span style={styles.navIcon}>💳</span>
-          <span style={{fontSize: '0.75rem'}}>{t.subscribe}</span>
-        </button>
-
-        <button style={activeTab === 'home' ? styles.activeNav : styles.navBtn} onClick={() => setActiveTab('home')}>
-          <span style={styles.navIcon}>🏠</span>
-          <span style={{fontSize: '0.75rem'}}>{t.home}</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-const styles = {
-  container: { 
-    height: '100vh', 
-    width: '100vw', 
-    display: 'flex', 
-    flexDirection: 'column', 
-    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
-    overflow: 'hidden', 
-    position: 'fixed', 
-    top: 0, 
-    left: 0 
+    gap: '12px'
   },
-  viewContainer: { 
-    flex: 1, 
-    display: 'flex', 
-    flexDirection: 'column', 
-    padding: '10px 15px', 
-    maxWidth: '500px', 
-    margin: '0 auto', 
-    width: '100%', 
-    overflow: 'hidden',
-    boxSizing: 'border-box'
+  notifHint: {
+    background: '#fff',
+    border: '1px dashed #ffc107',
+    borderRadius: '10px',
+    padding: '8px 16px',
+    fontSize: '0.85rem',
+    color: '#856404'
   },
-  header: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '10px 5px',
-    minHeight: '60px'
-  },
-  viewTitle: { fontSize: '1.6rem', color: '#006400', fontWeight: 'bold' },
-  langBtn: { padding: '6px 12px', borderRadius: '10px', border: '1px solid #006400', background: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '0.85rem' },
-  searchBox: { display: 'flex', gap: '8px', marginBottom: '15px' },
-  searchInput: { flex: 1, padding: '10px', borderRadius: '12px', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontSize: '0.9rem' },
-  newOrderBtn: { padding: '8px 12px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  scrollableArea: {
-    flex: 1,
-    overflowY: 'auto',
-    paddingBottom: '90px',
-    msOverflowStyle: 'none',
-    scrollbarWidth: 'none',
-  },
-  servicesGrid: { 
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(2, 1fr)', 
-    gap: '12px',
-    padding: '5px'
-  },
-  serviceItem: { 
-    padding: '20px 10px', 
-    background: 'rgba(255, 255, 255, 0.95)', 
-    borderRadius: '20px', 
-    textAlign: 'center', 
-    boxShadow: '0 6px 15px rgba(0,0,0,0.05)',
+  avatar: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '50%',
+    background: '#e8f5e9',
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    fontSize: '2.5rem',
+    margin: '0 auto'
   },
-  serviceIcon: { fontSize: '2.2rem', display: 'block', marginBottom: '8px' },
-  serviceName: { fontSize: '0.9rem', fontWeight: 'bold', color: '#333' },
-  newOrderCardGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '5px' },
-  newOrderServiceCard: { background: '#fff', borderRadius: '18px', padding: '20px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #eee' },
-  newOrderCardIcon: { fontSize: '2.2rem', marginBottom: '8px' },
-  newOrderCardName: { fontSize: '0.9rem', fontWeight: 'bold', color: '#006400' },
-  newOrderViewTitle: { fontSize: '1.3rem', textAlign: 'center', marginBottom: '15px', color: '#333', fontWeight: 'bold' },
-  stepContent: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  infoBadge: { background: '#e6f4ea', color: '#006400', padding: '10px', borderRadius: '10px', textAlign: 'center', fontSize: '0.9rem' },
-  enhancedTextarea: { width: '100%', height: '120px', padding: '12px', borderRadius: '15px', border: '2px solid #e0e0e0', resize: 'none', boxSizing: 'border-box' },
-  fileLabel: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px', background: '#fff', border: '2px dashed #006400', borderRadius: '12px', color: '#006400', fontWeight: 'bold', fontSize: '0.9rem' },
-  primaryBtn: { padding: '14px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem' },
-  feeBanner: { background: '#fff3cd', border: '1px solid #ffeeba', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' },
-  sectionLabel: { fontSize: '0.95rem', fontWeight: 'bold', color: '#333', textAlign: 'center' },
-  payButtonsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
-  payOptionBtn: { padding: '12px 5px', borderRadius: '12px', border: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.8rem' },
-  backLink: { 
-  background: '#f1f1f1', 
-  border: '1px solid #ddd', 
-  color: '#333', 
-  borderRadius: '10px',
-  width: '100%', 
-  padding: '10px', 
-  fontSize: '0.9rem',
-  fontWeight: 'bold',
-  marginTop: '5px',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '5px',
-  transition: 'all 0.2s'
-},
+  logoutBtn: {
+    width: '100%',
+    padding: '13px',
+    background: 'none',
+    border: '1.5px solid #dc3545',
+    color: '#dc3545',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
   bottomNav: {
     position: 'fixed',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '75px',
-    backgroundColor: '#fff',
+    bottom: 0, left: 0, right: 0,
+    height: '70px',
+    background: '#fff',
     display: 'flex',
     justifyContent: 'space-around',
     alignItems: 'center',
-    boxShadow: '0 -4px 15px rgba(0,0,0,0.08)',
+    boxShadow: '0 -2px 15px rgba(0,0,0,0.08)',
     zIndex: 1000,
-    padding: '0 5px',
     borderTop: '1px solid #eee'
   },
   navBtn: {
     flex: 1,
     background: 'none',
     border: 'none',
-    opacity: 0.5,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: '3px',
     cursor: 'pointer',
-    padding: '5px 0',
-    minWidth: 0
+    color: '#aaa',
+    padding: '5px 0'
   },
-  activeNav: {
+  navActive: {
     flex: 1,
     background: 'none',
     border: 'none',
-    opacity: 1,
-    color: '#006400',
-    fontWeight: 'bold',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: '3px',
     cursor: 'pointer',
-    padding: '5px 0',
-    minWidth: 0
-  },
-  navIcon: { fontSize: '1.4rem', marginBottom: '2px' }, 
-  // هذ منعلق بحساب الزبون 
-profileContainer: { 
-    padding: '15px', 
-    direction: 'rtl' 
-  },
-  
-  // الجزء العلوي (الصورة والاسم)
-  profileHeader: { 
-    textAlign: 'center', 
-    marginBottom: '20px' 
-  },
-  avatarLarge: { 
-    width: '70px', 
-    height: '70px', 
-    borderRadius: '50%', 
-    backgroundColor: '#eee', 
-    margin: '0 auto 10px', 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    fontSize: '2.2rem' 
-  },
-  userName: { 
-    fontSize: '1.2rem', 
-    color: '#333', 
-    fontWeight: 'bold' 
-  },
-
-  // عرض البيانات (Display Mode)
-  menuSection: { 
-    backgroundColor: '#fff', 
-    borderRadius: '15px', 
-    padding: '8px', 
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
-    marginBottom: '15px' 
-  },
-  displayItem: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '12px 10px', 
-    borderBottom: '1px solid #f5f5f5' 
-  },
-  infoLabel: { 
-    color: '#888', 
-    fontSize: '0.85rem' 
-  },
-  infoValue: { 
-    color: '#333', 
-    fontWeight: 'bold', 
-    fontSize: '0.9rem' 
-  },
-
-  // أزرار التحكم الأساسية
-  primaryEditBtn: { 
-    width: '100%', 
-    padding: '14px', 
-    borderRadius: '12px', 
-    backgroundColor: '#006400', 
-    color: '#fff', 
-    border: 'none', 
-    fontWeight: 'bold', 
-    cursor: 'pointer', 
-    marginBottom: '10px' 
-  },
-  logoutSimpleBtn: { 
-    width: '100%', 
-    padding: '12px', 
-    borderRadius: '12px', 
-    backgroundColor: 'transparent', 
-    color: '#ff4d4d', 
-    border: '1px solid #ff4d4d', 
-    cursor: 'pointer', 
-    fontWeight: 'bold' 
-  },
-
-  // نموذج التعديل (Edit Mode)
-  editForm: { 
-    width: '100%', 
-    backgroundColor: '#fff', 
-    padding: '15px', 
-    borderRadius: '15px', 
-    boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
-    boxSizing: 'border-box' 
-  },
-  inputGroup: { 
-    marginBottom: '12px', 
-    textAlign: 'right' 
-  },
-  fieldLabel: { 
-    display: 'block', 
-    marginBottom: '5px', 
-    fontSize: '0.8rem', 
-    color: '#666', 
-    marginRight: '5px' 
-  },
-  profileInput: { 
-    width: '100%', 
-    padding: '10px', 
-    borderRadius: '10px', 
-    border: '1px solid #ddd', 
-    outline: 'none', 
-    fontSize: '0.95rem', 
-    boxSizing: 'border-box' 
-  },
-
-  // أزرار حفظ وإلغاء التعديل
-  actionButtons: { 
-    display: 'flex', 
-    gap: '8px', 
-    marginTop: '15px' 
-  },
-  saveBtn: { 
-    flex: 2, 
-    padding: '12px', 
-    borderRadius: '10px', 
-    backgroundColor: '#27ae60', 
-    color: '#fff', 
-    border: 'none', 
-    fontWeight: 'bold', 
-    cursor: 'pointer' 
-  },
-  cancelBtn: { 
-    flex: 1, 
-    padding: '12px', 
-    borderRadius: '10px', 
-    backgroundColor: '#eee', 
-    color: '#333', 
-    border: 'none', 
-    cursor: 'pointer' 
-  },
-  
-  // إضافات أسفل الصفحة
-  appVersion: { 
-    textAlign: 'center', 
-    marginTop: '15px', 
-    color: '#ccc', 
-    fontSize: '0.7rem' 
+    color: '#006400',
+    fontWeight: 'bold',
+    padding: '5px 0'
   }
-
-  // هنا ينتهي 
 };
+ 

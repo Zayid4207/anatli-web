@@ -1,237 +1,209 @@
 import React, { useState } from 'react';
 
-// التعديل 1: إضافة onPrivacyClick في الـ Props
-const LoginScreen = ({ onSignupClick, onLoginSuccess, onPrivacyClick }) => {
-  const [phone, setPhone] = useState(localStorage.getItem('remembered_phone') || '');
+export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onBackToLanding }) {
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [lang, setLang] = useState('ar'); 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  const content = {
-    ar: { 
-      contact:'تواصل مع الدعم الفني ',
-      signupBtn:'أنشئ حساباً جديداً',
-      title: 'تسجيل الدخول', 
-      phone: 'رقم الهاتف', 
-      pass: 'كلمة المرور', 
-      btn: 'دخول', 
-      signupLink: 'ليس لديك حساب؟ أنشئ حساباً جديداً هنا',
-      privacy: 'سياسة الخصوصية', // التعديل 2: إضافة الترجمة العربية
-      authError: 'رقم الهاتف أو كلمة المرور غير صحيحة',
-      connError: 'فشل الاتصال بالسيرفر. تأكد من تشغيل الـ Backend'
-    },
-    fr: {
-      contact :'Contactez le support technique', 
-      signupBtn:'Créer un compte', 
-      title: 'Connexion', 
-      phone: 'Téléphone', 
-      pass: 'Mot de passe', 
-      btn: 'Entrer', 
-      signupLink: "N'avez-vous pas de compte ? Créez-en un ici",
-      privacy: 'Politique de confidentialité', // التعديل 2: إضافة الترجمة الفرنسية
-      authError: 'Identifiants incorrects',
-      connError: 'Erreur de connexion au serveur'
-    }
-  };
-const handleContactUs = () => {
-    const adminPhone = "22242072952"; 
-    const message = lang === 'ar' 
-      ?"أريد الاستفسار عن منصة :Le plombier"
-        : "Bonjour, je souhaite me renseigner sur la platforme Le Plombier";
-    window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    if (!phone || !password) { setError('يرجى ملء جميع الحقول'); return; }
     setLoading(true);
-    setError(null);
-    
+    setError('');
     try {
-      const response = await fetch('https://anatli-server-production.up.railway.app/login', {
+      const res = await fetch(`${apiUrl}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password })
-      })
-      const data = await response.json();
-
-      if (response.ok) {
-        // --- التعديل المطلوب لحفظ التوكن في الواجهة ---
-        localStorage.setItem('userToken', data.token); // حفظ مفتاح الأمان
-        localStorage.setItem('userData', JSON.stringify(data.user)); // حفظ بيانات المستخدم
-        localStorage.setItem('remembered_phone', phone); // تذكر الرقم للمرة القادمة
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('userToken', data.token);
         onLoginSuccess({ ...data.user, token: data.token });
       } else {
-        setError(data.error || content[lang].authError);
+        setError(data.error || 'خطأ في تسجيل الدخول');
       }
     } catch (err) {
-      setError(content[lang].connError);
-      console.error("Login Connection Error:", err);
+      setError('فشل الاتصال بالسيرفر');
     } finally {
       setLoading(false);
     }
   };
-  const handleForgotPassword = () => {
-    const adminPhone = "22242072952"; // ضع هنا رقم الواتساب الخاص بإدارة أنعتلي
-    const message = lang === 'ar' 
-        ? `السلام عليكم، لقد نسيت كلمة المرور الخاصة بحسابي المرتبط بهذا الرقم: ${phone}`
-        : `Bonjour, j'ai oublié mon mot de passe pour mon compte lié à ce numéro: ${phone}`;
-    
-    // فتح رابط واتساب
-    window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`, '_blank');
-};
+
+  const handleWhatsApp = () => {
+    window.open(`https://wa.me/22242072952?text=${encodeURIComponent('أريد الاستفسار عن خدمة تأمين إصلاح المنازل')}`, '_blank');
+  };
 
   return (
-    <div style={styles.container}>
-      <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={styles.langBtn}>
-        {lang === 'ar' ? 'Français' : 'العربية'}
-      </button>
+    <div style={s.container}>
+      <div style={s.card}>
 
-      <div style={styles.card}>
-        <h1 style={styles.logo}>Le Plombier</h1>
-        <h2 style={styles.title}>{content[lang].title}</h2>
-        <form onSubmit={handleLogin} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>{content[lang].phone}</label>
-            <input 
-              type="text" 
-              placeholder={content[lang].phone} 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)} 
-              style={styles.input} 
-              required
-            />
-          </div>
+        {/* الشعار */}
+        <div style={s.logoArea}>
+          <div style={s.logoIcon}>🏠</div>
+          <h1 style={s.logoText}>HomeFix</h1>
+          <p style={s.logoSub}>تأمين إصلاح المنازل</p>
+        </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>{content[lang].pass}</label>
-            <input 
-              type="password" 
-              placeholder={content[lang].pass} 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              style={styles.input} 
-              required
-              />
-               <button 
-              type="button" 
-               onClick={handleForgotPassword} 
-             style={styles.forgotPassBtn}
->
-           {lang === 'ar' ? 'نسيت كلمة المرور؟' : 'Mot de passe oublié ?'}
-             </button>
-          </div>
-          
-          {error && <p style={styles.errorText}>{error}</p>}
+        {/* الحقول */}
+        <div style={s.field}>
+          <label style={s.label}>رقم الهاتف</label>
+          <input
+            style={s.input}
+            type="text"
+            placeholder="أدخل رقم هاتفك"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+          />
+        </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? (lang === 'ar' ? 'جاري التحقق...' : 'Vérification...') : content[lang].btn}
-          </button>
+        <div style={s.field}>
+          <label style={s.label}>كلمة المرور</label>
+          <input
+            style={s.input}
+            type="password"
+            placeholder="أدخل كلمة المرور"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </div>
 
-       {/* الفاصل بين الأزرار */}
-          <div style={styles.divider}>
-            <span style={styles.dividerText}>{content[lang].noAccount}</span>
-          </div>
+        {error && <p style={s.error}>{error}</p>}
 
-          {/* زر إنشاء حساب جديد المعدل */}
-          <button type="button" onClick={onSignupClick} style={styles.signupButton}>
-            {content[lang].signupBtn}
-          </button>
-          {/* زر واتساب الجديد */}
-          <button type="button" onClick={handleContactUs} style={styles.whatsappBtn}>
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-              alt="WhatsApp" 
-              style={styles.whatsappIcon} 
-            />
-            {content[lang].contact}
-          </button>
+        {/* زر الدخول */}
+        <button
+          style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+        </button>
 
-          {/* التعديل 3: إضافة زر سياسة الخصوصية */}
-         <button 
-         type="button" 
-         onClick={onPrivacyClick} 
-        style={styles.privacyLink} // استخدام الستايل الجديد هنا
->
-            {content[lang].privacy}
-          </button>
-        </form>
+        {/* زر إنشاء حساب */}
+        <button style={s.btnOutline} onClick={onSignupClick}>
+          إنشاء حساب جديد
+        </button>
+
+        {/* زر واتساب */}
+        <button style={s.btnWhatsapp} onClick={handleWhatsApp}>
+          <span>💬</span> تواصل مع الدعم
+        </button>
+
+        {/* رجوع للرئيسية */}
+        <button style={s.backLink} onClick={onBackToLanding}>
+          ← العودة للصفحة الرئيسية
+        </button>
+
       </div>
     </div>
   );
-};
+}
 
-const styles = {
-  // ... جميع الستايلات القديمة تبقى كما هي، فقط سنضيف ستايل الزر الجديد ...
-  container: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100vw', backgroundColor: '#f4f7f6', direction: 'rtl', position: 'relative', padding: '20px', boxSizing: 'border-box' },
-  card: { background: '#fff', padding: '30px 20px', borderRadius: '25px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 15px 35px rgba(0,100,0,0.08)', border: '1px solid #eef2f1', boxSizing: 'border-box' },
-  logo: { color: '#006400', marginBottom: '8px', fontSize: '2.2rem', fontWeight: 'bold', letterSpacing: '1px' },
-  title: { fontSize: '1.1rem', color: '#666', marginBottom: '25px', lineHeight: '1.5' },
-  form: { display: 'flex', flexDirection: 'column', gap: '18px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '5px', textAlign: 'right' },
-  label: { fontSize: '0.9rem', color: '#006400', fontWeight: '600', marginRight: '5px' },
-  input: { padding: '14px', borderRadius: '12px', border: '1px solid #ddd', textAlign: 'right', outline: 'none', backgroundColor: '#f9f9f9', fontSize: '1rem', width: '100%', boxSizing: 'border-box' },
-  button: { padding: '14px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', marginTop: '10px' },
-  langBtn: { position: 'absolute', top: '15px', right: '15px', padding: '6px 14px', cursor: 'pointer', border: '1px solid #006400', borderRadius: '8px', background: '#fff', fontSize: '0.85rem' },
-  linkBtn: { background: 'none', border: 'none', color: '#006400', cursor: 'pointer', textDecoration: 'underline', marginTop: '5px', fontSize: '0.9rem', padding: '10px' },
-  errorText: { color: '#d9534f', fontSize: '0.85rem', textAlign: 'right' },
-  
-  // ستايل زر الخصوصية الجديد
- // ستايل رابط الخصوصية الجديد والأنيق
-  privacyLink: {
-    background: 'none',
-    border: 'none',
-    color: '#006400', // نفس لون هوية التطبيق الأخضر
-    cursor: 'pointer',
-    textDecoration: 'none', // بدون خط تحته في البداية
-    fontSize: '0.85rem', // حجم أنسب للقراءة
-    marginTop: '15px', // مسافة جيدة عن الزر العلوي
-    padding: '5px',
-    transition: 'all 0.3s ease', // تأثير ناعم
-    fontWeight: '500',
-    opacity: 0.8 // شفافية بسيطة لجعل التركيز على الأزرار الأساسية
-  },
-  forgotPassBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#d9534f', // لون أحمر هادئ للتنبيه
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    marginTop: '10px',
-    textAlign: 'center',
-    fontWeight: '500',
-    textDecoration: 'none'
-  },
-  signupButton: { 
-    padding: '12px', 
-    backgroundColor: '#fff', 
-    color: '#006400', 
-    border: '2px solid #006400', 
-    borderRadius: '12px', 
-    cursor: 'pointer', 
-    fontWeight: 'bold', 
-    fontSize: '1rem',
-    transition: '0.3s'
-  },
-  whatsappBtn: {
+const s = {
+  container: {
+    minHeight: '100vh',
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: '10px',
-    backgroundColor: '#25D366', // لون واتساب الرسمي
+    alignItems: 'center',
+    backgroundColor: '#f0f4f0',
+    padding: '20px',
+    direction: 'rtl'
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: '24px',
+    padding: '35px 25px',
+    width: '100%',
+    maxWidth: '400px',
+    boxShadow: '0 10px 40px rgba(0,100,0,0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px'
+  },
+  logoArea: {
+    textAlign: 'center',
+    marginBottom: '10px'
+  },
+  logoIcon: {
+    fontSize: '3rem',
+    marginBottom: '8px'
+  },
+  logoText: {
+    margin: 0,
+    fontSize: '2rem',
+    fontWeight: '900',
+    color: '#006400'
+  },
+  logoSub: {
+    margin: '5px 0 0 0',
+    color: '#888',
+    fontSize: '0.9rem'
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  label: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#444'
+  },
+  input: {
+    padding: '13px 15px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '1rem',
+    outline: 'none',
+    textAlign: 'right',
+    backgroundColor: '#fafafa'
+  },
+  error: {
+    color: '#e53e3e',
+    fontSize: '0.85rem',
+    textAlign: 'center',
+    margin: 0
+  },
+  btnPrimary: {
+    padding: '14px',
+    backgroundColor: '#006400',
     color: '#fff',
     border: 'none',
     borderRadius: '12px',
-    padding: '12px',
-    cursor: 'pointer',
+    fontSize: '1rem',
     fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  btnOutline: {
+    padding: '13px',
+    backgroundColor: '#fff',
+    color: '#006400',
+    border: '2px solid #006400',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  btnWhatsapp: {
+    padding: '12px',
+    backgroundColor: '#25D366',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '0.95rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
+  },
+  backLink: {
+    background: 'none',
+    border: 'none',
+    color: '#888',
     fontSize: '0.9rem',
-    marginTop: '10px',
-    transition: '0.3s',
-  },
-  whatsappIcon: {
-    width: '20px',
-    height: '20px',
-  },
+    cursor: 'pointer',
+    textAlign: 'center'
+  }
 };
-
-export default LoginScreen;

@@ -1,395 +1,356 @@
-import React from 'react';
-
+import React, { useState } from 'react';
+ 
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
-  // مصفوفة الخدمات لتسهيل إدارتها داخل React
-  // ميزة إشعار الآيفون: التحكم في ظهور النافذة المنبثقة
-  const [showIosBanner, setShowIosBanner] = React.useState(false);
-
-  React.useEffect(() => {
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.navigator.standalone === true;
-    const isBannerDismissed = sessionStorage.getItem('iosBannerDismissed');
-
-    if (isIos && !isStandalone && !isBannerDismissed) {
-      setShowIosBanner(true);
-    }
-  }, []);
-
-  const closeIosBanner = () => {
-    setShowIosBanner(false);
-    sessionStorage.setItem('iosBannerDismissed', 'true');
-  };
-  const services = [
-    { name: 'سباكة', fr: 'Plomberie', icon: 'ti-droplet', bg: '#E1F5EE', color: '#0F6E56' },
-    { name: 'كهرباء', fr: 'Électricité', icon: 'ti-bolt', bg: '#FAEEDA', color: '#BA7517' },
-    { name: 'تنظيف', fr: 'Nettoyage', icon: 'ti-sparkles', bg: '#E6F1FB', color: '#185FA5' },
-    { name: 'صيانة منزلية', fr: 'Maintenance', icon: 'ti-tool', bg: '#FCEBEB', color: '#A32D2D' },
-    { name: 'تكييف', fr: 'Climatisation', icon: 'ti-wind', bg: '#EAF3DE', color: '#3B6D11' },
-    { name: 'بناء', fr: 'Construction', icon: 'ti-building', bg: '#FAEEDA', color: '#BA7517' },
-  ];
-
-  return (
-    <div dir="rtl" style={{ fontFamily: "'Tajawal', sans-serif", background: '#fff', color: '#2C2C2A' }}>
-      
-      {/* استدعاء خطوط Google والأيقونات بشكل آمن متوافق مع نظام كاباسيتور والويب */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
-
-      {/* حقن التنسيقات (Styles) لضمان ثبات المظهر تماماً كما أرسلته */}
-      <style>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-          --primary: #0F6E56; --primary-light: #1D9E75; --primary-pale: #E1F5EE;
-          --accent: #EF9F27; --accent-dark: #BA7517;
-          --dark: #2C2C2A; --mid: #5F5E5A; --light: #F1EFE8; --white: #fff;
+  const [lang, setLang] = useState('ar');
+ 
+  const content = {
+    ar: {
+      appName: 'HomeFix',
+      appSub: 'تأمين إصلاح المنازل',
+      hero: 'منزلك في أمان دائم',
+      heroDesc: 'اشترك واستمتع بطلبات غير محدودة — سباكة، كهرباء، صيانة وأكثر.',
+      login: 'دخول',
+      register: 'اشترك',
+      howTitle: 'كيف يعمل؟',
+      step1Title: 'اشترك', step1Desc: 'اختر باقتك الشهرية',
+      step2Title: 'اطلب', step2Desc: 'صورة أو وصف صوتي للمشكلة',
+      step3Title: 'الفني يصلك', step3Desc: 'في أقرب وقت ممكن',
+      packagesTitle: 'باقاتنا الشهرية',
+      unlimited: 'طلبات غير محدودة',
+      perMonth: 'شهرياً',
+      downloadPdf: '📄 تحميل تفاصيل الباقة',
+      whyTitle: 'لماذا HomeFix؟',
+      why1: 'فنيون موثوقون', why2: 'استجابة سريعة',
+      why3: 'طلبات غير محدودة', why4: 'تغطية شاملة',
+      joinNow: 'ابدأ الآن', joinProvider: 'انضم كفني',
+      footer: 'جميع الحقوق محفوظة', city: 'نواكشوط، موريتانيا',
+      packages: [
+        {
+          name: 'راحة البال', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'الأكثر شمولاً',
+          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🔌 تركيب Stabilisateur','❄️ إصلاح وتركيب المكيف','🌀 إصلاح وتركيب الريحة','🔧 إصلاح وتركيب التيو','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','⚙️ إصلاح مضخة المياه','🔩 إصلاح السبرسير','🧊 إصلاح الثلاجة','🌡️ إصلاح وتركيب مسخن المياه','📺 إصلاح التلفاز','🚪 إصلاح وتركيب مفاتيح الأبواب','⚡ أولوية قصوى في الاستجابة']
+        },
+        {
+          name: 'البيت المعمور', price: 1300, color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: 'الأكثر طلباً',
+          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🔌 تركيب Stabilisateur','❄️ إصلاح وتركيب المكيف','🌀 إصلاح وتركيب الريحة','🔧 إصلاح وتركيب التيو','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','🔩 إصلاح السبرسير','🧊 إصلاح الثلاجة','🌡️ إصلاح وتركيب مسخن المياه']
+        },
+        {
+          name: 'السلامة', price: 1100, color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: 'للبداية',
+          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','🔩 إصلاح السبرسير','🚪 إصلاح وتركيب مفاتيح الأبواب']
         }
-        .hero { background: var(--primary); position: relative; overflow: hidden; min-height: 100vh; display: flex; flex-direction: column; }
-        .hero-circles { position: absolute; inset: 0; overflow: hidden; opacity: .06; pointer-events: none; }
-        .hero-circles span { position: absolute; border-radius: 50%; background: #fff; }
-        nav { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 3rem; position: relative; z-index: 2; }
-        .logo { display: flex; align-items: center; gap: 12px; }
-        .logo-box { width: 46px; height: 46px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .logo-box i { font-size: 24px; color: var(--dark); }
-        .logo-name { font-family: 'Playfair Display', serif; font-size: 24px; color: #fff; font-weight: 700; line-height: 1; }
-        .logo-tagline { font-size: 11px; color: rgba(255,255,255,.55); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
-        .nav-links { display: flex; gap: 10px; }
-        .btn-ghost { padding: 9px 22px; border: 1.5px solid rgba(255,255,255,.4); border-radius: 9px; background: transparent; color: #fff; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
-        .btn-ghost:hover { background: rgba(255,255,255,.1); }
-        .btn-yellow { padding: 9px 22px; border: none; border-radius: 9px; background: var(--accent); color: var(--dark); font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s; }
-        .btn-yellow:hover { background: #f0a830; }
-        .hero-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 3rem 2rem 5rem; position: relative; z-index: 2; }
-        .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(239,159,39,.15); border: 1px solid rgba(239,159,39,.35); color: var(--accent); padding: 7px 18px; border-radius: 30px; font-size: 13px; font-weight: 500; margin-bottom: 1.8rem; }
-        .hero-title { font-family: 'Playfair Display', serif; font-size: clamp(2.6rem, 6vw, 4.8rem); color: #fff; line-height: 1.1; max-width: 720px; margin-bottom: 1rem; }
-        .hero-title em { color: var(--accent); font-style: normal; }
-        .hero-fr { font-size: 16px; color: rgba(255,255,255,.5); font-style: italic; margin-bottom: .8rem; }
-        .hero-desc { font-size: 17px; color: rgba(255,255,255,.75); max-width: 500px; line-height: 1.85; margin-bottom: 2.5rem; }
-        .cta-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-        .btn-big { padding: 15px 36px; border-radius: 11px; font-family: 'Tajawal', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; border: none; transition: .2s; }
-        .btn-big-yellow { background: var(--accent); color: var(--dark); }
-        .btn-big-yellow:hover { background: #f0a830; transform: translateY(-2px); }
-        .btn-big-white { background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.3); color: #fff; }
-        .btn-big-white:hover { background: rgba(255,255,255,.2); }
-        .hero-stats { display: flex; gap: 4rem; padding-top: 2.5rem; margin-top: 3rem; border-top: 1px solid rgba(255,255,255,.15); }
-        .stat .n { font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; color: #fff; }
-        .stat .l { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 2px; }
-        .wave { display: block; margin-top: -1px; }
-        .services { padding: 5rem 3rem; text-align: center; }
-        .tag { display: inline-block; background: var(--primary-pale); color: var(--primary); padding: 5px 16px; border-radius: 20px; font-size: 11px; letter-spacing: 2px; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; }
-        .sec-title { font-family: 'Playfair Display', serif; font-size: clamp(1.9rem, 4vw, 2.8rem); color: var(--dark); margin-bottom: .5rem; }
-        .sec-title span { color: var(--primary); }
-        .sec-sub { font-size: 15px; color: var(--mid); max-width: 480px; margin: 0 auto; line-height: 1.8; }
-        .srv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 16px; margin-top: 3rem; }
-        .srv-card { background: #fff; border: 1px solid #eae9e2; border-radius: 18px; padding: 2rem 1.2rem; text-align: center; cursor: pointer; transition: .25s; }
-        .srv-card:hover { border-color: var(--primary-light); transform: translateY(-5px); box-shadow: 0 14px 36px rgba(15,110,86,.1); }
-        .srv-icon { width: 62px; height: 62px; border-radius: 15px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.1rem; font-size: 28px; }
-        .srv-ar { font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
-        .srv-fr { font-size: 12px; color: var(--mid); letter-spacing: .5px; }
-        .how { background: var(--light); padding: 5rem 3rem; text-align: center; }
-        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3.5rem; position: relative; }
-        .steps::before { content: ''; position: absolute; top: 38px; right: calc(16.6% + 32px); left: calc(16.6% + 32px); height: 2px; background: repeating-linear-gradient(to left, var(--primary-light) 0, var(--primary-light) 8px, transparent 8px, transparent 16px); z-index: 0; }
-        .step { text-align: center; position: relative; z-index: 1; }
-        .step-num { width: 64px; height: 64px; border-radius: 50%; background: #fff; border: 3px solid var(--primary-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; color: var(--primary); }
-        .step.active .step-num { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .step-t { font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: .4rem; }
-        .step-d { font-size: 14px; color: var(--mid); line-height: 1.75; }
-        .step-df { font-size: 12px; color: #aaa; font-style: italic; margin-top: 4px; }
-        .why { padding: 5rem 3rem; }
-        .why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 3rem; }
-        .why-card { background: #fff; border: 1px solid #eae9e2; border-radius: 16px; padding: 1.8rem; display: flex; gap: 1.1rem; align-items: flex-start; }
-        .why-icon { width: 50px; height: 50px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 24px; }
-        .why-t { font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 5px; }
-        .why-d { font-size: 14px; color: var(--mid); line-height: 1.75; }
-        .cta-sec { background: var(--primary); padding: 5rem 3rem; text-align: center; position: relative; overflow: hidden; }
-        .cta-sec::before { content: ''; position: absolute; top: -80px; right: -80px; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,.04); }
-        .cta-sec::after { content: ''; position: absolute; bottom: -60px; left: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.04); }
-        .cta-title { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 4vw, 3rem); color: #fff; margin-bottom: .8rem; position: relative; z-index: 1; }
-        .cta-sub { font-size: 16px; color: rgba(255,255,255,.7); margin-bottom: 2.5rem; position: relative; z-index: 1; line-height: 1.8; }
-        .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1; }
-        footer { background: var(--dark); padding: 2.5rem 3rem; text-align: center; }
-        .footer-logo { font-family: 'Playfair Display', serif; font-size: 20px; color: #fff; margin-bottom: .5rem; }
-        .footer-sub { font-size: 13px; color: rgba(255,255,255,.4); line-height: 1.8; }
-        .footer-sub span { color: var(--accent); }
-        @media(max-width:768px){
-          nav { padding: 1.2rem 1.5rem; }
-          .services, .how, .why, .cta-sec { padding: 4rem 1.5rem; }
-          .steps { grid-template-columns: 1fr; }
-          .steps::before { display: none; }
-          .hero-stats { gap: 2rem; }
-          footer { padding: 2rem 1.5rem; }
-        
-  nav {
-    flex-direction: column;
-    gap: 15px;
-    padding: 1rem !important;
-    text-align: center;
-  }
-  .nav-links {
-    width: 100%;
-    justify-content: center;
-  }
-  .btn-ghost, .btn-yellow {
-    flex: 1; 
-    text-align: center;
-    font-size: 13px;
-    padding: 10px 14px;
-  }
-
-  
-  .hero {
-    min-height: auto; 
-    padding-bottom: 3rem;
-  }
-  .hero-body {
-    padding: 2rem 1rem 3rem !important;
-  }
-  .hero-title {
-    font-size: 1.8rem !important; 
-    line-height: 1.3;
-  }
-  .hero-desc {
-    font-size: 14px;
-    line-height: 1.6;
-    margin-bottom: 2rem;
-  }
-  .cta-row {
-    flex-direction: column; 
-    width: 100%;
-    gap: 10px;
-  }
-  .btn-big {
-    width: 100%;
-    padding: 14px 20px;
-    font-size: 15px;
-  }
-
-  
-  .hero-stats {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 1.5rem !important;
-    width: 100%;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-  }
-  .stat .n {
-    font-size: 1.6rem;
-  }
-
-  
-  .srv-grid {
-    grid-template-columns: repeat(2, 1fr) !important; 
-    gap: 12px;
-    margin-top: 2rem;
-  }
-  .srv-card {
-    padding: 1.2rem 0.8rem;
-  }
-  .srv-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 22px;
-    margin-bottom: 0.8rem;
-  }
-  .srv-ar {
-    font-size: 15px;
-  }
-
-  
-  .steps {
-    gap: 1.5rem !important;
-  }
-  .step-num {
-    width: 50px;
-    height: 50px;
-    font-size: 18px;
-    margin-bottom: 0.8rem;
-  }
-
-  
-  .why-grid {
-    grid-template-columns: 1fr !important; 
-    gap: 12px;
-  }
-  .why-card {
-    padding: 1.2rem;
-    gap: 0.8rem;
-  }
+      ]
+    },
+    fr: {
+      appName: 'HomeFix',
+      appSub: 'Assurance réparation domicile',
+      hero: 'Votre maison toujours en sécurité',
+      heroDesc: 'Abonnez-vous et profitez de demandes illimitées — plomberie, électricité, maintenance et plus.',
+      login: 'Connexion',
+      register: "S'abonner",
+      howTitle: 'Comment ça marche ?',
+      step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait mensuel',
+      step2Title: 'Demander', step2Desc: 'Photo ou note vocale du problème',
+      step3Title: 'Le technicien arrive', step3Desc: 'Dans les plus brefs délais',
+      packagesTitle: 'Nos forfaits mensuels',
+      unlimited: 'Demandes illimitées',
+      perMonth: 'par mois',
+      downloadPdf: '📄 Télécharger les détails',
+      whyTitle: 'Pourquoi HomeFix ?',
+      why1: 'Techniciens vérifiés', why2: 'Réponse rapide',
+      why3: 'Demandes illimitées', why4: 'Couverture complète',
+      joinNow: 'Commencer', joinProvider: 'Rejoindre comme technicien',
+      footer: 'Tous droits réservés', city: 'Nouakchott, Mauritanie',
+      packages: [
+        {
+          name: 'Rāħat el bāl', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'Le plus complet',
+          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🔌 Installation Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets douche et cuisine','💧 Fuite lavabo','⚙️ Pompe à eau','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau','📺 Télévision','🚪 Serrures et portes','⚡ Priorité maximale']
+        },
+        {
+          name: 'El beit el maâmour', price: 1300, color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: 'Le plus demandé',
+          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🔌 Installation Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets douche et cuisine','💧 Fuite lavabo','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau']
+        },
+        {
+          name: 'Es-salāma', price: 1100, color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: 'Pour commencer',
+          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🚿 Robinets douche et cuisine','💧 Fuite lavabo','🔩 Compresseur','🚪 Serrures et portes']
+        }
+      ]
+    }
+  };
+ 
+  const c = content[lang];
+ 
+  const generatePdf = async (pkg) => {
+    const items = pkg.items || [];
+    const div = document.createElement('div');
+    div.style.cssText = `position:fixed;left:-9999px;top:0;width:390px;background:white;font-family:Arial,sans-serif;direction:rtl;`;
+    div.innerHTML = `
+      <div style="background:${pkg.border};padding:30px 20px;text-align:center;color:white;">
+        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">🏠 HomeFix</div>
+        <div style="font-size:18px;font-weight:bold;margin-bottom:5px;">${pkg.icon} ${pkg.name}</div>
+        <div style="font-size:15px;opacity:0.9;">${pkg.price} MRU / شهرياً</div>
+      </div>
+      <div style="padding:20px;">
+        <div style="font-size:15px;font-weight:bold;color:${pkg.border};border-bottom:2px solid ${pkg.border};padding-bottom:8px;margin-bottom:15px;">ما تشمله هذه الباقة</div>
+        ${items.map(item => `<div style="display:flex;gap:10px;margin-bottom:10px;font-size:13px;"><span style="color:${pkg.border};font-weight:bold;">✓</span><span>${item}</span></div>`).join('')}
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-top:20px;font-size:12px;color:#856404;text-align:center;">
+          ⚠️ <strong>اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
+        </div>
+      </div>
+      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">HomeFix — نواكشوط، موريتانيا</div>
+    `;
+    document.body.appendChild(div);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `HomeFix-${pkg.name}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      alert('حدث خطأ، يرجى المحاولة مرة أخرى');
+    } finally {
+      document.body.removeChild(div);
+    }
+  };
+ 
+  return (
+    <div style={{ fontFamily: "'Tajawal', sans-serif", direction: lang === 'ar' ? 'rtl' : 'ltr', color: '#2c2c2c', overflowX: 'hidden' }}>
+ 
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet" />
+ 
+      {/* ===== CSS للهاتف ===== */}
+      <style>{`
+        @media (max-width: 480px) {
+          .hfx-nav { padding: 10px 15px !important; }
+          .hfx-logo-sub { display: none !important; }
+          .hfx-hero { min-height: 70vh !important; padding-bottom: 60px !important; }
+          .hfx-hero-content { padding: 20px 15px !important; }
+          .hfx-hero-title { font-size: 1.8rem !important; }
+          .hfx-hero-desc { font-size: 0.9rem !important; margin-bottom: 20px !important; }
+          .hfx-hero-btns { flex-direction: column !important; width: 100% !important; padding: 0 15px !important; }
+          .hfx-btn-hero { width: 100% !important; text-align: center !important; }
+          .hfx-section { padding: 30px 15px !important; }
+          .hfx-steps { grid-template-columns: 1fr !important; gap: 10px !important; }
+          .hfx-step-card { flex-direction: row !important; padding: 15px !important; text-align: right !important; gap: 12px !important; align-items: center !important; }
+          .hfx-step-icon { font-size: 1.8rem !important; }
+          .hfx-step-num { width: 32px !important; height: 32px !important; font-size: 0.9rem !important; flex-shrink: 0 !important; }
+          .hfx-pkg-grid { grid-template-columns: 1fr !important; padding: 0 5px !important; }
+          .hfx-why-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+          .hfx-why-card { padding: 15px 10px !important; }
+          .hfx-cta { padding: 40px 15px !important; }
+          .hfx-cta-btns { flex-direction: column !important; width: 100% !important; }
+          .hfx-section-title { font-size: 1.4rem !important; margin-bottom: 20px !important; }
         }
       `}</style>
-
-      {/* HERO SECTION */}
-      <div className="hero">
-        <div className="hero-circles">
-          <span style={{ width: '500px', height: '500px', top: '-100px', right: '-100px' }}></span>
-          <span style={{ width: '300px', height: '300px', bottom: '-50px', left: '-50px' }}></span>
-          <span style={{ width: '200px', height: '200px', top: '40%', left: '40%' }}></span>
+ 
+      {/* ===== NAV ===== */}
+      <nav className="hfx-nav" style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 20px', backgroundColor: '#006400', position: 'sticky',
+        top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
+      }}>
+        {/* الشعار */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '38px', height: '38px', backgroundColor: '#ffc107', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>
+            🏠
+          </div>
+          <div>
+            <div style={{ color: '#fff', fontWeight: '900', fontSize: '1.2rem', lineHeight: 1 }}>{c.appName}</div>
+            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem', marginTop: '2px' }}>{c.appSub}</div>
+          </div>
         </div>
-
-        <nav>
-          <div className="logo">
-            <div className="logo-box"><i className="ti ti-tool"></i></div>
-            <div>
-              <div className="logo-name">Le Plombier</div>
-              <div className="logo-tagline">خدمات منزلية · Services à domicile</div>
-            </div>
+ 
+        {/* الأزرار */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
+            {lang === 'ar' ? 'FR' : 'AR'}
+          </button>
+          <button onClick={onLoginClick} style={{ padding: '7px 14px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+            {c.login}
+          </button>
+          <button onClick={onRegisterClick} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#ffc107', color: '#333', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+            {c.register}
+          </button>
+        </div>
+      </nav>
+ 
+      {/* ===== HERO ===== */}
+      <section className="hfx-hero" style={{
+        background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)',
+        minHeight: '75vh', display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', alignItems: 'center',
+        position: 'relative', overflow: 'hidden', paddingBottom: '70px'
+      }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.06 }}>
+          <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: '#fff', top: '-100px', right: '-100px' }} />
+          <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', backgroundColor: '#fff', bottom: '-50px', left: '-50px' }} />
+        </div>
+ 
+        <div className="hfx-hero-content" style={{ textAlign: 'center', padding: '30px 20px', position: 'relative', zIndex: 2, width: '100%', maxWidth: '600px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'inline-block', background: 'rgba(255,193,7,0.2)', border: '1px solid rgba(255,193,7,0.4)', color: '#ffc107', padding: '5px 15px', borderRadius: '30px', fontSize: '0.8rem', marginBottom: '15px' }}>
+            📍 {c.city}
           </div>
-          <div className="nav-links">
-            {/* ربط زر تسجيل الدخول بوظيفة تسجيل الدخول من الأجزاء الأخرى للمشروع */}
-            <button className="btn-ghost" onClick={onLoginClick}>تسجيل الدخول</button>
-            {/* ربط زر ابدأ الآن بوظيفة التسجيل والبدء */}
-            <button className="btn-yellow" onClick={onRegisterClick}>ابدأ الآن</button>
-          </div>
-        </nav>
-
-        <div className="hero-body">
-          <div className="pill"><i className="ti ti-map-pin" style={{ fontSize: '14px' }}></i> نواكشوط، موريتانيا</div>
-          <h1 className="hero-title">
-            خدمات منزلية موثوقة<br />
-            <em>في متناول يدك</em>
+ 
+          <h1 className="hfx-hero-title" style={{ fontSize: '2.2rem', color: '#fff', fontWeight: '900', lineHeight: 1.2, marginBottom: '12px' }}>
+            {c.hero}
           </h1>
-          <p className="hero-fr">Des artisans qualifiés, disponibles rapidement</p>
-          <p className="hero-desc">نربطك بأفضل الحرفيين المعتمدين — سباكة، كهرباء، تنظيف وأكثر، بضغطة واحدة وبدون تعقيد.</p>
-          <div className="cta-row">
-            {/* توجيه العميل لبدء الخدمة أو التسجيل عبر النقر */}
-            <button className="btn-big btn-big-yellow" onClick={onRegisterClick}>🔧 اطلب خدمة الآن</button>
-            <button className="btn-big btn-big-white" onClick={onRegisterClick}>👷 أنا حرفي — انضم</button>
-          </div>
-          <div className="hero-stats">
-            <div className="stat"><div className="n">+200</div><div className="l">حرفي معتمد</div></div>
-            <div className="stat"><div className="n">+500</div><div className="l">طلب منجز</div></div>
-            <div className="stat"><div className="n">6</div><div className="l">خدمات متاحة</div></div>
-            <div className="stat"><div className="n">⭐ 4.8</div><div className="l">متوسط التقييم</div></div>
+ 
+          <p className="hfx-hero-desc" style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '25px', maxWidth: '450px', margin: '0 auto 25px' }}>
+            {c.heroDesc}
+          </p>
+ 
+          <div className="hfx-hero-btns" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', padding: '0 10px' }}>
+            <button className="hfx-btn-hero" onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+              🔧 {c.joinNow}
+            </button>
+            <button className="hfx-btn-hero" onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+              👷 {c.joinProvider}
+            </button>
           </div>
         </div>
-
-        <svg className="wave" viewBox="0 0 1440 70" preserveAspectRatio="none" style={{ height: '70px', display: 'block' }}>
-          <path d="M0,70 C360,0 1080,0 1440,70 L1440,70 L0,70 Z" fill="#ffffff" />
+ 
+        <svg viewBox="0 0 1440 60" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px', width: '100%' }} preserveAspectRatio="none">
+          <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#ffffff" />
         </svg>
-      </div>
-
-      {/* SERVICES SECTION */}
-      <section className="services">
-        <div className="tag">SERVICES · الخدمات</div>
-        <h2 className="sec-title"><span>?Vous-attendez Quoi</span></h2>
-        <p className="sec-sub">حرفيون متخصصون في 6 مجالات، جاهزون لحل مشاكلك بسرعة وااحترافية.</p>
-        <div className="srv-grid">
-          {services.map((srv, index) => (
-            <div key={index} className="srv-card" onClick={onRegisterClick}>
-              <div className="srv-icon" style={{ background: srv.bg }}>
-                <i className={`ti ${srv.icon}`} style={{ color: srv.color }}></i>
+      </section>
+ 
+      {/* ===== كيف يعمل ===== */}
+      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#fff' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+          HOW IT WORKS
+        </div>
+        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+          {c.howTitle}
+        </h2>
+ 
+        <div className="hfx-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '700px', margin: '0 auto' }}>
+          {[
+            { num: '١', title: c.step1Title, desc: c.step1Desc, icon: '💳' },
+            { num: '٢', title: c.step2Title, desc: c.step2Desc, icon: '📱' },
+            { num: '٣', title: c.step3Title, desc: c.step3Desc, icon: '🔧' }
+          ].map((step, i) => (
+            <div key={i} className="hfx-step-card" style={{ background: '#f8f9fa', borderRadius: '16px', padding: '20px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', border: '1px solid #eee' }}>
+              <span className="hfx-step-icon" style={{ fontSize: '2rem' }}>{step.icon}</span>
+              <div className="hfx-step-num" style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#006400', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', flexShrink: 0 }}>
+                {step.num}
               </div>
-              <div className="srv-ar">{srv.name}</div>
-              <div className="srv-fr">{srv.fr}</div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#333', margin: 0 }}>{step.title}</h3>
+              <p style={{ fontSize: '0.8rem', color: '#777', lineHeight: 1.5, margin: 0 }}>{step.desc}</p>
             </div>
           ))}
         </div>
       </section>
-
-      {/* HOW IT WORKS SECTION */}
-      <section className="how">
-        <div className="tag">COMMENT ÇA MARCHE · كيف يعمل</div>
-        <h2 className="sec-title">ثلاث خطوات <span>بسيطة</span></h2>
-        <div className="steps">
-          <div className="step">
-            <div className="step-num">١</div>
-            <div className="step-t">سجّل حسابك</div>
-            <div className="step-d">أنشئ حسابك كزبون أو كحرفي خلال دقيقة واحدة</div>
-            <div className="step-df">Créez votre compte en 1 minute</div>
-          </div>
-          <div className="step active">
-            <div className="step-num">٢</div>
-            <div className="step-t">اطلب الخدمة</div>
-            <div className="step-d">حدد نوع الخدمة وموقعك واشرح المشكلة ببساطة</div>
-            <div className="step-df">Décrivez votre besoin</div>
-          </div>
-          <div className="step">
-            <div className="step-num">٣</div>
-            <div className="step-t">انتظر الحرفي</div>
-            <div className="step-d">سيصلك حرفي متخصص في أقرب وقت ممكن</div>
-            <div className="step-df">Un artisan arrive chez vous</div>
-          </div>
+ 
+      {/* ===== الباقات ===== */}
+      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+          PACKAGES · الباقات
+        </div>
+        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+          {c.packagesTitle}
+        </h2>
+ 
+        <div className="hfx-pkg-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '950px', margin: '0 auto', padding: '0 5px' }}>
+          {c.packages.map((pkg, i) => (
+            <div key={i} style={{ border: `2px solid ${pkg.border}`, borderRadius: '20px', backgroundColor: pkg.color, position: 'relative', marginTop: '18px', boxShadow: '0 4px 15px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' }}>
+ 
+              {/* شارة */}
+              <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', backgroundColor: pkg.border, color: '#fff', padding: '4px 16px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                {pkg.badge}
+              </div>
+ 
+              {/* رأسية */}
+              <div style={{ padding: '20px', paddingTop: '28px', borderBottom: `2px solid ${pkg.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '2.2rem' }}>{pkg.icon}</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: pkg.border }}>{pkg.name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#666' }}>∞ {c.unlimited}</p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontSize: '1.6rem', fontWeight: '900', color: pkg.border, lineHeight: 1 }}>{pkg.price}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#888' }}>MRU/{c.perMonth}</div>
+                </div>
+              </div>
+ 
+              {/* التغطية */}
+              <div style={{ padding: '15px 18px', flex: 1 }}>
+                {pkg.items.map((item, j) => (
+                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ color: pkg.border, fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>✓</span>
+                    <span style={{ fontSize: '0.85rem', color: '#444', lineHeight: 1.4 }}>{item}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(0,0,0,0.04)', borderRadius: '8px', fontSize: '0.75rem', color: '#777', textAlign: 'center', borderTop: `1px dashed ${pkg.border}` }}>
+                  ⚠️ اليد العاملة فقط · Main d'œuvre uniquement
+                </div>
+              </div>
+ 
+              {/* الأزرار */}
+              <div style={{ padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button onClick={onRegisterClick} style={{ padding: '12px', backgroundColor: pkg.border, color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.95rem', cursor: 'pointer' }}>
+                  {c.register}
+                </button>
+                <button onClick={() => generatePdf(pkg)} style={{ padding: '10px', backgroundColor: 'transparent', border: `2px solid ${pkg.border}`, borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', color: pkg.border, cursor: 'pointer' }}>
+                  {c.downloadPdf}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
-
-      {/* WHY US SECTION */}
-      <section className="why">
-        <div style={{ textAlign: 'center' }}>
-          <div className="tag">POURQUOI NOUS · لماذا نحن</div>
-          <h2 className="sec-title">مزايا <span>تميّزنا</span></h2>
+ 
+      {/* ===== لماذا نحن ===== */}
+      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#fff' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+          WHY US · لماذا نحن
         </div>
-        <div className="why-grid">
-          <div className="why-card">
-            <div className="why-icon" style={{ background: '#E1F5EE' }}><i className="ti ti-shield-check" style={{ color: '#0F6E56' }}></i></div>
-            <div><div className="why-t">حرفيون موثوقون</div><div className="why-d">كل حرفي يمر بعملية تحقق قبل الانضمام — Artisans vérifiés</div></div>
-          </div>
-          <div className="why-card">
-            <div className="why-icon" style={{ background: '#FAEEDA' }}><i className="ti ti-clock" style={{ color: '#BA7517' }}></i></div>
-            <div><div className="why-t">استجابة سريعة</div><div className="why-d">نربطك بأقرب حرفي متاح في أسرع وقت — Réponse rapide</div></div>
-          </div>
-          <div className="why-card">
-            <div className="why-icon" style={{ background: '#E6F1FB' }}><i className="ti ti-star" style={{ color: '#185FA5' }}></i></div>
-            <div><div className="why-t">تقييمات حقيقية</div><div className="why-d">اختر حرفيك بناءً على تقييمات الزبائن — Avis authentiques</div></div>
-          </div>
-          <div className="why-card">
-            <div className="why-icon" style={{ background: '#FCEBEB' }}><i className="ti ti-device-mobile" style={{ color: '#A32D2D' }}></i></div>
-            <div><div className="why-t">سهل الاستخدام</div><div className="why-d">واجهة بسيطة تعمل على كل الأجهزة — Interface simple</div></div>
-          </div>
+        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+          {c.whyTitle}
+        </h2>
+ 
+        <div className="hfx-why-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', maxWidth: '700px', margin: '0 auto' }}>
+          {[
+            { icon: '🛡️', text: c.why1, bg: '#e8f5e9' },
+            { icon: '⚡', text: c.why2, bg: '#fff3e0' },
+            { icon: '∞', text: c.why3, bg: '#e3f2fd' },
+            { icon: '🏠', text: c.why4, bg: '#f3e5f5' }
+          ].map((w, i) => (
+            <div key={i} className="hfx-why-card" style={{ background: '#fff', borderRadius: '16px', padding: '20px 15px', boxShadow: '0 3px 10px rgba(0,0,0,0.06)', border: '1px solid #eee', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: w.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem' }}>
+                {w.icon}
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#444', fontWeight: '600', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>{w.text}</p>
+            </div>
+          ))}
         </div>
       </section>
-
-      {/* CTA SECTION */}
-      <section className="cta-sec">
-        <h2 className="cta-title">هل أنت مستعد؟</h2>
-        <p className="cta-sub">
-          انضم إلى مئات المستخدمين الذين يثقون في Le Plombier<br />
-          <span style={{ fontStyle: 'italic', fontSize: '14px' }}>Rejoignez nos utilisateurs satisfaits dès aujourd'hui</span>
+ 
+      {/* ===== CTA ===== */}
+      <section className="hfx-cta" style={{ background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)', padding: '50px 20px', textAlign: 'center' }}>
+        <h2 style={{ fontSize: '1.8rem', color: '#fff', fontWeight: '900', marginBottom: '10px' }}>
+          {lang === 'ar' ? 'هل أنت مستعد؟' : 'Prêt à commencer ?'}
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem', marginBottom: '25px' }}>
+          {lang === 'ar' ? 'انضم الآن واحمِ منزلك مع HomeFix' : 'Rejoignez HomeFix et protégez votre maison'}
         </p>
-        <div className="cta-btns">
-          <button className="btn-big btn-big-yellow" onClick={onRegisterClick}>🔧 اطلب خدمة الآن</button>
-          <button className="btn-big btn-big-white" onClick={onRegisterClick}>👷 انضم كحرفي</button>
+        <div className="hfx-cta-btns" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+            🔧 {c.joinNow}
+          </button>
+          <button onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+            👷 {c.joinProvider}
+          </button>
         </div>
       </section>
-      {/* نافذة تثبيت الموقع للآيفون */}
-      {showIosBanner && (
-        <div id="ios-install-banner" style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '400px', backgroundColor: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', borderRadius: '16px', padding: '16px', zIndex: 9999, direction: 'rtl', border: '1px solid #e5e5ea' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '48px', height: '48px', background: '#EF9F27', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2C2C2A' }}>
-                <i className="ti ti-tool" style={{ fontSize: '24px' }}></i>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <h4 style={{ margin: 0, fontSize: '16px', color: '#1c1c1e', fontWeight: '600' }}>تثبيت تطبيق Le Plombier</h4>
-                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8e8e93' }}>قم بإضافته للشاشة الرئيسية للوصول السريع</p>
-              </div>
-            </div>
-            <button onClick={closeIosBanner} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#8e8e93', cursor: 'pointer', padding: '0 4px' }}>&times;</button>
-          </div>
-          
-          <hr style={{ border: 0, borderTop: '1px solid #e5e5ea', margin: '12px 0' }} />
-          
-          <div style={{ fontSize: '14px', color: '#3a3a3c', lineHeight: '1.5', textAlign: 'right' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
-              <span style={{ backgroundColor: '#f2f2f7', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '12px', fontWeight: 'bold' }}>١</span>
-              <span>اضغط على زر"مشاركة" ⬆️ في أسفل المتصفح <img src="https://developer.apple.com/design/human-interface-guidelines/images/images-guide/icons/share_large_2x.png" width="16" style={{ verticalAlign: 'middle', margin: '0 4px' }} alt="share" /></span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ backgroundColor: '#f2f2f7', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '12px', fontWeight: 'bold' }}>٢</span>
-              <span>اختر **"إضافة إلى الشاشة الرئيسية"** من القائمة.</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FOOTER */}
-      <footer>
-        <div className="footer-logo">Le Plombier</div>
-        <div className="footer-sub">
-          نواكشوط، موريتانيا · Nouakchott, Mauritanie<br />
-          © 2026 <span>Le Plombier</span> · Tous droits réservés · جميع الحقوق محفوظة
-        </div>
+ 
+      {/* ===== FOOTER ===== */}
+      <footer style={{ backgroundColor: '#1a1a1a', padding: '25px 20px', textAlign: 'center' }}>
+        <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>🏠 {c.appName}</div>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>{c.city}</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>© 2026 {c.appName} · {c.footer}</p>
       </footer>
-
+ 
     </div>
   );
 }

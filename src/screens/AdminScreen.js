@@ -1,735 +1,1332 @@
-import React, { useState, useEffect } from 'react';
-
-const AdminScreen = ({ apiUrl, user, onLogout,  }) => {
-  const [allUsers, setAllUsers] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '../translations';
+ 
+export default function AdminScreen({ user, apiUrl, onLogout }) {
+  const [lang, setLang] = useState('ar');
+  const t = useTranslation(lang);
+  const [activeTab, setActiveTab] = useState('pending');
   const [subscriptions, setSubscriptions] = useState([]);
-  const [activeTab, setActiveTab] = useState('orders'); 
-  const [selectedImage, setSelectedImage] = useState(null); 
-  const [reports, setReports] = useState([]); // لتخزين الشكاوى الجلبة من السيرفر
-  const [allOrders, setAllOrders] = useState([]);
-const [ordersFilter, setOrdersFilter] = useState('all');
-
-  const getImageUrl = (url) => {
-    if (!url || typeof url !== 'string') return null;
-    if (url.startsWith('data:image')) return url;
-    if (!url.startsWith('http')) {
-      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
-      return `${apiUrl}/${cleanUrl}`;
-    }
-    return url;
-  };
-  const fetchAllOrders = async (status = 'all') => {
-    try {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-        };
-        const res = await fetch(`${apiUrl}/api/admin/all-orders?status=${status}`, { headers });
-        if (res.ok) {
-            const data = await res.json();
-            setAllOrders(data || []);
-        }
-    } catch (err) {
-        console.error("خطأ في جلب كل الطلبات:", err);
-    }
-};
-
-  const fetchAdminData = async () => {
-    try {
-      const headers = { 'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('userToken')}` // إضافة التوكن في الرأس
-      };
-      const resRequests = await fetch(`${apiUrl}/api/admin/pending-orders`, { headers });
-      const contentType = resRequests.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        const requestsData = await resRequests.json();
-       const onlyPending = requestsData.filter(req => req.status === 'waiting_admin');
-        setPendingRequests(onlyPending);
-      }
-
-      const resSubs = await fetch(`${apiUrl}/api/admin/subscriptions`, { headers });
-      if (resSubs.ok) {
-        const subsData = await resSubs.json();
-        setSubscriptions(subsData || []);
-      }
-      // 4. جلب الشكاوى والتقارير الجديدة
-      const resReports = await fetch(`${apiUrl}/api/admin/reports`, { headers });
-      if (resReports.ok) {
-        const reportsData = await resReports.json();
-        setReports(reportsData || []); // سيقوم بتخزين الشكاوى في الحالة التي أضفناها
-      }
-// 3. التحديث المطلوب هنا: جلب كل المستخدمين من المسار الصحيح ووضعهم في الحالة
-      const resUsers = await fetch(`${apiUrl}/api/admin/unverified-users`, { headers });
-      if (resUsers.ok) {
-        const usersData = await resUsers.json();
-        setAllUsers(usersData || []); // هنا سيتم تخزين الجميع (المفعل وغير المفعل)
-      }
-
-    } catch (err) {
-      console.error("خطأ في جلب بيانات الإدارة:", err);
-    }
-  };
-      
-
+ 
+  // البيانات
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [allRequests, setAllRequests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [earnings, setEarnings] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+ 
+  // البحث برمز العميل
+  const [clientCode, setClientCode] = useState('');
+  const [clientResult, setClientResult] = useState(null);
+  const [clientError, setClientError] = useState('');
+ 
+  // التسعير
+  const [price, setPrice] = useState('');
+  const [loading, setLoading] = useState(false);
+ 
+  // فلتر الطلبات
+  const [statusFilter, setStatusFilter] = useState('all');
+ 
+  const token = localStorage.getItem('userToken');
+ 
   useEffect(() => {
-    fetchAdminData();
+    fetchPendingRequests();
+    fetchAllRequests();
+    fetchUsers();
+    fetchEarnings();
+    fetchSubscriptions();
+    const interval = setInterval(() => {
+      fetchPendingRequests();
+      fetchAllRequests();
+      fetchSubscriptions();
+    }, 20000);
+    return () => clearInterval(interval);
   }, []);
- const handleVerifyUser = async (userId) => {
-  if (!window.confirm("هل تريد تفعيل هذا المستخدم؟")) return;
-  try {
-    const res = await fetch(`${apiUrl}/api/admin/verify-user/${userId}`, { method: 'PUT' ,
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}`,'Content-Type': 'application/json' }});
-    if (res.ok) {
-      // تحديث الحالة محلياً فوراً
-      setAllUsers(allUsers.map(u => u.id === userId ? { ...u, is_verified: true } : u));
-      alert("✅ تم التفعيل بنجاح");
-    }
-  } catch (err) { alert("خطأ في التفعيل"); }
-};
-
-  const handleOrderAction = async (id, action) => {
+ 
+  const fetchPendingRequests = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/admin/order-action/${id}`, {
+      const res = await fetch(`${apiUrl}/admin/requests/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setPendingRequests(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  const fetchAllRequests = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/requests/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setAllRequests(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setUsers(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  const fetchSubscriptions = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/subscriptions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setSubscriptions(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  const fetchEarnings = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/earnings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setEarnings(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  // تسعير الطلب ونشره
+  const handleQuote = async (requestId) => {
+    if (!price || isNaN(price) || parseInt(price) <= 0) {
+      alert(lang === 'ar' ? 'يرجى إدخال سعر صحيح' : 'Veuillez entrer un prix valide');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/admin/requests/${requestId}/quote`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' ,'Authorization': `Bearer ${localStorage.getItem('userToken')}`},
-        body: JSON.stringify({ action })
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quoted_price: parseInt(price) })
       });
       if (res.ok) {
-        setPendingRequests(pendingRequests.filter(r => r.id !== id));
-        alert(action === 'approve' ? "✅ تم نشر الطلب بنجاح" : "🗑️ تم حذف الطلب");
+        alert(lang === 'ar' ? '✅ تم نشر الطلب للفنيين' : '✅ Demande publiée aux techniciens');
+        setPrice('');
+        setSelectedRequest(null);
+        fetchPendingRequests();
+        fetchAllRequests();
       }
-    } catch (err) { alert("فشل في معالجة الطلب"); }
-  };
-  const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
-    try {
-        const res = await fetch(`${apiUrl}/api/orders/${orderId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-        });
-        if (res.ok) {
-            setAllOrders(allOrders.filter(o => o.id !== orderId));
-            alert("✅ تم حذف الطلب بنجاح");
-        } else {
-            const data = await res.json();
-            alert(`❌ ${data.error}`);
-        }
     } catch (err) {
-        alert("خطأ في الاتصال بالسيرفر");
+      alert(t.serverError);
+    } finally {
+      setLoading(false);
     }
-};
-
-  const handleVerifySub = async (subId, userId, role, action) => {
+  };
+ 
+  // رفض وحذف طلب
+  const handleReject = async (requestId) => {
+    if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذا الطلب؟' : 'Voulez-vous supprimer cette demande ?')) return;
     try {
-      const res = await fetch(`${apiUrl}/api/admin/verify-sub`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' ,'Authorization':`Bearer ${localStorage.getItem('userToken')}` },
-        body: JSON.stringify({ subId, userId, role, action })
+      await fetch(`${apiUrl}/admin/requests/${requestId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setSelectedRequest(null);
+      fetchPendingRequests();
+      fetchAllRequests();
+    } catch (err) {}
+  };
+ 
+  // تفعيل مستخدم
+  const handleVerify = async (userId) => {
+    try {
+      await fetch(`${apiUrl}/admin/users/${userId}/verify`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchUsers();
+    } catch (err) {}
+  };
+ 
+  // حظر/رفع حظر
+  const handleBan = async (userId, isBanned) => {
+    try {
+      await fetch(`${apiUrl}/admin/users/${userId}/ban`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_banned: !isBanned })
+      });
+      fetchUsers();
+      setSelectedUser(null);
+    } catch (err) {}
+  };
+ 
+  // تفعيل اشتراك زبون
+  const handleSubscribe = async (userId, packageId) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/admin/users/${userId}/subscribe`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package_id: packageId })
       });
       if (res.ok) {
-        setSubscriptions(subscriptions.filter(s => s.id !== subId));
-        alert(action === 'accept' ? "✅ تم تفعيل الاشتراك بنجاح" : "❌ تم رفض الإثبات");
+        alert(lang === 'ar' ? '✅ تم تفعيل الاشتراك' : '✅ Abonnement activé');
+        fetchUsers();
+        setSelectedUser(null);
       }
-    } catch (err) { alert("خطأ في تحديث الاشتراك"); }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setLoading(false);
+    }
   };
-const handleToggleBan = async (userId, currentStatus) => {
-  const actionText = currentStatus ? "رفع الحظر عن" : "حظر";
-  if (!window.confirm(`⚠️ هل أنت متأكد من ${actionText} هذا المستخدم؟`)) return;
-
-  try {
-    const res = await fetch(`${apiUrl}/api/admin/ban/${userId}`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-      },
-      body: JSON.stringify({ is_banned: !currentStatus }) // هنا المفتاح: نرسل عكس الحالة الحالية
-    });
-
-    if (res.ok) {
-      alert(`✅ تم ${actionText} المستخدم بنجاح`);
-      fetchAdminData(); // تحديث القائمة فوراً
+ 
+  // قبول/رفض طلب اشتراك
+  const handleSubAction = async (subId, action, userId, packageId) => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/subscriptions/${subId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, user_id: userId, package_id: packageId })
+      });
+      if (res.ok) {
+        if (action === 'approve') {
+          alert(lang === 'ar' ? '✅ تم تفعيل الاشتراك بنجاح' : '✅ Abonnement activé');
+        } else {
+          alert(lang === 'ar' ? 'تم رفض طلب الاشتراك' : 'Demande rejetée');
+        }
+        fetchSubscriptions();
+        fetchUsers();
+      }
+    } catch (err) {
+      alert(t.serverError);
     }
-  } catch (err) { 
-    alert("خطأ في العملية"); 
-  }
-};
-const handleIgnoreReport = async (reportId) => {
-  if (!window.confirm("هل أنت متأكد من تجاهل هذه الشكوى؟ سيتم اعتبارها منتهية.")) return;
-  try {
-    const res = await fetch(`${apiUrl}/api/admin/reports/${reportId}`, {
-      method: 'DELETE', // أو PUT حسب تفضيلك في السيرفر
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-    });
-    if (res.ok) {
-      // تحديث الحالة محلياً لحذف الشكوى من القائمة أمامك فوراً
-      setReports(reports.filter(r => r.id !== reportId));
-      alert("✅ تم تجاهل الشكوى بنجاح");
-    }
-  } catch (err) {
-    alert("خطأ في الاتصال بالسيرفر");
-  }
-};
-const handleResetPassword = async (userId, userPhone) => {
-  const newPassword = window.prompt(`أدخل كلمة المرور الجديدة للمستخدم صاحب الرقم: ${userPhone}`);
-  
-  if (!newPassword || newPassword.length < 6) {
-    alert("❌ يجب أن تكون كلمة المرور 6 أحرف على الأقل");
-    return;
-  }
-
-  try {
-    // 1. أضفنا /api/ للمسار ليتطابق مع السيرفر الذي أرسلته (app.post('/api/admin/...'))
-    const res = await fetch(`${apiUrl}/api/admin/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' ,'Authorization': `Bearer ${localStorage.getItem('userToken')}`},
-      body: JSON.stringify({ 
-        phone: userPhone, 
-        newPassword: newPassword // نرسلها باسم newPassword لتطابق السيرفر المصلح
-      })
-    });
-
-    if (res.ok) {
-      alert("✅ تم تغيير كلمة المرور بنجاح وسيصل إشعار للمستخدم");
-    } else {
+  };
+ 
+  // صرف مستحقات فني
+  const handlePay = async (earningId) => {
+    try {
+      await fetch(`${apiUrl}/admin/earnings/${earningId}/pay`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      alert(lang === 'ar' ? '✅ تم تسجيل الدفع' : '✅ Paiement enregistré');
+      fetchEarnings();
+    } catch (err) {}
+  };
+ 
+  // البحث برمز العميل
+  const handleClientSearch = async () => {
+    if (!clientCode.trim()) return;
+    setClientError('');
+    setClientResult(null);
+    try {
+      const res = await fetch(`${apiUrl}/admin/client/${clientCode.trim()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
-      alert(`❌ فشل التغيير: ${data.error}`);
+      if (res.ok) {
+        setClientResult(data);
+      } else {
+        setClientError(t.clientNotFound);
+      }
+    } catch (err) {
+      setClientError(t.serverError);
     }
-  } catch (err) {
-    console.error("Connection Error:", err);
-    alert("❌ خطأ في الاتصال بالسيرفر: تأكد من تشغيل السيرفر ومن صحة الرابط");
-  }
-};
+  };
+ 
+  const getStatusStyle = (status) => {
+    const map = {
+      pending_admin: { bg: '#fff3cd', color: '#856404' },
+      quoted: { bg: '#d1ecf1', color: '#0c5460' },
+      assigned: { bg: '#d4edda', color: '#155724' },
+      completed: { bg: '#e2e3e5', color: '#383d41' }
+    };
+    return map[status] || { bg: '#f8f9fa', color: '#333' };
+  };
+ 
+  const filteredRequests = statusFilter === 'all'
+    ? allRequests
+    : allRequests.filter(r => r.status === statusFilter);
+ 
+  const customers = users.filter(u => u.user_role === 'customer');
+  const providers = users.filter(u => u.user_role === 'provider');
+ 
   return (
-    <div style={styles.adminContainer}>
-      {/* النافذة المنبثقة المحسنة لعرض الصور */}
-      {selectedImage && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedImage(null)}>
-          {/* زر إغلاق علوي عائم */}
-          <button style={styles.topCloseBtn} onClick={() => setSelectedImage(null)}>✕</button>
-          
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <img 
-              src={getImageUrl(selectedImage)} 
-              style={styles.fullImg} 
-              alt="Preview" 
-            />
-            {/* زر إغلاق سفلي واضح */}
-            <button style={styles.bottomCloseBtn} onClick={() => setSelectedImage(null)}>
-              إغلاق المعاينة ↩️
-            </button>
+    <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+ 
+      {/* مودال تفاصيل الطلب */}
+      {selectedRequest && (
+        <div style={s.overlay}>
+          <div style={s.modal}>
+            <button style={s.closeBtn} onClick={() => { setSelectedRequest(null); setPrice(''); }}>✕</button>
+ 
+            <h3 style={s.modalTitle}>
+              {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {selectedRequest.id}
+            </h3>
+ 
+            {/* بيانات الزبون */}
+            <div style={s.infoBox}>
+              <p style={s.infoLabel}>{lang === 'ar' ? '👤 الزبون:' : '👤 Client:'}</p>
+              <p style={s.infoValue}>{selectedRequest.customer_name}</p>
+              <p style={s.infoValue}>📞 {selectedRequest.customer_phone}</p>
+              <p style={s.infoValue}>🏷️ {selectedRequest.client_code}</p>
+              <p style={s.infoValue}>📍 {selectedRequest.district} — {selectedRequest.address}</p>
+            </div>
+ 
+            {/* الصورة */}
+            {selectedRequest.image_url && (
+              <img
+                src={selectedRequest.image_url}
+                alt="problem"
+                style={s.modalImg}
+                onClick={() => window.open(selectedRequest.image_url, '_blank')}
+              />
+            )}
+ 
+            {/* الوصف الصوتي */}
+            {selectedRequest.voice_note_url && (
+              <div style={s.voiceBox}>
+                <p style={s.voiceLabel}>🎙 {lang === 'ar' ? 'الوصف الصوتي:' : 'Note vocale:'}</p>
+                <audio controls src={selectedRequest.voice_note_url} style={{ width: '100%' }} />
+              </div>
+            )}
+ 
+            {/* الوصف النصي */}
+            {selectedRequest.description && (
+              <div style={s.infoBox}>
+                <p style={s.infoLabel}>{lang === 'ar' ? '📝 الوصف:' : '📝 Description:'}</p>
+                <p style={s.infoValue}>{selectedRequest.description}</p>
+              </div>
+            )}
+ 
+            {/* بيانات الفني إذا كان مسنداً */}
+            {selectedRequest.provider_name && (
+              <div style={{ ...s.infoBox, backgroundColor: '#d4edda', border: '1px solid #c3e6cb' }}>
+                <p style={{ ...s.infoLabel, color: '#155724' }}>
+                  {lang === 'ar' ? '👷 الفني المسؤول:' : '👷 Technicien:'}
+                </p>
+                <p style={s.infoValue}>{selectedRequest.provider_name}</p>
+                <a href={`tel:${selectedRequest.provider_phone}`} style={s.callBtn}>
+                  📞 {selectedRequest.provider_phone}
+                </a>
+              </div>
+            )}
+ 
+            {/* حالة الطلب */}
+            {(() => {
+              const st = getStatusStyle(selectedRequest.status);
+              return (
+                <div style={{ ...s.statusBox, backgroundColor: st.bg, borderColor: st.color }}>
+                  {t[`status_${selectedRequest.status}`]}
+                </div>
+              );
+            })()}
+ 
+            {/* السعر المحدد */}
+            {selectedRequest.quoted_price && (
+              <div style={s.priceBox}>
+                {lang === 'ar' ? 'السعر:' : 'Prix:'} <strong>{selectedRequest.quoted_price} MRU</strong>
+              </div>
+            )}
+ 
+            {/* تسعير الطلب — فقط للطلبات الواردة */}
+            {selectedRequest.status === 'pending_admin' && (
+              <div style={s.quoteSection}>
+                <p style={s.sectionLabel}>{t.setPrice}</p>
+                <input
+                  style={s.priceInput}
+                  type="number"
+                  placeholder={t.pricePlaceholder}
+                  value={price}
+                  onChange={e => setPrice(e.target.value)}
+                />
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    style={{ ...s.btnDanger, flex: 1 }}
+                    onClick={() => handleReject(selectedRequest.id)}
+                  >
+                    {t.rejectRequest}
+                  </button>
+                  <button
+                    style={{ ...s.btnSuccess, flex: 2, opacity: loading ? 0.7 : 1 }}
+                    onClick={() => handleQuote(selectedRequest.id)}
+                    disabled={loading}
+                  >
+                    {loading ? '...' : t.publishRequest}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      <header style={styles.adminHeader}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <button onClick={onLogout} style={styles.logoutBtn}>تسجيل الخروج 🚪</button>
-          <h1 style={{ margin: 0, color: '#006400', fontSize: '22px' }}>لوحة التحكم 🛡️ Le Plombier</h1>
-          <div style={{ width: '100px' }}></div> 
-        </div>
-        
-        <div style={styles.tabBar}>
-          <button onClick={() => setActiveTab('orders')} style={activeTab === 'orders' ? styles.activeTabBtn : styles.tabBtn}>
-            📝 طلبات الخدمات ({pendingRequests.length})
-          </button>
-          <button onClick={() => setActiveTab('subs')} style={activeTab === 'subs' ? styles.activeTabBtn : styles.tabBtn}>
-            💳 مراجعة الدفع ({subscriptions.length})
-          </button>
-          <button onClick={() => setActiveTab('users')} style={activeTab === 'users' ? styles.activeTabBtn : styles.tabBtn}>
-            👥 المستخدمين
-          </button>
-          <button onClick={() => setActiveTab('reports')} style={activeTab === 'reports' ? styles.activeTabBtn : styles.tabBtn}>
-            🚩 الشكاوى ({reports.length})
-          </button>
-          <button 
-             onClick={() => { setActiveTab('allOrders'); fetchAllOrders('all'); }} 
-           style={activeTab === 'allOrders' ? styles.activeTabBtn : styles.tabBtn}
->
-    📊 متابعة الطلبات
-</button>
-        </div>
-      </header>
-
-      <div style={styles.contentSection}>
-        {activeTab === 'orders' && (
-          <div style={styles.listSection}>
-            {pendingRequests.length === 0 ? <p style={styles.emptyMsg}>لا توجد طلبات جديدة بانتظار المراجعة</p> : 
-              pendingRequests.map(req => (
-                <div key={req.id} style={styles.adminCard}>
-                  <div style={styles.cardHeader}>
-                    <span style={styles.badge}>{req.service_type}</span>
-                    <small>{new Date(req.created_at).toLocaleDateString()}</small>
-                  </div>
-                  <p><strong>الوصف:</strong> {req.description}</p>
-
-                  {/* إضافة حقل الموقع الجديد بشكل بارز للآدمين */}
-<p style={{ 
-  marginBottom: '15px', 
-  padding: '10px', 
-  backgroundColor: '#fff9c4', 
-  borderRadius: '8px', 
-  border: '1px solid #fbc02d',
-  color: '#333' 
-}}>
-  <strong>📍 الموقع:</strong> {req.location || "لم يتم تحديد موقع"}
-</p>
-                  
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
-                    {req.image_url ? (
-                      <button 
-                        onClick={() => setSelectedImage(req.image_url)} 
-                        style={{...styles.viewImgBtn, flex: 1, backgroundColor: '#e3f2fd', borderColor: '#2196f3'}}>
-                        👁️ معاينة صورة المشكلة
-                      </button>
-                    ) : <span style={{fontSize: '11px', color: '#999'}}>بدون صورة مشكلة</span>}
-
-                    {req.payment_proof ? (
-                      <button 
-                        onClick={() => setSelectedImage(req.payment_proof)} 
-                        style={{...styles.viewImgBtn, flex: 1, backgroundColor: '#e8f5e9', borderColor: '#4caf50'}}>
-                        💰 معاينة إثبات الدفع
-                      </button>
-                    ) : <span style={{fontSize: '11px', color: '#999'}}>بدون إثبات دفع</span>}
-                  </div>
-
-                  <div style={styles.cardActions}>
-                    <button onClick={() => handleOrderAction(req.id, 'approve')} style={styles.activateBtn}>نشر الطلب ✅</button>
-                    <button onClick={() => handleOrderAction(req.id, 'reject')} style={styles.deleteBtn}>حذف 🗑️</button>
-                  </div>
+ 
+      {/* مودال تفاصيل المستخدم */}
+      {selectedUser && (
+        <div style={s.overlay}>
+          <div style={s.modal}>
+            <button style={s.closeBtn} onClick={() => setSelectedUser(null)}>✕</button>
+ 
+            <h3 style={s.modalTitle}>{selectedUser.full_name}</h3>
+ 
+            <div style={s.infoBox}>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{t.phone}:</span>
+                <span style={s.infoValue}>{selectedUser.phone}</span>
+              </div>
+              <div style={s.infoRow}>
+                <span style={s.infoLabel}>{lang === 'ar' ? 'الدور:' : 'Rôle:'}</span>
+                <span style={s.infoValue}>{selectedUser.user_role}</span>
+              </div>
+              {selectedUser.district && (
+                <div style={s.infoRow}>
+                  <span style={s.infoLabel}>{t.district}:</span>
+                  <span style={s.infoValue}>{selectedUser.district}</span>
                 </div>
-              ))
-            }
-          </div>
-        )}
-
-        {activeTab === 'subs' && (
-          <div style={styles.listSection}>
-            {subscriptions.length === 0 ? <p style={styles.emptyMsg}>لا توجد اشتراكات بانتظار التأكيد</p> : 
-              subscriptions.map(sub => (
-                <div key={sub.id} style={styles.adminCard}>
-                  <div style={styles.cardHeader}>
-                    <span style={{...styles.badge, backgroundColor: sub.user_role === 'provider' ? '#e3f2fd' : '#f3e5f5', color: '#333'}}>
-                      {sub.user_role === 'provider' ? '🛠️ اشتراك مزود' : '👤 اشتراك زبون'}
-                    </span>
-                    <strong>{sub.full_name}</strong>
-                  </div>
-                  <p>رقم العملية: {sub.transaction_id}</p>
-                  
-                  {sub.proof_url || sub.image_url ? (
-                    <button onClick={() => setSelectedImage(sub.proof_url || sub.image_url)} style={styles.viewImgBtn}>👁️ معاينة إثبات الدفع</button>
-                  ) : <p style={{color: 'red', fontSize: '12px'}}>لا يوجد ملف إثبات!</p>}
-
-                  <div style={styles.cardActions}>
-                    <button onClick={() => handleVerifySub(sub.id, sub.user_id, sub.user_role, 'accept')} style={styles.activateBtn}>تفعيل 💰</button>
-                    <button onClick={() => handleVerifySub(sub.id, sub.user_id, sub.user_role, 'reject')} style={styles.deleteBtn}>رفض ❌</button>
-                  </div>
+              )}
+              {selectedUser.bank_type && (
+                <div style={s.infoRow}>
+                  <span style={s.infoLabel}>{t.bankType}:</span>
+                  <span style={s.infoValue}>{selectedUser.bank_type} — {selectedUser.bank_phone}</span>
                 </div>
-              ))
-            }
-          </div>
-        )}
-
-{activeTab === 'users' && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.userTable}>
-              <thead>
-                <tr style={{ background: '#eee' }}>
-                  <th>الاسم</th><th>الهاتف</th><th>النوع</th><th>المميزات</th><th>الإجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allUsers.map(u => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '10px' }}>{u.full_name}</td>
-                    <td>{u.phone}</td>
-                    <td>{u.user_role === 'provider' ? 'مقدم خدمة' : 'زبون'}</td>
-                    <td>{u.is_premium || u.is_subscribed ? '✅ مفعل' : '❌ عادي'}</td>
-                    {/* ابحث عن هذه الخلية وحدث ما بداخلها */}
-<td>
-  {u.is_verified ? (
-    <span style={{color: 'green', fontWeight: 'bold'}}>مفعل ✅</span>
-  ) : (
-    <button 
-      onClick={() => handleVerifyUser(u.id)} 
-      style={{ background: '#2980b9', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-    >
-      تفعيل الآن 🔓
-    </button>
-  )}
-</td>
-   <td><button onClick={() => handleResetPassword(u.id, u.phone)}
-                                    style={styles.keyBtn}
-                                    title="تغيير كلمة المرور"
-                                >
-                                    🔑</button>
-                                    
-   </td>
-   {/* داخل الـ Map الخاص بـ allUsers */}
-<button 
-  onClick={() => handleToggleBan(u.id, u.is_banned)} 
-  style={{
-    ...styles.keyBtn, 
-    backgroundColor: u.is_banned ? '#27ae60' : '#c0392b', // أخضر إذا كان محظوراً (لفك الحظر)، أحمر للحظر
-    marginRight: '5px'
-  }} 
-  title={u.is_banned ? "فك الحظر" : "حظر المستخدم"}
->
-  {u.is_banned ? "🔓" : "🚫"}
-</button>
- </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {activeTab === 'reports' && (
-          <div style={styles.listSection}>
-            {reports.length === 0 ? <p style={styles.emptyMsg}>لا توجد شكاوى حالياً</p> : 
-              reports.map(report => (
-                <div key={report.id} style={{...styles.adminCard, borderRight: '5px solid #e74c3c'}}>
-                  <div style={styles.cardHeader}>
-                    <strong>شكوى بخصوص الطلب #{report.order_id}</strong>
-                    <small>{new Date(report.created_at).toLocaleString('ar-EG')}</small>
-                  </div>
-                  <p><strong>المُشتكي:</strong> {report.reporter_name} (رقم: {report.reporter_phone})</p>
-                  <p><strong>المُشتكى عليه:</strong> <span style={{color: '#d32f2f'}}>{report.reported_name}</span></p>
-                  <div style={{ backgroundColor: '#fff5f5', padding: '10px', borderRadius: '8px', marginTop: '10px' }}>
-                    <strong>سبب الشكوى:</strong> {report.reason}
-                  </div>
-                  <div style={styles.cardActions}>
-<button 
-  onClick={() => handleToggleBan(report.reported_user_id, report.is_banned)} 
-  style={{
-    ...styles.deleteBtn, 
-    backgroundColor: report.is_banned ? '#27ae60' : '#e74c3c'
-  }}
->
-  {report.is_banned ? "رفع الحظر عن المستخدم 🔓" : "حظر المُشتكى عليه 🚫"}
-</button>
-<button 
-  onClick={() => handleIgnoreReport(report.id)} 
-  style={{...styles.activateBtn, backgroundColor: '#7f8c8d'}}
->
-  تجاهل 👁️
-</button>
-                  </div>
+              )}
+            </div>
+ 
+            {/* تفعيل اشتراك الزبون */}
+            {selectedUser.user_role === 'customer' && (
+              <div style={s.subSection}>
+                <p style={s.sectionLabel}>{t.activateSubscription}</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 1, label: lang === 'ar' ? 'الأساسية — 1100' : 'Essentiel — 1100' },
+                    { id: 2, label: lang === 'ar' ? 'المتوسطة — 1300' : 'Standard — 1300' },
+                    { id: 3, label: lang === 'ar' ? 'الشاملة — 1500' : 'Intégral — 1500' }
+                  ].map(pkg => (
+                    <button
+                      key={pkg.id}
+                      style={{ ...s.pkgBtn, opacity: loading ? 0.7 : 1 }}
+                      onClick={() => handleSubscribe(selectedUser.id, pkg.id)}
+                      disabled={loading}
+                    >
+                      {pkg.label} MRU
+                    </button>
+                  ))}
                 </div>
-              ))
-            }
-          </div>
-        )}
-{activeTab === 'allOrders' && (
-    <div style={styles.listSection}>
-
-        {/* شريط الفلترة */}
-        <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            flexWrap: 'wrap', 
-            marginBottom: '15px',
-            justifyContent: 'center'
-        }}>
-            {[
-                { value: 'all',           label: '📋 الكل' },
-                { value: 'pending',       label: '🟡 بانتظار فني' },
-                { value: 'negotiating',   label: '🔵 تفاوض' },
-                { value: 'in_progress',   label: '🟠 قيد التنفيذ' },
-                { value: 'completed',     label: '🟢 مكتمل' },
-                { value: 'waiting_admin', label: '🔴 بانتظار الإدارة' },
-            ].map(f => (
+              </div>
+            )}
+ 
+            {/* أزرار الإجراء */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              {!selectedUser.is_verified && (
                 <button
-                    key={f.value}
-                    onClick={() => { 
-                        setOrdersFilter(f.value); 
-                        fetchAllOrders(f.value); 
-                    }}
-                    style={{
-                        padding: '7px 13px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        fontSize: '12px',
-                        backgroundColor: ordersFilter === f.value ? '#006400' : '#eee',
-                        color: ordersFilter === f.value ? '#fff' : '#333',
-                    }}
+                  style={{ ...s.btnSuccess, flex: 1 }}
+                  onClick={() => { handleVerify(selectedUser.id); setSelectedUser(null); }}
                 >
-                    {f.label}
+                  {t.activateUser}
                 </button>
-            ))}
+              )}
+              <button
+                style={{
+                  ...s.btnDanger,
+                  flex: 1,
+                  color: selectedUser.is_banned ? '#006400' : '#dc3545',
+                  borderColor: selectedUser.is_banned ? '#006400' : '#dc3545'
+                }}
+                onClick={() => handleBan(selectedUser.id, selectedUser.is_banned)}
+              >
+                {selectedUser.is_banned ? t.unbanUser : t.banUser}
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* عداد النتائج */}
-        <p style={{ textAlign: 'center', color: '#888', fontSize: '13px', margin: '0 0 10px' }}>
-            إجمالي النتائج: <strong>{allOrders.length}</strong> طلب
-        </p>
-
-        {/* قائمة الطلبات */}
-        {allOrders.length === 0 ? (
-            <p style={styles.emptyMsg}>لا توجد طلبات في هذه الفئة</p>
-        ) : (
-            allOrders.map(order => {
-
-                // تحديد لون ونص الحالة
-                const statusConfig = {
-                    pending:       { color: '#f39c12', bg: '#fff8e1', label: '🟡 بانتظار فني' },
-                    negotiating:   { color: '#2980b9', bg: '#e3f2fd', label: '🔵 جاري التفاوض' },
-                    in_progress:   { color: '#e67e22', bg: '#fff3e0', label: '🟠 قيد التنفيذ' },
-                    completed:     { color: '#27ae60', bg: '#e8f5e9', label: '🟢 مكتمل' },
-                    waiting_admin: { color: '#e74c3c', bg: '#ffebee', label: '🔴 بانتظار الإدارة' },
-                };
-                const s = statusConfig[order.request_status] || { color: '#888', bg: '#f5f5f5', label: order.request_status };
-
-                return (
-                    <div key={order.id} style={{
-                        ...styles.adminCard,
-                        borderRight: `5px solid ${s.color}`,
-                    }}>
-                        {/* رأس البطاقة: رقم الطلب + الحالة */}
-                        <div style={styles.cardHeader}>
-                            <span style={{ fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
-                                طلب رقم #{order.id}
-                            </span>
-                            <span style={{
-                                padding: '4px 10px',
-                                borderRadius: '12px',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                backgroundColor: s.bg,
-                                color: s.color,
-                            }}>
-                                {s.label}
-                            </span>
-                        </div>
-
-                        {/* نوع الخدمة والتاريخ */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                            <span style={styles.badge}>{order.service_type}</span>
-                            <small style={{ color: '#999' }}>
-                                {new Date(order.created_at).toLocaleDateString('ar-EG')}
-                            </small>
-                        </div>
-
-                        {/* بيانات الزبون */}
-                        <div style={{ 
-                            backgroundColor: '#f9f9f9', 
-                            padding: '10px', 
-                            borderRadius: '8px', 
-                            marginBottom: '8px' 
-                        }}>
-                            <p style={{ margin: '0 0 4px', fontSize: '13px' }}>
-                                <strong>👤 الزبون:</strong> {order.customer_name}
-                            </p>
-                            <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>
-                                <strong>📞</strong> {order.customer_phone}
-                            </p>
-                        </div>
-
-                        {/* بيانات مقدم الخدمة */}
-                        <div style={{ 
-                            backgroundColor: order.provider_name ? '#e8f5e9' : '#fff3e0', 
-                            padding: '10px', 
-                            borderRadius: '8px', 
-                            marginBottom: '8px' 
-                        }}>
-                            <p style={{ margin: '0 0 4px', fontSize: '13px' }}>
-                                <strong>🛠️ مقدم الخدمة:</strong>{' '}
-                                {order.provider_name 
-                                    ? order.provider_name 
-                                    : <span style={{ color: '#e67e22' }}>لم يُقبل الطلب بعد</span>
-                                }
-                            </p>
-                            {order.provider_phone && (
-                                <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>
-                                    <strong>📞</strong> {order.provider_phone}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* الوصف */}
-                        <p style={{ 
-                            fontSize: '13px', 
-                            color: '#555', 
-                            margin: '8px 0',
-                            backgroundColor: '#fafafa',
-                            padding: '8px',
-                            borderRadius: '8px'
-                        }}>
-                            <strong>📝 الوصف:</strong> {order.description}
-                        </p>
-
-                        {/* الموقع */}
-                        {order.location && (
-                            <p style={{ 
-                                fontSize: '13px', 
-                                color: '#333', 
-                                margin: '8px 0',
-                                backgroundColor: '#fff9c4',
-                                padding: '8px',
-                                borderRadius: '8px',
-                                border: '1px solid #fbc02d'
-                            }}>
-                                <strong>📍 الموقع:</strong> {order.location}
-                            </p>
-                        )}
-
-                        {/* وسيلة الدفع */}
-                        <p style={{ fontSize: '12px', color: '#888', margin: '5px 0 0' }}>
-                            <strong>💳 الدفع:</strong> {order.payment_method || 'غير محدد'}
-                        </p>
-                        {(order.request_status === 'completed' || order.request_status === 'waiting_admin' || order.request_status === 'pending') && (
-    <button
-        onClick={() => handleDeleteOrder(order.id)}
-        style={{
-            marginTop: '10px',
-            width: '100%',
-            padding: '8px',
-            backgroundColor: '#e74c3c',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '13px'
-        }}
-    >
-        🗑️ حذف الطلب
-    </button>
-)}
-
+      )}
+ 
+      <main style={s.main}>
+ 
+        {/* ===== رأسية الإدارة ===== */}
+        <div style={s.adminHeader}>
+          <div>
+            <h2 style={s.headerTitle}>{t.dashboard}</h2>
+            <p style={s.headerSub}>
+              {lang === 'ar' ? `مرحباً ${user?.full_name}` : `Bienvenue ${user?.full_name}`}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
+              {lang === 'ar' ? 'FR' : 'AR'}
+            </button>
+            <button onClick={onLogout} style={s.logoutBtn}>
+              {lang === 'ar' ? 'خروج' : 'Exit'}
+            </button>
+          </div>
+        </div>
+ 
+        {/* إحصائيات سريعة */}
+        <div style={s.statsRow}>
+          <div style={s.statCard}>
+            <span style={s.statNum}>{pendingRequests.length}</span>
+            <span style={s.statLabel}>{lang === 'ar' ? 'طلبات واردة' : 'En attente'}</span>
+          </div>
+          <div style={s.statCard}>
+            <span style={s.statNum}>{allRequests.filter(r => r.status === 'assigned').length}</span>
+            <span style={s.statLabel}>{lang === 'ar' ? 'قيد التنفيذ' : 'En cours'}</span>
+          </div>
+          <div style={s.statCard}>
+            <span style={s.statNum}>{allRequests.filter(r => r.status === 'completed').length}</span>
+            <span style={s.statLabel}>{lang === 'ar' ? 'منتهية' : 'Terminées'}</span>
+          </div>
+          <div style={s.statCard}>
+            <span style={s.statNum}>{subscriptions.length}</span>
+            <span style={s.statLabel}>{lang === 'ar' ? 'اشتراكات' : 'Abonnements'}</span>
+          </div>
+        </div>
+ 
+        <div style={s.screen}>
+ 
+          {/* ===== التبويبات — شبكة بطاقات ===== */}
+          <div style={s.menuGrid}>
+            {[
+              { id: 'pending', icon: '📥', label: lang === 'ar' ? 'الواردة' : 'Reçues', color: '#fff3cd', border: '#ffc107', count: pendingRequests.length },
+              { id: 'all', icon: '📋', label: lang === 'ar' ? 'كل الطلبات' : 'Tout', color: '#d1ecf1', border: '#17a2b8', count: null },
+              { id: 'users', icon: '👥', label: lang === 'ar' ? 'المستخدمون' : 'Utilisateurs', color: '#d4edda', border: '#28a745', count: users.length },
+              { id: 'earnings', icon: '💰', label: lang === 'ar' ? 'المستحقات' : 'Revenus', color: '#e8f5e9', border: '#006400', count: earnings.length },
+              { id: 'subscriptions', icon: '💳', label: lang === 'ar' ? 'الاشتراكات' : 'Abonnements', color: '#fce4ec', border: '#e91e63', count: subscriptions.length },
+              { id: 'search', icon: '🔍', label: lang === 'ar' ? 'بحث بالرمز' : 'Recherche', color: '#e8eaf6', border: '#1a237e', count: null },
+            ].map(tab => (
+              <div
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  ...s.menuCard,
+                  backgroundColor: activeTab === tab.id ? tab.border : tab.color,
+                  borderColor: tab.border,
+                  transform: activeTab === tab.id ? 'scale(0.97)' : 'scale(1)'
+                }}
+              >
+                {tab.count > 0 && (
+                  <div style={s.menuBadge}>{tab.count}</div>
+                )}
+                <span style={{ fontSize: '2rem', marginBottom: '8px' }}>{tab.icon}</span>
+                <span style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 'bold',
+                  color: activeTab === tab.id ? '#fff' : '#333',
+                  textAlign: 'center'
+                }}>
+                  {tab.label}
+                </span>
+              </div>
+            ))}
+          </div>
+ 
+          {/* ===== الطلبات الواردة ===== */}
+          {activeTab === 'pending' && (
+            <div>
+              {pendingRequests.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>📭</span>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا توجد طلبات واردة' : 'Aucune demande reçue'}
+                  </p>
+                </div>
+              ) : (
+                pendingRequests.map(req => (
+                  <div key={req.id} style={s.requestCard} onClick={() => setSelectedRequest(req)}>
+                    <div style={s.cardTop}>
+                      <span style={s.cardId}>#{req.id}</span>
+                      <span style={s.pendingBadge}>
+                        {lang === 'ar' ? '⏳ قيد المراجعة' : '⏳ En attente'}
+                      </span>
                     </div>
-                );
-            })
-        )}
-    </div>
-)}
-
-      </div>
+                    <p style={s.cardInfo}>👤 {req.customer_name} — 🏷️ {req.client_code}</p>
+                    <p style={s.cardInfo}>📍 {req.district}</p>
+                    <div style={s.cardIcons}>
+                      {req.image_url && <span style={s.contentIcon}>📷</span>}
+                      {req.voice_note_url && <span style={s.contentIcon}>🎙</span>}
+                      {req.description && <span style={s.contentIcon}>📝</span>}
+                    </div>
+                    <p style={s.cardDate}>
+                      {new Date(req.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+ 
+          {/* ===== كل الطلبات ===== */}
+          {activeTab === 'all' && (
+            <div>
+              <div style={s.filterRow}>
+                {['all', 'pending_admin', 'quoted', 'assigned', 'completed'].map(st => (
+                  <button
+                    key={st}
+                    style={{
+                      ...s.filterBtn,
+                      backgroundColor: statusFilter === st ? '#006400' : '#f0f0f0',
+                      color: statusFilter === st ? '#fff' : '#333'
+                    }}
+                    onClick={() => setStatusFilter(st)}
+                  >
+                    {st === 'all' ? (lang === 'ar' ? 'الكل' : 'Tout') : t[`status_${st}`] || st}
+                  </button>
+                ))}
+              </div>
+ 
+              {filteredRequests.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <p style={{ color: '#888' }}>{lang === 'ar' ? 'لا توجد طلبات' : 'Aucune demande'}</p>
+                </div>
+              ) : (
+                filteredRequests.map(req => {
+                  const st = getStatusStyle(req.status);
+                  return (
+                    <div key={req.id} style={s.requestCard} onClick={() => setSelectedRequest(req)}>
+                      <div style={s.cardTop}>
+                        <span style={s.cardId}>#{req.id}</span>
+                        <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
+                          {t[`status_${req.status}`]}
+                        </span>
+                      </div>
+                      <p style={s.cardInfo}>👤 {req.customer_name}</p>
+                      <p style={s.cardInfo}>📍 {req.district}</p>
+                      {req.provider_name && (
+                        <p style={{ ...s.cardInfo, color: '#006400' }}>👷 {req.provider_name}</p>
+                      )}
+                      {req.quoted_price && (
+                        <p style={{ ...s.cardInfo, fontWeight: 'bold', color: '#006400' }}>
+                          💰 {req.quoted_price} MRU
+                        </p>
+                      )}
+                      <p style={s.cardDate}>
+                        {new Date(req.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+ 
+          {/* ===== المستخدمون ===== */}
+          {activeTab === 'users' && (
+            <div>
+              <h3 style={s.sectionTitle}>
+                {lang === 'ar' ? `👥 الزبائن (${customers.length})` : `👥 Clients (${customers.length})`}
+              </h3>
+              {customers.map(u => (
+                <div key={u.id} style={s.userCard} onClick={() => setSelectedUser(u)}>
+                  <div style={s.cardTop}>
+                    <span style={s.cardName}>{u.full_name}</span>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      {!u.is_verified && (
+                        <span style={s.unverifiedBadge}>
+                          {lang === 'ar' ? 'غير مفعل' : 'Non activé'}
+                        </span>
+                      )}
+                      {u.is_banned && (
+                        <span style={s.bannedBadge}>
+                          {lang === 'ar' ? 'محظور' : 'Banni'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p style={s.cardInfo}>📞 {u.phone}</p>
+                  {u.district && <p style={s.cardInfo}>📍 {u.district}</p>}
+                </div>
+              ))}
+ 
+              <h3 style={{ ...s.sectionTitle, marginTop: '20px' }}>
+                {lang === 'ar' ? `🔧 الفنيون (${providers.length})` : `🔧 Techniciens (${providers.length})`}
+              </h3>
+              {providers.map(u => (
+                <div key={u.id} style={s.userCard} onClick={() => setSelectedUser(u)}>
+                  <div style={s.cardTop}>
+                    <span style={s.cardName}>{u.full_name}</span>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      {!u.is_verified && (
+                        <span style={s.unverifiedBadge}>
+                          {lang === 'ar' ? 'غير مفعل' : 'Non activé'}
+                        </span>
+                      )}
+                      {u.is_banned && (
+                        <span style={s.bannedBadge}>
+                          {lang === 'ar' ? 'محظور' : 'Banni'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p style={s.cardInfo}>📞 {u.phone}</p>
+                </div>
+              ))}
+            </div>
+          )}
+ 
+          {/* ===== المستحقات ===== */}
+          {activeTab === 'earnings' && (
+            <div>
+              {earnings.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>💰</span>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا توجد مستحقات معلقة' : 'Aucun paiement en attente'}
+                  </p>
+                </div>
+              ) : (
+                earnings.map(e => (
+                  <div key={e.id} style={s.earningCard}>
+                    <div style={s.cardTop}>
+                      <span style={s.cardName}>{e.provider_name}</span>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#006400' }}>
+                        {e.amount} MRU
+                      </span>
+                    </div>
+                    <div style={s.bankDetail}>
+                      <span style={{ textTransform: 'capitalize', fontWeight: 'bold', color: '#333' }}>
+                        📱 {e.bank_type}
+                      </span>
+                      <span style={{ color: '#006400', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        {e.bank_phone}
+                      </span>
+                    </div>
+                    <p style={s.cardInfo}>
+                      {lang === 'ar' ? 'مهمة رقم:' : 'Mission #'} {e.request_id}
+                    </p>
+                    <p style={s.cardDate}>
+                      {new Date(e.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                    </p>
+                    <button style={s.payBtn} onClick={() => handlePay(e.id)}>
+                      {t.markAsPaid}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+ 
+          {/* ===== الاشتراكات ===== */}
+          {activeTab === 'subscriptions' && (
+            <div>
+              {subscriptions.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>💳</span>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا توجد طلبات اشتراك معلقة' : 'Aucune demande d\'abonnement'}
+                  </p>
+                </div>
+              ) : (
+                subscriptions.map(sub => (
+                  <div key={sub.id} style={s.earningCard}>
+                    {/* رأسية البطاقة */}
+                    <div style={s.cardTop}>
+                      <span style={s.cardName}>{sub.full_name}</span>
+                      <span style={{ ...s.statusBadge, backgroundColor: '#fce4ec', color: '#c62828' }}>
+                        {sub.package_name}
+                      </span>
+                    </div>
+ 
+                    {/* بيانات الزبون */}
+                    <p style={s.cardInfo}>📞 {sub.phone}</p>
+                    {sub.client_code && <p style={s.cardInfo}>🏷️ {sub.client_code}</p>}
+                    <p style={{ ...s.cardInfo, fontWeight: 'bold', color: '#e91e63' }}>
+                      💰 {sub.package_price} MRU
+                    </p>
+ 
+                    {/* صورة إثبات الدفع */}
+                    {sub.proof_url && (
+                      <div style={{ margin: '10px 0' }}>
+                        <p style={{ ...s.infoLabel, marginBottom: '6px' }}>
+                          {lang === 'ar' ? '🖼️ إثبات الدفع (اضغط للتكبير):' : '🖼️ Preuve de paiement:'}
+                        </p>
+                        <img
+                          src={sub.proof_url}
+                          alt="proof"
+                          style={{
+                            width: '100%',
+                            borderRadius: '12px',
+                            maxHeight: '200px',
+                            objectFit: 'cover',
+                            cursor: 'pointer',
+                            border: '2px solid #e91e63'
+                          }}
+                          onClick={() => window.open(sub.proof_url, '_blank')}
+                        />
+                      </div>
+                    )}
+ 
+                    <p style={s.cardDate}>
+                      {new Date(sub.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                    </p>
+ 
+                    {/* أزرار القبول والرفض */}
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                      <button
+                        style={{ ...s.btnDanger, flex: 1 }}
+                        onClick={() => handleSubAction(sub.id, 'reject', sub.user_id, sub.package_id)}
+                      >
+                        {lang === 'ar' ? 'رفض' : 'Rejeter'}
+                      </button>
+                      <button
+                        style={{ ...s.btnSuccess, flex: 2 }}
+                        onClick={() => handleSubAction(sub.id, 'approve', sub.user_id, sub.package_id)}
+                      >
+                        {lang === 'ar' ? '✅ تفعيل الاشتراك' : '✅ Activer'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+ 
+          {/* ===== البحث برمز العميل ===== */}
+          {activeTab === 'search' && (
+            <div>
+              <p style={s.sectionTitle}>{t.searchByCode}</p>
+ 
+              <div style={s.searchRow}>
+                <input
+                  style={s.searchInput}
+                  placeholder={t.enterClientCode}
+                  value={clientCode}
+                  onChange={e => setClientCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && handleClientSearch()}
+                />
+                <button style={s.searchBtn} onClick={handleClientSearch}>
+                  {t.search}
+                </button>
+              </div>
+ 
+              {clientError && <p style={s.errorText}>{clientError}</p>}
+ 
+              {clientResult && (
+                <div>
+                  <div style={s.clientCard}>
+                    <div style={s.cardTop}>
+                      <span style={s.cardName}>{clientResult.user.full_name}</span>
+                      <span style={s.clientCodeBadge}>{clientResult.user.client_code}</span>
+                    </div>
+                    <p style={s.cardInfo}>📞 {clientResult.user.phone}</p>
+                    <p style={s.cardInfo}>📍 {clientResult.user.district}</p>
+                    <p style={s.cardInfo}>📦 {clientResult.user.package_name || '-'}</p>
+                    {clientResult.user.subscription_end_date && (
+                      <p style={s.cardInfo}>
+                        📅 {t.expiresOn}: {new Date(clientResult.user.subscription_end_date).toLocaleDateString()}
+                      </p>
+                    )}
+                    <div style={s.monthStat}>
+                      <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#006400' }}>
+                        {clientResult.total_this_month}
+                      </span>
+                      <span style={{ color: '#555', fontSize: '0.9rem' }}>
+                        {t.requestsThisMonth}
+                      </span>
+                    </div>
+                  </div>
+ 
+                  {clientResult.requests.length > 0 && (
+                    <>
+                      <p style={{ ...s.sectionTitle, marginTop: '15px' }}>
+                        {lang === 'ar' ? 'طلبات هذا الشهر:' : 'Demandes ce mois:'}
+                      </p>
+                      {clientResult.requests.map(req => {
+                        const st = getStatusStyle(req.status);
+                        return (
+                          <div key={req.id} style={s.requestCard}>
+                            <div style={s.cardTop}>
+                              <span style={s.cardId}>#{req.id}</span>
+                              <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
+                                {t[`status_${req.status}`]}
+                              </span>
+                            </div>
+                            {req.quoted_price && (
+                              <p style={{ ...s.cardInfo, color: '#006400', fontWeight: 'bold' }}>
+                                💰 {req.quoted_price} MRU
+                              </p>
+                            )}
+                            <p style={s.cardDate}>
+                              {new Date(req.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+ 
+        </div>
+      </main>
     </div>
   );
-};
-
-const styles = {
-  adminContainer: { padding: '20px', direction: 'rtl', fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', minHeight: '100vh' },
-  adminHeader: { marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-  logoutBtn: { padding: '8px 15px', backgroundColor: '#e74c3c', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' },
- tabBar: { 
-    display: 'grid', 
+}
+ 
+const s = {
+  container: {
+    minHeight: '100vh',
+    backgroundColor: '#f5f7fa'
+  },
+  main: {
+    paddingBottom: '30px'
+  },
+  adminHeader: {
+    background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+    padding: '20px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    color: '#fff'
+  },
+  headerTitle: {
+    margin: 0,
+    fontSize: '1.4rem',
+    fontWeight: 'bold',
+    color: '#fff'
+  },
+  headerSub: {
+    margin: '4px 0 0',
+    fontSize: '0.85rem',
+    color: 'rgba(255,255,255,0.7)'
+  },
+  langBtn: {
+    padding: '5px 12px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.5)',
+    background: 'transparent',
+    color: '#fff',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem'
+  },
+  logoutBtn: {
+    padding: '5px 12px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,0,0,0.5)',
+    background: 'transparent',
+    color: '#ffcdd2',
+    cursor: 'pointer',
+    fontSize: '0.85rem'
+  },
+  statsRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '1px',
+    backgroundColor: '#e0e0e0',
+    borderBottom: '1px solid #e0e0e0'
+  },
+  statCard: {
+    backgroundColor: '#fff',
+    padding: '15px 10px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px'
+  },
+  statNum: {
+    fontSize: '1.6rem',
+    fontWeight: 'bold',
+    color: '#1a237e'
+  },
+  statLabel: {
+    fontSize: '0.7rem',
+    color: '#888'
+  },
+  screen: {
+    padding: '15px',
+    maxWidth: '700px',
+    margin: '0 auto'
+  },
+  menuGrid: {
+    display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px', 
-    marginTop: '15px' 
-},
- tabBtn: { 
-    padding: '10px 8px', 
-    border: '1px solid #ddd', 
-    borderRadius: '8px', 
-    cursor: 'pointer', 
-    background: '#f9f9f9', 
-    fontWeight: 'bold',
-    fontSize: '12px',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-},
-activeTabBtn: { 
-    padding: '10px 8px', 
-    border: 'none', 
-    borderRadius: '8px', 
-    cursor: 'pointer', 
-    background: '#006400', 
-    color: '#fff', 
-    fontWeight: 'bold',
-    fontSize: '12px',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-},
-
-  listSection: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  adminCard: { background: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' },
-  badge: { padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' },
-  cardActions: { display: 'flex', gap: '10px', marginTop: '15px' },
-  activateBtn: { flex: 1, background: '#27ae60', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
-  deleteBtn: { flex: 1, background: '#e74c3c', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
-  viewImgBtn: { width: '100%', background: '#f9f9f9', border: '1px solid #ccc', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' },
-  emptyMsg: { textAlign: 'center', color: '#888', marginTop: '30px' },
-  userTable: { width: '100%', textAlign: 'right', borderCollapse: 'collapse', backgroundColor: '#fff' },
-  blockBtn: { background: '#eee', border: '1px solid #ccc', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' },
-  
-  // تنسيقات الـ Modal الجديدة
-  modalOverlay: { 
-    position: 'fixed', 
-    top: 0, left: 0, right: 0, bottom: 0, 
-    backgroundColor: 'rgba(0,0,0,0.95)', 
-    display: 'flex', 
-    flexDirection: 'column',
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    zIndex: 5000 
+    gap: '12px',
+    marginBottom: '25px'
   },
-  modalContent: { 
-    position: 'relative', 
-    width: '95%', 
-    maxWidth: '500px',
+  menuCard: {
+    border: '2px solid',
+    borderRadius: '16px',
+    padding: '20px 10px',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center'
-  },
-  fullImg: { 
-    width: '100%', 
-    maxHeight: '75vh', 
-    objectFit: 'contain', 
-    borderRadius: '10px', 
-    boxShadow: '0 0 30px rgba(255,255,255,0.1)' 
-  },
-  topCloseBtn: { 
-    position: 'absolute', 
-    top: '20px', 
-    right: '20px', 
-    color: '#fff', 
-    background: '#e74c3c', 
-    border: 'none', 
-    width: '45px', 
-    height: '45px', 
-    borderRadius: '50%', 
-    cursor: 'pointer', 
-    fontSize: '24px',
-    display: 'flex',
-    justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
-  },
-  bottomCloseBtn: {
-    marginTop: '20px',
-    padding: '12px 30px',
-    backgroundColor: '#e74c3c',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '30px',
+    justifyContent: 'center',
     cursor: 'pointer',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    boxShadow: '0 4px 15px rgba(231,76,60,0.4)'
+    position: 'relative',
+    minHeight: '90px',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 3px 10px rgba(0,0,0,0.07)'
   },
-  keyBtn: {
-    background: '#f39c12', 
+  menuBadge: {
+    position: 'absolute',
+    top: '-8px',
+    left: '-8px',
+    backgroundColor: '#dc3545',
     color: '#fff',
-    border: 'none',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
+    borderRadius: '50%',
+    width: '22px',
+    height: '22px',
+    fontSize: '0.75rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    transition: 'transform 0.2s ease'
-},
+    fontWeight: 'bold',
+    boxShadow: '0 2px 5px rgba(220,53,69,0.4)'
+  },
+  requestCard: {
+    background: '#fff',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '10px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    cursor: 'pointer',
+    border: '1px solid #f0f0f0'
+  },
+  userCard: {
+    background: '#fff',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '10px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    cursor: 'pointer',
+    border: '1px solid #f0f0f0'
+  },
+  earningCard: {
+    background: '#fff',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    border: '1px solid #f0f0f0'
+  },
+  clientCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '20px',
+    marginBottom: '15px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+    border: '2px solid #1a237e'
+  },
+  cardTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px'
+  },
+  cardId: {
+    fontWeight: 'bold',
+    color: '#1a237e',
+    fontSize: '1rem'
+  },
+  cardName: {
+    fontWeight: 'bold',
+    color: '#333',
+    fontSize: '1rem'
+  },
+  cardInfo: {
+    margin: '4px 0',
+    fontSize: '0.85rem',
+    color: '#555'
+  },
+  cardDate: {
+    margin: '5px 0 0',
+    fontSize: '0.75rem',
+    color: '#999'
+  },
+  cardIcons: {
+    display: 'flex',
+    gap: '6px',
+    margin: '8px 0'
+  },
+  contentIcon: {
+    fontSize: '1rem',
+    background: '#f5f5f5',
+    padding: '3px 8px',
+    borderRadius: '8px'
+  },
+  pendingBadge: {
+    background: '#fff3cd',
+    color: '#856404',
+    padding: '3px 10px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold'
+  },
+  statusBadge: {
+    padding: '3px 10px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold'
+  },
+  unverifiedBadge: {
+    background: '#fff3cd',
+    color: '#856404',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '0.7rem'
+  },
+  bannedBadge: {
+    background: '#f8d7da',
+    color: '#721c24',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '0.7rem'
+  },
+  clientCodeBadge: {
+    background: '#e8eaf6',
+    color: '#1a237e',
+    padding: '3px 12px',
+    borderRadius: '20px',
+    fontWeight: 'bold',
+    fontSize: '0.9rem',
+    letterSpacing: '1px'
+  },
+  monthStat: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    background: '#f0f4ff',
+    borderRadius: '12px',
+    padding: '12px',
+    marginTop: '12px'
+  },
+  filterRow: {
+    display: 'flex',
+    gap: '6px',
+    marginBottom: '15px',
+    overflowX: 'auto',
+    paddingBottom: '5px'
+  },
+  filterBtn: {
+    padding: '6px 12px',
+    borderRadius: '20px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
+    fontWeight: 'bold'
+  },
+  bankDetail: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: '#f0f4f0',
+    borderRadius: '10px',
+    padding: '10px 12px',
+    margin: '8px 0'
+  },
+  payBtn: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#006400',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    marginTop: '10px'
+  },
+  searchRow: {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '15px'
+  },
+  searchInput: {
+    flex: 1,
+    padding: '12px 15px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '1rem',
+    outline: 'none',
+    textAlign: 'right',
+    letterSpacing: '2px',
+    fontWeight: 'bold'
+  },
+  searchBtn: {
+    padding: '12px 20px',
+    backgroundColor: '#1a237e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  errorText: {
+    color: '#dc3545',
+    textAlign: 'center',
+    fontWeight: 'bold'
+  },
+  emptyBox: {
+    textAlign: 'center',
+    padding: '40px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  sectionTitle: {
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: '12px'
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3000,
+    padding: '20px'
+  },
+  modal: {
+    background: '#fff',
+    width: '100%',
+    maxWidth: '480px',
+    borderRadius: '24px',
+    padding: '25px',
+    position: 'relative',
+    maxHeight: '85vh',
+    overflowY: 'auto'
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: '15px',
+    left: '15px',
+    background: '#f5f5f5',
+    border: 'none',
+    borderRadius: '50%',
+    width: '32px',
+    height: '32px',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
+  modalTitle: {
+    textAlign: 'center',
+    color: '#1a237e',
+    marginTop: '5px',
+    marginBottom: '15px'
+  },
+  modalImg: {
+    width: '100%',
+    borderRadius: '14px',
+    marginBottom: '12px',
+    maxHeight: '220px',
+    objectFit: 'cover',
+    cursor: 'pointer'
+  },
+  voiceBox: {
+    background: '#f0fff0',
+    border: '1px solid #c3e6cb',
+    borderRadius: '12px',
+    padding: '12px',
+    marginBottom: '12px'
+  },
+  voiceLabel: {
+    margin: '0 0 8px',
+    fontWeight: 'bold',
+    color: '#006400',
+    fontSize: '0.9rem'
+  },
+  infoBox: {
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '12px 15px',
+    marginBottom: '10px'
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '6px 0',
+    borderBottom: '1px solid #f0f0f0'
+  },
+  infoLabel: {
+    color: '#888',
+    fontSize: '0.85rem',
+    margin: '0 0 4px'
+  },
+  infoValue: {
+    color: '#333',
+    fontSize: '0.9rem',
+    margin: '2px 0'
+  },
+  callBtn: {
+    display: 'inline-block',
+    color: '#006400',
+    fontWeight: 'bold',
+    textDecoration: 'none',
+    fontSize: '1rem',
+    marginTop: '5px'
+  },
+  statusBox: {
+    border: '2px solid',
+    borderRadius: '12px',
+    padding: '10px',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    marginBottom: '10px'
+  },
+  priceBox: {
+    background: '#e8f5e9',
+    borderRadius: '10px',
+    padding: '10px',
+    textAlign: 'center',
+    color: '#155724',
+    marginBottom: '10px'
+  },
+  quoteSection: {
+    background: '#f8f9fa',
+    borderRadius: '14px',
+    padding: '15px',
+    marginTop: '10px'
+  },
+  sectionLabel: {
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: '10px',
+    fontSize: '0.95rem'
+  },
+  priceInput: {
+    width: '100%',
+    padding: '13px',
+    borderRadius: '10px',
+    border: '1.5px solid #ddd',
+    fontSize: '1.1rem',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  btnSuccess: {
+    padding: '13px',
+    backgroundColor: '#006400',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '0.95rem',
+    cursor: 'pointer'
+  },
+  btnDanger: {
+    padding: '13px',
+    backgroundColor: '#fff',
+    color: '#dc3545',
+    border: '1.5px solid #dc3545',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '0.95rem',
+    cursor: 'pointer'
+  },
+  subSection: {
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '15px',
+    marginBottom: '15px'
+  },
+  pkgBtn: {
+    padding: '10px 14px',
+    backgroundColor: '#1a237e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem'
+  }
 };
-
-export default AdminScreen;
