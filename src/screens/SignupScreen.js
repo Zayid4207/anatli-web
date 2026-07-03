@@ -54,8 +54,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     setError('');
     handleSignup();
   };
- 
-  const handleSignup = async () => {
+ const handleSignup = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/signup`, {
@@ -70,17 +69,15 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
           address: role === 'customer' ? form.address : null,
           bank_phone: role === 'provider' ? form.bank_phone : null,
           bank_type: role === 'provider' ? form.bank_type : null,
-           covered_districts: role === 'provider' ? coveredDistricts.join(',') : null
+          covered_districts: role === 'provider' ? coveredDistricts.join(',') : null
         })
       });
       const data = await res.json();
       if (res.ok) {
-        await fetch(`${apiUrl}/send-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: form.phone })
-        });
-        setStep(3);
+        alert(lang === 'ar'
+          ? '🎉 تم إنشاء حسابك بنجاح! يمكنك الآن تسجيل الدخول.'
+          : '🎉 Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
+        onSuccess();
       } else {
         setError(data.error || t.error);
       }
@@ -138,7 +135,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
           <div style={s.logoIcon}>🏠</div>
           <h2 style={s.title}>{t.createAccount}</h2>
           <div style={s.steps}>
-            {[1, 2, 3].map(n => (
+            {[1,2].map(n => (
               <div key={n} style={{ ...s.stepDot, backgroundColor: step >= n ? '#006400' : '#ddd' }} />
             ))}
           </div>
@@ -302,41 +299,6 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   </div>
 )}
  
-        {/* الخطوة 3 */}
-        {step === 3 && (
-          <div style={s.form}>
-            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '3rem' }}>📱</span>
-              <p style={s.stepTitle}>{t.otpTitle}</p>
-              <p style={s.stepDesc}>{t.otpDesc}<br /><strong>{form.phone}</strong></p>
-            </div>
- 
-            <input
-              style={{ ...s.input, textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
-              placeholder={t.otpPlaceholder}
-              maxLength={6}
-              value={otpCode}
-              onChange={e => setOtpCode(e.target.value)}
-            />
- 
-            {error && <p style={s.error}>{error}</p>}
- 
-            <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }} onClick={handleVerifyOtp} disabled={loading}>
-              {loading ? (lang === 'ar' ? 'جاري التحقق...' : 'Vérification...') : t.activateBtn}
-            </button>
- 
-            <button style={s.backLink} onClick={async () => {
-              await fetch(`${apiUrl}/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: form.phone })
-              });
-              alert(t.otpResent);
-            }}>
-              {t.resendOtp}
-            </button>
-          </div>
-        )}
  
       </div>
     </div>
