@@ -1,8 +1,9 @@
+import APP_CONFIG from '../config';
 export const translations = {
   ar: {
     // عام
-    appName: 'HomeFix',
-    appSub: 'تأمين إصلاح المنازل',
+    appName: APP_CONFIG.name,
+    appSub: APP_CONFIG.taglineAr,
     loading: 'جاري التحميل...',
     back: '← رجوع',
     next: 'التالي ←',
@@ -165,8 +166,8 @@ export const translations = {
 
   fr: {
     // Général
-    appName: 'HomeFix',
-    appSub: 'Assurance réparation domicile',
+    appName: APP_CONFIG.nameFr,
+    appSub: APP_CONFIG.taglineFr,
     loading: 'Chargement...',
     back: '← Retour',
     next: 'Suivant →',

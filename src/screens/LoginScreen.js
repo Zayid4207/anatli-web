@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-
+import APP_CONFIG from '../config';
+import Logo from '../Logo';
 export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onBackToLanding }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -30,20 +31,15 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
     }
   };
 
-  const handleWhatsApp = () => {
-    window.open(`https://wa.me/22242072952?text=${encodeURIComponent('أريد الاستفسار عن خدمة تأمين إصلاح المنازل')}`, '_blank');
-  };
-
+ const handleWhatsApp = () => {
+    window.open(`https://wa.me/${APP_CONFIG.whatsapp}?text=${encodeURIComponent('أريد الاستفسار عن خدمة ' + APP_CONFIG.taglineAr)}`, '_blank');
+};
   return (
     <div style={s.container}>
       <div style={s.card}>
 
         {/* الشعار */}
-        <div style={s.logoArea}>
-          <div style={s.logoIcon}>🏠</div>
-          <h1 style={s.logoText}>HomeFix</h1>
-          <p style={s.logoSub}>تأمين إصلاح المنازل</p>
-        </div>
+       <Logo size="xl" theme="dark" />
 
         {/* الحقول */}
         <div style={s.field}>

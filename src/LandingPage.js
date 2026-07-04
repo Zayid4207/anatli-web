@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
- 
+ import APP_CONFIG from '../config';
+ import Logo from './Logo';
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
   const [lang, setLang] = useState('ar');
  
   const content = {
     ar: {
-      appName: 'HomeFix',
-      appSub: 'تأمين إصلاح المنازل',
+      appName: APP_CONFIG.name,
+      appSub: APP_CONFIG.taglineAr,
       hero: 'منزلك في أمان دائم',
       heroDesc: 'اشترك واستمتع بطلبات غير محدودة — سباكة، كهرباء، صيانة وأكثر.',
       login: 'دخول',
@@ -40,8 +41,8 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       ]
     },
     fr: {
-      appName: 'HomeFix',
-      appSub: 'Assurance réparation domicile',
+      appName: APP_CONFIG.nameFr,
+      appSub: APP_CONFIG.taglineFr,
       hero: 'Votre maison toujours en sécurité',
       heroDesc: 'Abonnez-vous et profitez de demandes illimitées — plomberie, électricité, maintenance et plus.',
       login: 'Connexion',
@@ -84,7 +85,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
     div.style.cssText = `position:fixed;left:-9999px;top:0;width:390px;background:white;font-family:Arial,sans-serif;direction:rtl;`;
     div.innerHTML = `
       <div style="background:${pkg.border};padding:30px 20px;text-align:center;color:white;">
-        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">🏠 HomeFix</div>
+        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">🏠 ${APP_CONFIG.name}</div>
         <div style="font-size:18px;font-weight:bold;margin-bottom:5px;">${pkg.icon} ${pkg.name}</div>
         <div style="font-size:15px;opacity:0.9;">${pkg.price} MRU / شهرياً</div>
       </div>
@@ -95,7 +96,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           ⚠️ <strong>اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
         </div>
       </div>
-      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">HomeFix — نواكشوط، موريتانيا</div>
+      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">${APP_CONFIG.name} — نواكشوط، موريتانيا</div>
     `;
     document.body.appendChild(div);
     try {
@@ -149,16 +150,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
       }}>
         {/* الشعار */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '38px', height: '38px', backgroundColor: '#ffc107', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>
-            🏠
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: '900', fontSize: '1.2rem', lineHeight: 1 }}>{c.appName}</div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem', marginTop: '2px' }}>{c.appSub}</div>
-          </div>
-        </div>
- 
+       <Logo size="md" theme="light" />
         {/* الأزرار */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
