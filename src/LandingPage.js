@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
- import APP_CONFIG from '../config';
+ import APP_CONFIG from './config';
  import Logo from './Logo';
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
   const [lang, setLang] = useState('ar');
