@@ -150,7 +150,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
       }}>
         {/* الشعار */}
-       <Logo size="md" theme="light" />
+       <Logo size="sm" theme="light" />
         {/* الأزرار */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
