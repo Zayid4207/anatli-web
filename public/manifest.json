@@ -3,12 +3,10 @@
   "name": "HomeFix",
   "icons": [
     {
-      "src": "icon-notif.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-notif.png",
       "type": "image/png",
       "sizes": "512x512"
     }
