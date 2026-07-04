@@ -39,7 +39,7 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
       <div style={s.card}>
 
         {/* الشعار */}
-       <Logo size="sm" theme="light" />
+       <Logo size="xl" theme="dark" />
 
         {/* الحقول */}
         <div style={s.field}>

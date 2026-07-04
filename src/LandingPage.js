@@ -144,26 +144,51 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       `}</style>
  
       {/* ===== NAV ===== */}
-      <nav className="hfx-nav" style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '12px 20px', backgroundColor: '#006400', position: 'sticky',
-        top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
-      }}>
-        {/* الشعار */}
-       <Logo size="sm" theme="light" />
-        {/* الأزرار */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-            {lang === 'ar' ? 'FR' : 'AR'}
-          </button>
-          <button onClick={onLoginClick} style={{ padding: '7px 14px', borderRadius: '8px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
-            {c.login}
-          </button>
-          <button onClick={onRegisterClick} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#ffc107', color: '#333', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
-            {c.register}
-          </button>
-        </div>
-      </nav>
+     <nav className="hfx-nav" style={{
+  backgroundColor: '#006400', position: 'sticky',
+  top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
+}}>
+  {/* السطر الأول — الشعار وزر اللغة */}
+  <div style={{
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', padding: '10px 15px'
+  }}>
+    <Logo size="sm" theme="light" />
+    <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{
+      padding: '5px 12px', borderRadius: '8px',
+      border: '1.5px solid rgba(255,255,255,0.5)',
+      background: 'transparent', color: '#fff',
+      fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem'
+    }}>
+      {lang === 'ar' ? 'FR' : 'AR'}
+    </button>
+  </div>
+
+  {/* السطر الثاني — أزرار الدخول والاشتراك */}
+  <div style={{
+    display: 'flex', gap: '8px',
+    padding: '0 15px 10px'
+  }}>
+    <button onClick={onLoginClick} style={{
+      flex: 1, padding: '9px',
+      borderRadius: '10px',
+      border: '1.5px solid rgba(255,255,255,0.6)',
+      background: 'transparent', color: '#fff',
+      fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem'
+    }}>
+      {c.login}
+    </button>
+    <button onClick={onRegisterClick} style={{
+      flex: 1, padding: '9px',
+      borderRadius: '10px',
+      border: 'none', background: '#ffc107',
+      color: '#333', fontWeight: 'bold',
+      cursor: 'pointer', fontSize: '0.9rem'
+    }}>
+      {c.register}
+    </button>
+  </div>
+</nav>
  
       {/* ===== HERO ===== */}
       <section className="hfx-hero" style={{
