@@ -2,98 +2,109 @@ import React from 'react';
 
 export default function Logo({ size = 'md', theme = 'light' }) {
   const sizes = {
-    sm: { icon: 28, title: '0.85rem', sub: '0.5rem', gap: 8 },
-    md: { icon: 42, title: '1.1rem', sub: '0.6rem', gap: 10 },
-    lg: { icon: 60, title: '1.5rem', sub: '0.75rem', gap: 14 },
-    xl: { icon: 90, title: '2rem', sub: '0.9rem', gap: 18 }
+    sm: { box: 32, abbr: '0.7rem', title: '0.75rem', sub: '0.5rem', gap: 8 },
+    md: { box: 44, abbr: '0.9rem', title: '0.95rem', sub: '0.6rem', gap: 10 },
+    lg: { box: 58, abbr: '1.1rem', title: '1.2rem', sub: '0.7rem', gap: 12 },
+    xl: { box: 75, abbr: '1.3rem', title: '1.5rem', sub: '0.85rem', gap: 16 }
   };
 
   const s = sizes[size] || sizes.md;
   const isLight = theme === 'light';
   const textColor = isLight ? '#fff' : '#006400';
   const subColor = isLight ? 'rgba(255,255,255,0.75)' : 'rgba(0,100,0,0.65)';
+  const dividerColor = isLight ? 'rgba(255,255,255,0.3)' : 'rgba(0,100,0,0.2)';
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       gap: s.gap,
-      direction: 'rtl'
+      direction: 'ltr'
     }}>
       {/* الأيقونة */}
       <div style={{
-        width: s.icon,
-        height: s.icon,
+        width: s.box,
+        height: s.box,
         backgroundColor: '#ffc107',
-        borderRadius: s.icon * 0.22,
+        borderRadius: s.box * 0.2,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-        boxShadow: '0 3px 10px rgba(255,193,7,0.4)',
+        boxShadow: '0 3px 10px rgba(255,193,7,0.35)',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* خط أفقي */}
-        <div style={{
-          position: 'absolute',
-          width: '65%',
-          height: s.icon * 0.07,
-          backgroundColor: '#333',
-          borderRadius: 99,
-          top: '30%'
-        }} />
-        {/* خط عمودي */}
-        <div style={{
-          position: 'absolute',
-          width: s.icon * 0.07,
-          height: '65%',
-          backgroundColor: '#333',
-          borderRadius: 99,
-          top: '17%'
-        }} />
-        {/* منزل صغير */}
-        <div style={{
-          position: 'absolute',
-          bottom: '12%',
-          width: '45%',
-          height: '35%',
-          backgroundColor: '#333',
-          borderRadius: '3px 3px 0 0'
-        }} />
         {/* سقف المنزل */}
         <div style={{
+          width: 0, height: 0,
+          borderLeft: `${s.box * 0.38}px solid transparent`,
+          borderRight: `${s.box * 0.38}px solid transparent`,
+          borderBottom: `${s.box * 0.32}px solid #333`,
           position: 'absolute',
-          bottom: '42%',
-          width: 0,
-          height: 0,
-          borderLeft: `${s.icon * 0.28}px solid transparent`,
-          borderRight: `${s.icon * 0.28}px solid transparent`,
-          borderBottom: `${s.icon * 0.18}px solid #333`
+          top: s.box * 0.1
+        }} />
+        {/* جسم المنزل */}
+        <div style={{
+          position: 'absolute',
+          bottom: s.box * 0.1,
+          width: s.box * 0.52,
+          height: s.box * 0.38,
+          backgroundColor: '#333',
+          borderRadius: '2px 2px 0 0'
+        }} />
+        {/* باب المنزل */}
+        <div style={{
+          position: 'absolute',
+          bottom: s.box * 0.1,
+          width: s.box * 0.18,
+          height: s.box * 0.22,
+          backgroundColor: '#ffc107',
+          borderRadius: '2px 2px 0 0'
         }} />
       </div>
 
       {/* النص */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {/* الاختصار */}
+        <div style={{
+          fontSize: s.abbr,
+          fontWeight: '900',
+          color: '#ffc107',
+          letterSpacing: '3px',
+          lineHeight: 1,
+          fontFamily: 'Georgia, serif'
+        }}>
+          S.M.A.M
+        </div>
+
+        {/* خط فاصل */}
+        <div style={{
+          width: '100%',
+          height: '1px',
+          backgroundColor: dividerColor,
+          margin: '3px 0'
+        }} />
+
+        {/* الاسم الكامل */}
         <div style={{
           fontSize: s.title,
-          fontWeight: '900',
+          fontWeight: '700',
           color: textColor,
-          lineHeight: 1.1,
-          letterSpacing: '0.02em',
+          lineHeight: 1.2,
           fontFamily: "'Tajawal', sans-serif"
         }}>
-          الشركة الموريتانية
+          Sté Mauritanienne
         </div>
         <div style={{
           fontSize: s.sub,
           color: subColor,
-          lineHeight: 1.2,
+          lineHeight: 1,
           fontFamily: "'Tajawal', sans-serif",
-          letterSpacing: '0.03em'
+          letterSpacing: '0.02em'
         }}>
-          لتأمين إصلاح المنازل
+          d'Assurance de Maintenance
         </div>
       </div>
     </div>
