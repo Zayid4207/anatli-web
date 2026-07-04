@@ -29,9 +29,34 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const hasSyncedToken = useRef(false);
  
+  // PWA Install
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+ 
+  // Splash Screen
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
+  }, []);
+ 
+  // Android PWA Install
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBtn(true);
+    });
+  }, []);
+ 
+  // iOS Guide
+  useEffect(() => {
+    if (isIOS && !isInStandaloneMode) {
+      const timer = setTimeout(() => setShowIOSGuide(true), 4000);
+      return () => clearTimeout(timer);
+    }
   }, []);
  
   useEffect(() => {
@@ -77,7 +102,6 @@ function App() {
             });
  
             hasSyncedToken.current = true;
-            console.log('✅ تم ربط الإشعارات بنجاح');
           }
         }
       } catch (err) {
@@ -118,7 +142,6 @@ function App() {
         alignItems: 'center', justifyContent: 'center',
         zIndex: 9999, direction: 'rtl'
       }}>
-        {/* الأيقونة */}
         <div style={{
           width: '110px', height: '110px',
           backgroundColor: '#ffc107',
@@ -130,7 +153,6 @@ function App() {
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {/* سقف المنزل */}
           <div style={{
             width: 0, height: 0,
             borderLeft: '42px solid transparent',
@@ -138,25 +160,21 @@ function App() {
             borderBottom: '34px solid #333',
             position: 'absolute', top: '12px'
           }} />
-          {/* جسم المنزل */}
           <div style={{
             position: 'absolute', bottom: '12px',
             width: '56px', height: '40px',
             backgroundColor: '#333', borderRadius: '3px 3px 0 0'
           }} />
-          {/* باب */}
           <div style={{
             position: 'absolute', bottom: '12px',
             width: '18px', height: '24px',
             backgroundColor: '#ffc107', borderRadius: '3px 3px 0 0'
           }} />
-          {/* نافذة يمين */}
           <div style={{
             position: 'absolute', bottom: '30px', right: '22px',
             width: '12px', height: '12px',
             backgroundColor: '#ffc107', borderRadius: '2px'
           }} />
-          {/* نافذة يسار */}
           <div style={{
             position: 'absolute', bottom: '30px', left: '22px',
             width: '12px', height: '12px',
@@ -164,24 +182,20 @@ function App() {
           }} />
         </div>
  
-        {/* الاختصار */}
         <div style={{
           fontSize: '2.2rem', fontWeight: '900',
           color: '#ffc107', letterSpacing: '8px',
-          fontFamily: 'Georgia, serif',
-          marginBottom: '8px'
+          fontFamily: 'Georgia, serif', marginBottom: '8px'
         }}>
           S.M.A.M
         </div>
  
-        {/* خط فاصل */}
         <div style={{
           width: '60px', height: '2px',
           backgroundColor: 'rgba(255,193,7,0.4)',
           marginBottom: '12px'
         }} />
  
-        {/* الاسم بالعربية */}
         <div style={{
           fontSize: '1rem', fontWeight: '700',
           color: '#fff', textAlign: 'center',
@@ -192,25 +206,19 @@ function App() {
         </div>
         <div style={{
           fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)',
-          fontFamily: "'Tajawal', sans-serif",
-          marginBottom: '4px'
+          fontFamily: "'Tajawal', sans-serif", marginBottom: '4px'
         }}>
           لتأمين إصلاح المنازل
         </div>
  
-        {/* الاسم بالفرنسية */}
         <div style={{
           fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)',
-          fontFamily: 'Georgia, serif', letterSpacing: '1px',
-          marginTop: '4px'
+          fontFamily: 'Georgia, serif', letterSpacing: '1px', marginTop: '4px'
         }}>
           Sté Mauritanienne d'Assurance de Maintenance
         </div>
  
-        {/* نقاط التحميل */}
-        <div style={{
-          display: 'flex', gap: '8px', marginTop: '40px'
-        }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '40px' }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{
               width: '8px', height: '8px',
@@ -245,39 +253,115 @@ function App() {
     );
   }
  
-  if (user) {
-    const role = user.user_role || user.role;
-    if (role === 'admin') return <AdminScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
-    if (role === 'customer') return <CustomerScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
-    if (role === 'provider') return <ProviderScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
-  }
- 
-  if (currentView === 'landing') {
-    return (
-      <LandingPage
-        onLoginClick={() => setCurrentView('login')}
-        onRegisterClick={() => setCurrentView('signup')}
-      />
-    );
-  }
- 
-  if (currentView === 'signup') {
-    return (
-      <SignupScreen
-        apiUrl={API_URL}
-        onBack={() => setCurrentView('login')}
-        onSuccess={() => setCurrentView('login')}
-      />
-    );
-  }
- 
   return (
-    <LoginScreen
-      apiUrl={API_URL}
-      onLoginSuccess={handleLoginSuccess}
-      onSignupClick={() => setCurrentView('signup')}
-      onBackToLanding={() => setCurrentView('landing')}
-    />
+    <>
+      {/* زر تثبيت Android */}
+      {showInstallBtn && !user && (
+        <div style={{
+          position: 'fixed', bottom: '20px', left: '50%',
+          transform: 'translateX(-50%)', zIndex: 9998,
+          direction: 'rtl'
+        }}>
+          <button
+            onClick={async () => {
+              if (installPrompt) {
+                await installPrompt.prompt();
+                setShowInstallBtn(false);
+              }
+            }}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#006400',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '30px',
+              fontWeight: 'bold',
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              boxShadow: '0 6px 20px rgba(0,100,0,0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            📲 ثبّت التطبيق
+          </button>
+        </div>
+      )}
+ 
+      {/* دليل iOS */}
+      {showIOSGuide && !user && (
+        <div style={{
+          position: 'fixed', bottom: '20px', left: '15px', right: '15px',
+          background: '#fff', borderRadius: '20px',
+          padding: '20px', zIndex: 9998,
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          direction: 'rtl'
+        }}>
+          <button
+            onClick={() => setShowIOSGuide(false)}
+            style={{
+              position: 'absolute', top: '12px', left: '12px',
+              background: 'none', border: 'none',
+              fontSize: '1.2rem', cursor: 'pointer', color: '#888'
+            }}
+          >✕</button>
+          <h3 style={{ margin: '0 0 15px', color: '#006400', fontSize: '1rem' }}>
+            📲 ثبّت التطبيق على هاتفك
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>1️⃣</span>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#333', lineHeight: 1.5 }}>
+              اضغط على زر المشاركة <strong>⬆️</strong> في أسفل المتصفح
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>2️⃣</span>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#333', lineHeight: 1.5 }}>
+              اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>
+            </p>
+          </div>
+        </div>
+      )}
+ 
+      {/* المحتوى الرئيسي */}
+      {(() => {
+        if (user) {
+          const role = user.user_role || user.role;
+          if (role === 'admin') return <AdminScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
+          if (role === 'customer') return <CustomerScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
+          if (role === 'provider') return <ProviderScreen user={user} apiUrl={API_URL} onLogout={handleLogout} />;
+        }
+ 
+        if (currentView === 'landing') {
+          return (
+            <LandingPage
+              onLoginClick={() => setCurrentView('login')}
+              onRegisterClick={() => setCurrentView('signup')}
+            />
+          );
+        }
+ 
+        if (currentView === 'signup') {
+          return (
+            <SignupScreen
+              apiUrl={API_URL}
+              onBack={() => setCurrentView('login')}
+              onSuccess={() => setCurrentView('login')}
+            />
+          );
+        }
+ 
+        return (
+          <LoginScreen
+            apiUrl={API_URL}
+            onLoginSuccess={handleLoginSuccess}
+            onSignupClick={() => setCurrentView('signup')}
+            onBackToLanding={() => setCurrentView('landing')}
+          />
+        );
+      })()}
+    </>
   );
 }
  
