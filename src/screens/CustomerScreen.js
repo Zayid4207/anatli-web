@@ -524,6 +524,34 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                     <p style={{ margin: '5px 0 0', fontSize: '0.8rem', color: '#999' }}>
                       {new Date(r.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                     </p>
+                    {r.status === 'completed' && (
+  <button
+    style={{
+      marginTop: '8px',
+      padding: '6px 12px',
+      background: 'none',
+      border: '1px solid #dc3545',
+      color: '#dc3545',
+      borderRadius: '8px',
+      fontSize: '0.8rem',
+      cursor: 'pointer',
+      width: '100%'
+    }}
+    onClick={async (e) => {
+      e.stopPropagation();
+      if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذا الطلب؟' : 'Supprimer cette demande ?')) return;
+      try {
+        const res = await fetch(`${apiUrl}/requests/${r.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) fetchRequests();
+      } catch (err) {}
+    }}
+  >
+    🗑️ {lang === 'ar' ? 'حذف الطلب' : 'Supprimer'}
+  </button>
+)}
                   </div>
                 );
               })

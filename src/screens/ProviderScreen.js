@@ -385,6 +385,34 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                     <p style={s.cardDate}>
                       {new Date(job.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                     </p>
+                    {job.status === 'completed' && (
+  <button
+    style={{
+      marginTop: '8px',
+      padding: '6px 12px',
+      background: 'none',
+      border: '1px solid #dc3545',
+      color: '#dc3545',
+      borderRadius: '8px',
+      fontSize: '0.8rem',
+      cursor: 'pointer',
+      width: '100%'
+    }}
+    onClick={async (e) => {
+      e.stopPropagation();
+      if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذه المهمة؟' : 'Supprimer cette mission ?')) return;
+      try {
+        const res = await fetch(`${apiUrl}/requests/${job.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) fetchMyJobs();
+      } catch (err) {}
+    }}
+  >
+    🗑️ {lang === 'ar' ? 'حذف المهمة' : 'Supprimer'}
+  </button>
+)}
                   </div>
                 );
               })
