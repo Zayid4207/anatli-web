@@ -72,22 +72,41 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : '';
+
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = e => chunksRef.current.push(e.data);
+
+      recorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, {
+          type: mimeType || 'audio/mp4'
+        });
         setVoiceBlob(blob);
         setVoiceUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
       };
-      recorder.start();
+
+      recorder.start(100);
       setIsRecording(true);
+
     } catch (err) {
-      alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
+      alert(lang === 'ar'
+        ? 'يرجى السماح بالوصول للميكروفون'
+        : 'Veuillez autoriser le microphone');
     }
-  };
- 
+};
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
