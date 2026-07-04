@@ -2,133 +2,16 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <!-- Favicon SVG مباشر بدون ملف خارجي -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230F6E56'/><rect x='18' y='18' width='64' height='64' rx='14' fill='%23EF9F27'/><rect x='44' y='28' width='12' height='44' rx='6' fill='%232C2C2A'/><rect x='28' y='44' width='44' height='12' rx='6' fill='%232C2C2A'/></svg>" />
- 
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- لون شريط المتصفح على الهاتف -->
-    <meta name="theme-color" content="#0F6E56" />
- 
-    <!-- SEO -->
-    <meta name="description" content="Le Plombier — منصة خدمات منزلية موثوقة في نواكشوط. نربطك بأفضل الحرفيين المعتمدين: سباكة، كهرباء، تنظيف، صيانة، تكييف وبناء." />
-    <meta name="keywords" content="خدمات منزلية, سباكة, كهرباء, تنظيف, نواكشوط, موريتانيا, Le Plombier" />
-    <meta name="author" content="Le Plombier" />
- 
-    <!-- Open Graph (للمشاركة على واتساب وفيسبوك) -->
-    <meta property="og:title" content="Le Plombier" />
-    <meta property="og:description" content="نربطك بأفضل الحرفيين المعتمدين في نواكشوط بضغطة واحدة." />
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="ar_MR" />
- 
-    <!-- Apple -->
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Le Plombier" />
- 
-    <!-- PWA Manifest -->
+    <meta name="theme-color" content="#006400" />
+    <meta name="description" content="الشركة الموريتانية لتأمين إصلاح المنازل" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-notif.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!-- خطوط Google -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
- 
-    <title>Le Plombier — خدمات منزلية موثوقة</title>
- 
-    <style>
-      /* شاشة التحميل الأولي قبل React */
-      #initial-loader {
-        position: fixed;
-        inset: 0;
-        background: #0F6E56;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease;
-      }
-      #initial-loader .logo-box {
-        width: 80px;
-        height: 80px;
-        background: #EF9F27;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 20px;
-      }
-      #initial-loader .logo-box svg {
-        width: 44px;
-        height: 44px;
-      }
-      #initial-loader h1 {
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 28px;
-        color: #fff;
-        font-weight: 700;
-        margin: 0 0 6px;
-        letter-spacing: 1px;
-      }
-      #initial-loader p {
-        font-family: 'Tajawal', Arial, sans-serif;
-        font-size: 13px;
-        color: rgba(255,255,255,0.55);
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        margin: 0;
-      }
-      #initial-loader.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
- 
-      /* إخفاء الـ scrollbar أثناء التحميل */
-      body.loading { overflow: hidden; }
- 
-      * { box-sizing: border-box; }
-    </style>
+    <title>الشركة الموريتانية لتأمين إصلاح المنازل</title>
   </head>
-  <body class="loading">
- 
-    <!-- شاشة تحميل أولية جميلة -->
-    <div id="initial-loader">
-      <div class="logo-box">
-        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="20" y="4" width="4" height="36" rx="2" fill="#2C2C2A"/>
-          <rect x="4" y="20" width="36" height="4" rx="2" fill="#2C2C2A"/>
-          <circle cx="11" cy="11" r="6" fill="none" stroke="#2C2C2A" stroke-width="3.5"/>
-          <circle cx="33" cy="33" r="6" fill="none" stroke="#2C2C2A" stroke-width="3.5"/>
-        </svg>
-      </div>
-      <h1>Le Plombier</h1>
-      <p>Services à domicile · خدمات منزلية</p>
-    </div>
- 
-    <noscript>يجب تفعيل JavaScript لتشغيل هذا التطبيق.</noscript>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
- 
-    <script>
-      // إخفاء شاشة التحميل بعد تحميل React
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          var loader = document.getElementById('initial-loader');
-          var body = document.body;
-          if (loader) loader.classList.add('hidden');
-          if (body) body.classList.remove('loading');
-          setTimeout(function() {
-            if (loader) loader.remove();
-          }, 600);
-        }, 800);
-      });
-    </script>
- 
   </body>
 </html>
- 
-
-
-
-
-
-
