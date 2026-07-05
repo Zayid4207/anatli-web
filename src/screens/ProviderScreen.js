@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../translations';
- import Logo from '../Logo';
+import Logo from '../Logo';
 export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
@@ -8,7 +8,8 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [availableRequests, setAvailableRequests] = useState([]);
   const [myJobs, setMyJobs] = useState([]);
   const [earnings, setEarnings] = useState({ earnings: [], total_pending: 0, total_paid: 0 });
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null); // مودال الطلبات المتاحة فقط
+  const [jobDetail, setJobDetail] = useState(null); // صفحة تفاصيل المهمة (بيانات الزبون)
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(user);
  
@@ -39,7 +40,16 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
       const res = await fetch(`${apiUrl}/provider/my-requests/${user.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) setMyJobs(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setMyJobs(data);
+        // إذا كانت صفحة تفاصيل مهمة مفتوحة، حدّث بياناتها أيضاً
+        setJobDetail(prev => {
+          if (!prev) return prev;
+          const updated = data.find(j => j.id === prev.id);
+          return updated || prev;
+        });
+      }
     } catch (err) {}
   }, [apiUrl, token, user.id]);
  
@@ -101,7 +111,6 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
         alert(t.jobCompleted);
         fetchMyJobs();
         fetchEarnings();
-        setSelectedRequest(null);
       }
     } catch (err) {
       alert(t.serverError);
@@ -119,10 +128,134 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
     return map[status] || { bg: '#f8f9fa', color: '#333' };
   };
  
+  // ===================================================================
+  // صفحة تفاصيل المهمة (بيانات الزبون) — صفحة كاملة منفصلة، مش مودال
+  // ===================================================================
+  if (jobDetail) {
+    return (
+      <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+        <main style={s.main}>
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <button style={s.backBtn} onClick={() => setJobDetail(null)}>
+                {lang === 'ar' ? '→ رجوع' : '← Retour'}
+              </button>
+              <span style={s.modalBadge}>
+                {lang === 'ar' ? 'مهمة رقم' : 'Mission #'} {jobDetail.id}
+              </span>
+            </div>
+ 
+            {jobDetail.quoted_price && (
+              <div style={{ ...s.priceBig, textAlign: 'center', marginBottom: '15px' }}>
+                {jobDetail.quoted_price} MRU
+              </div>
+            )}
+ 
+            {/* الصورة المرفقة مع الطلب */}
+            {jobDetail.image_url && (
+              <img
+                src={jobDetail.image_url}
+                alt="problem"
+                style={s.modalImg}
+                onClick={() => window.open(jobDetail.image_url, '_blank')}
+              />
+            )}
+ 
+            {/* الوصف الصوتي */}
+            {jobDetail.voice_note_url && (
+              <div style={s.voiceBox}>
+                <p style={s.voiceLabel}>🎙 {t.playVoice}</p>
+                <audio controls src={jobDetail.voice_note_url} style={{ width: '100%' }} />
+              </div>
+            )}
+ 
+            {/* الوصف النصي */}
+            {jobDetail.description && (
+              <div style={s.infoBox}>
+                <p style={s.infoLabel}>
+                  {lang === 'ar' ? '📝 الوصف:' : '📝 Description:'}
+                </p>
+                <p style={s.infoValue}>{jobDetail.description}</p>
+              </div>
+            )}
+ 
+            {/* بيانات الزبون */}
+            <div style={{ ...s.infoBox, backgroundColor: '#d4edda', border: '1px solid #c3e6cb' }}>
+              <p style={{ ...s.infoLabel, color: '#155724', fontWeight: 'bold' }}>
+                {lang === 'ar' ? '👤 بيانات الزبون:' : '👤 Informations client:'}
+              </p>
+              <p style={s.infoValue}>{jobDetail.customer_name}</p>
+              <a href={`tel:${jobDetail.customer_phone}`} style={s.callBtn}>
+                📞 {jobDetail.customer_phone}
+              </a>
+              <p style={{ ...s.infoValue, marginTop: '8px' }}>
+                📍 {jobDetail.district} — {jobDetail.address}
+              </p>
+ 
+              {/* صورة منزل الزبون */}
+              {jobDetail.house_photo_url && (
+                <div style={{ marginTop: '12px' }}>
+                  <p style={{ ...s.infoLabel, marginBottom: '6px' }}>
+                    🏠 {lang === 'ar' ? 'واجهة منزل الزبون:' : 'Façade de la maison:'}
+                  </p>
+                  <img
+                    src={jobDetail.house_photo_url}
+                    alt="house"
+                    style={{
+                      width: '100%', borderRadius: '12px',
+                      maxHeight: '180px', objectFit: 'cover',
+                      cursor: 'pointer', border: '2px solid #006400'
+                    }}
+                    onClick={() => window.open(jobDetail.house_photo_url, '_blank')}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#888', textAlign: 'center' }}>
+                    {lang === 'ar' ? '⚠️ تأكد من تطابق الواجهة قبل الدخول' : '⚠️ Vérifiez la façade avant d\'entrer'}
+                  </p>
+                </div>
+              )}
+ 
+              {/* زر الانطلاق بالملاحة */}
+              {jobDetail.latitude && jobDetail.longitude && (
+                <button
+                  style={s.navBtnMap}
+                  onClick={() => {
+                    window.open(
+                      `https://www.google.com/maps/dir/?api=1&destination=${jobDetail.latitude},${jobDetail.longitude}&travelmode=driving`,
+                      '_blank'
+                    );
+                  }}
+                >
+                  🗺️ {lang === 'ar' ? 'انطلق للزبون — ملاحة صوتية' : 'Naviguer vers le client'}
+                </button>
+              )}
+            </div>
+ 
+            {/* أزرار الإجراء */}
+            {jobDetail.status === 'assigned' && (
+              <button
+                style={{ ...s.btnSuccess, width: '100%', opacity: loading ? 0.7 : 1, marginTop: '10px' }}
+                onClick={() => handleComplete(jobDetail.id)}
+                disabled={loading}
+              >
+                {loading ? '...' : t.completeJob}
+              </button>
+            )}
+ 
+            {jobDetail.status === 'completed' && (
+              <div style={{ ...s.completedBadge, marginTop: '10px' }}>
+                ✅ {lang === 'ar' ? 'تم إنهاء هذه المهمة' : 'Mission terminée'}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+ 
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
  
-      {/* نافذة تفاصيل الطلب */}
+      {/* نافذة تفاصيل الطلب المتاح (قبل القبول) فقط — لا تحتوي بيانات زبون */}
       {selectedRequest && (
         <div style={s.overlay}>
           <div style={s.modal}>
@@ -166,130 +299,42 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               </div>
             )}
  
-            {/* بيانات الزبون — تظهر فقط بعد القبول */}
-       {selectedRequest.status === 'assigned' || selectedRequest.status === 'completed' ? (
-              <div style={{ ...s.infoBox, backgroundColor: '#d4edda', border: '1px solid #c3e6cb' }}>
-                <p style={{ ...s.infoLabel, color: '#155724', fontWeight: 'bold' }}>
-                  {lang === 'ar' ? '👤 بيانات الزبون:' : '👤 Informations client:'}
-                </p>
-                <p style={s.infoValue}>{selectedRequest.customer_name}</p>
-                <a href={`tel:${selectedRequest.customer_phone}`} style={s.callBtn}>
-                  📞 {selectedRequest.customer_phone}
-                </a>
-                <p style={{ ...s.infoValue, marginTop: '8px' }}>
-                  📍 {selectedRequest.district} — {selectedRequest.address}
-                </p>
-                {/* صورة منزل الزبون */}
-{selectedRequest.house_photo_url && (
-  <div style={{ marginTop: '12px' }}>
-    <p style={{ ...s.infoLabel, marginBottom: '6px' }}>
-      🏠 {lang === 'ar' ? 'واجهة منزل الزبون:' : 'Façade de la maison:'}
-    </p>
-    <img
-      src={selectedRequest.house_photo_url}
-      alt="house"
-      style={{
-        width: '100%', borderRadius: '12px',
-        maxHeight: '180px', objectFit: 'cover',
-        cursor: 'pointer', border: '2px solid #006400'
-      }}
-      onClick={() => window.open(selectedRequest.house_photo_url, '_blank')}
-    />
-    <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#888', textAlign: 'center' }}>
-      {lang === 'ar' ? '⚠️ تأكد من تطابق الواجهة قبل الدخول' : '⚠️ Vérifiez la façade avant d\'entrer'}
-    </p>
-  </div>
-)}
-                {/* زر الانطلاق بالملاحة */}
-{selectedRequest.latitude && selectedRequest.longitude && (
-  <button
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '8px',
-      width: '100%',
-      marginTop: '12px',
-      padding: '14px',
-      backgroundColor: '#1a73e8',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '12px',
-      fontWeight: 'bold',
-      fontSize: '1rem',
-      cursor: 'pointer'
-    }}
-    onClick={() => {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${selectedRequest.latitude},${selectedRequest.longitude}&travelmode=driving`,
-        '_blank'
-      );
-    }}
-  >
-    🗺️ {lang === 'ar' ? 'انطلق للزبون — ملاحة صوتية' : 'Naviguer vers le client'}
-  </button>
-)}
-              </div>
-            ) : (
-              <div style={s.infoBox}>
-                <p style={s.infoLabel}>
-                  {lang === 'ar' ? '📍 المقاطعة:' : '📍 Commune:'}
-                </p>
-                <p style={s.infoValue}>{selectedRequest.district}</p>
-              </div>
-            )}
+            {/* المقاطعة فقط — بدون أي بيانات زبون قبل القبول */}
+            <div style={s.infoBox}>
+              <p style={s.infoLabel}>
+                {lang === 'ar' ? '📍 المقاطعة:' : '📍 Commune:'}
+              </p>
+              <p style={s.infoValue}>{selectedRequest.district}</p>
+            </div>
  
-            {/* أزرار الإجراء */}
+            {/* أزرار الإجراء — قبول أو تجاهل */}
             <div style={s.modalActions}>
-              {/* طلب متاح — قبول أو تجاهل */}
-              {selectedRequest.status === 'quoted' && (
-  <>
-    <button
-      style={{ ...s.btnDanger, flex: 1 }}
-      onClick={async () => {
-        try {
-          await fetch(`${apiUrl}/provider/requests/${selectedRequest.id}/ignore`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ provider_id: user.id })
-          });
-        } catch (err) {}
-        setAvailableRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
-        setSelectedRequest(null);
-      }}
-    >
-      {t.ignoreRequest}
-    </button>
-                  <button
-                    style={{ ...s.btnSuccess, flex: 2, opacity: loading ? 0.7 : 1 }}
-                    onClick={() => handleAccept(selectedRequest.id)}
-                    disabled={loading}
-                  >
-                    {loading ? '...' : t.acceptRequest}
-                  </button>
-                </>
-              )}
- 
-              {/* مهمة مقبولة — إنهاء */}
-              {selectedRequest.status === 'assigned' && (
-                <button
-                  style={{ ...s.btnSuccess, width: '100%', opacity: loading ? 0.7 : 1 }}
-                  onClick={() => handleComplete(selectedRequest.id)}
-                  disabled={loading}
-                >
-                  {loading ? '...' : t.completeJob}
-                </button>
-              )}
- 
-              {/* مهمة منتهية */}
-              {selectedRequest.status === 'completed' && (
-                <div style={s.completedBadge}>
-                  ✅ {lang === 'ar' ? 'تم إنهاء هذه المهمة' : 'Mission terminée'}
-                </div>
-              )}
+              <button
+                style={{ ...s.btnDanger, flex: 1 }}
+                onClick={async () => {
+                  try {
+                    await fetch(`${apiUrl}/provider/requests/${selectedRequest.id}/ignore`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ provider_id: user.id })
+                    });
+                  } catch (err) {}
+                  setAvailableRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
+                  setSelectedRequest(null);
+                }}
+              >
+                {t.ignoreRequest}
+              </button>
+              <button
+                style={{ ...s.btnSuccess, flex: 2, opacity: loading ? 0.7 : 1 }}
+                onClick={() => handleAccept(selectedRequest.id)}
+                disabled={loading}
+              >
+                {loading ? '...' : t.acceptRequest}
+              </button>
             </div>
           </div>
         </div>
@@ -383,7 +428,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                   <div
                     key={job.id}
                     style={s.requestCard}
-                    onClick={() => setSelectedRequest(job)}
+                    onClick={() => setJobDetail(job)}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 'bold', color: '#333' }}>
@@ -657,6 +702,16 @@ const s = {
     cursor: 'pointer',
     fontSize: '0.85rem'
   },
+  backBtn: {
+    padding: '6px 14px',
+    borderRadius: '10px',
+    border: '1.5px solid #006400',
+    background: '#fff',
+    color: '#006400',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.9rem'
+  },
   requestCard: {
     background: '#fff',
     borderRadius: '16px',
@@ -732,7 +787,7 @@ const s = {
     alignItems: 'center',
     gap: '10px'
   },
-  // المودال
+  // المودال (فقط للطلبات المتاحة قبل القبول)
   overlay: {
     position: 'fixed',
     inset: 0,
@@ -829,6 +884,22 @@ const s = {
     fontWeight: 'bold',
     textDecoration: 'none',
     fontSize: '1.1rem'
+  },
+  navBtnMap: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    width: '100%',
+    marginTop: '12px',
+    padding: '14px',
+    backgroundColor: '#1a73e8',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    cursor: 'pointer'
   },
   modalActions: {
     display: 'flex',
