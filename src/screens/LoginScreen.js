@@ -39,7 +39,7 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
       <div style={s.card}>
 
         {/* الشعار */}
-       <Logo size="xl" theme="dark" />
+       <Logo size="lg" theme="dark" />
 
         {/* الحقول */}
         <div style={s.field}>
@@ -114,6 +114,7 @@ const s = {
     boxShadow: '0 10px 40px rgba(0,100,0,0.1)',
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
     gap: '15px'
   },
   logoArea: {
@@ -138,7 +139,8 @@ const s = {
   field: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px'
+    gap: '6px',
+    width: '100%'
   },
   label: {
     fontSize: '0.9rem',
@@ -152,7 +154,9 @@ const s = {
     fontSize: '1rem',
     outline: 'none',
     textAlign: 'right',
-    backgroundColor: '#fafafa'
+    backgroundColor: '#fafafa',
+    width: '100%',
+    boxSizing: 'border-box'
   },
   error: {
     color: '#e53e3e',
@@ -160,7 +164,7 @@ const s = {
     textAlign: 'center',
     margin: 0
   },
-  btnPrimary: {
+   btnPrimary: {
     padding: '14px',
     backgroundColor: '#006400',
     color: '#fff',
@@ -168,7 +172,8 @@ const s = {
     borderRadius: '12px',
     fontSize: '1rem',
     fontWeight: 'bold',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    width: '100%'
   },
   btnOutline: {
     padding: '13px',
@@ -178,7 +183,8 @@ const s = {
     borderRadius: '12px',
     fontSize: '1rem',
     fontWeight: 'bold',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    width: '100%'
   },
   btnWhatsapp: {
     padding: '12px',
@@ -192,7 +198,8 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px'
+    gap: '8px',
+    width: '100%'
   },
   backLink: {
     background: 'none',
