@@ -1,17 +1,36 @@
-import React, { useState } from 'react';
- import APP_CONFIG from './config';
- import Logo from './Logo';
+import React, { useState, useEffect } from 'react';
+import Logo from './Logo';
+import APP_CONFIG from './config';
+ 
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
   const [lang, setLang] = useState('ar');
+  const [scrolled, setScrolled] = useState(false);
+  const [activeService, setActiveService] = useState(0);
+ 
+  const services = ['🔧', '💧', '⚡', '❄️', '🌀', '📺', '🚪', '🧊'];
+ 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+ 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveService(prev => (prev + 1) % services.length);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
  
   const content = {
     ar: {
       appName: APP_CONFIG.name,
       appSub: APP_CONFIG.taglineAr,
       hero: 'منزلك في أمان دائم',
-      heroDesc: 'اشترك واستمتع بطلبات غير محدودة — سباكة، كهرباء، صيانة وأكثر.',
+      heroSub: 'اشتراك شهري واحد — طلبات غير محدودة',
+      heroDesc: 'سباكة • كهرباء • تكييف • صيانة وأكثر',
       login: 'دخول',
-      register: 'اشترك',
+      register: 'اشترك الآن',
       howTitle: 'كيف يعمل؟',
       step1Title: 'اشترك', step1Desc: 'اختر باقتك الشهرية',
       step2Title: 'اطلب', step2Desc: 'صورة أو وصف صوتي للمشكلة',
@@ -20,11 +39,14 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       unlimited: 'طلبات غير محدودة',
       perMonth: 'شهرياً',
       downloadPdf: '📄 تحميل تفاصيل الباقة',
-      whyTitle: 'لماذا HomeFix؟',
+      whyTitle: 'لماذا نحن؟',
       why1: 'فنيون موثوقون', why2: 'استجابة سريعة',
       why3: 'طلبات غير محدودة', why4: 'تغطية شاملة',
       joinNow: 'ابدأ الآن', joinProvider: 'انضم كفني',
       footer: 'جميع الحقوق محفوظة', city: 'نواكشوط، موريتانيا',
+      servicesTitle: 'ما نغطيه',
+      ctaTitle: 'هل أنت مستعد؟',
+      ctaDesc: 'انضم الآن واحمِ منزلك',
       packages: [
         {
           name: 'راحة البال', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'الأكثر شمولاً',
@@ -44,34 +66,38 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       appName: APP_CONFIG.nameFr,
       appSub: APP_CONFIG.taglineFr,
       hero: 'Votre maison toujours en sécurité',
-      heroDesc: 'Abonnez-vous et profitez de demandes illimitées — plomberie, électricité, maintenance et plus.',
+      heroSub: 'Un abonnement mensuel — demandes illimitées',
+      heroDesc: 'Plomberie • Électricité • Climatisation • Maintenance',
       login: 'Connexion',
       register: "S'abonner",
       howTitle: 'Comment ça marche ?',
-      step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait mensuel',
-      step2Title: 'Demander', step2Desc: 'Photo ou note vocale du problème',
-      step3Title: 'Le technicien arrive', step3Desc: 'Dans les plus brefs délais',
+      step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait',
+      step2Title: 'Demander', step2Desc: 'Photo ou note vocale',
+      step3Title: 'Le technicien arrive', step3Desc: 'Le plus vite possible',
       packagesTitle: 'Nos forfaits mensuels',
       unlimited: 'Demandes illimitées',
       perMonth: 'par mois',
       downloadPdf: '📄 Télécharger les détails',
-      whyTitle: 'Pourquoi HomeFix ?',
+      whyTitle: 'Pourquoi nous ?',
       why1: 'Techniciens vérifiés', why2: 'Réponse rapide',
       why3: 'Demandes illimitées', why4: 'Couverture complète',
       joinNow: 'Commencer', joinProvider: 'Rejoindre comme technicien',
       footer: 'Tous droits réservés', city: 'Nouakchott, Mauritanie',
+      servicesTitle: 'Ce que nous couvrons',
+      ctaTitle: 'Prêt à commencer ?',
+      ctaDesc: 'Rejoignez-nous et protégez votre maison',
       packages: [
         {
           name: 'Rāħat el bāl', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'Le plus complet',
-          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🔌 Installation Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets douche et cuisine','💧 Fuite lavabo','⚙️ Pompe à eau','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau','📺 Télévision','🚪 Serrures et portes','⚡ Priorité maximale']
+          items: ['⚡ Pannes électriques','💡 Éclairage','🔌 Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets','💧 Lavabo','⚙️ Pompe','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau','📺 Télévision','🚪 Serrures','⚡ Priorité max']
         },
         {
           name: 'El beit el maâmour', price: 1300, color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: 'Le plus demandé',
-          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🔌 Installation Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets douche et cuisine','💧 Fuite lavabo','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau']
+          items: ['⚡ Pannes électriques','💡 Éclairage','🔌 Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets','💧 Lavabo','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau']
         },
         {
           name: 'Es-salāma', price: 1100, color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: 'Pour commencer',
-          items: ['⚡ Pannes électriques et câblage','💡 Éclairage et interrupteurs','🚿 Robinets douche et cuisine','💧 Fuite lavabo','🔩 Compresseur','🚪 Serrures et portes']
+          items: ['⚡ Pannes électriques','💡 Éclairage','🚿 Robinets','💧 Lavabo','🔩 Compresseur','🚪 Serrures']
         }
       ]
     }
@@ -85,7 +111,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
     div.style.cssText = `position:fixed;left:-9999px;top:0;width:390px;background:white;font-family:Arial,sans-serif;direction:rtl;`;
     div.innerHTML = `
       <div style="background:${pkg.border};padding:30px 20px;text-align:center;color:white;">
-        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">🏠 ${APP_CONFIG.name}</div>
+        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">S.M.A.M</div>
         <div style="font-size:18px;font-weight:bold;margin-bottom:5px;">${pkg.icon} ${pkg.name}</div>
         <div style="font-size:15px;opacity:0.9;">${pkg.price} MRU / شهرياً</div>
       </div>
@@ -96,14 +122,14 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           ⚠️ <strong>اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
         </div>
       </div>
-      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">${APP_CONFIG.name} — نواكشوط، موريتانيا</div>
+      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">S.M.A.M — نواكشوط، موريتانيا</div>
     `;
     document.body.appendChild(div);
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
       const link = document.createElement('a');
-      link.download = `HomeFix-${pkg.name}.png`;
+      link.download = `SMAM-${pkg.name}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -118,197 +144,343 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
  
       <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet" />
  
-      {/* ===== CSS للهاتف ===== */}
       <style>{`
+        * { box-sizing: border-box; }
         @media (max-width: 480px) {
-          .hfx-nav { padding: 10px 15px !important; }
-          .hfx-logo-sub { display: none !important; }
-          .hfx-hero { min-height: 70vh !important; padding-bottom: 60px !important; }
-          .hfx-hero-content { padding: 20px 15px !important; }
-          .hfx-hero-title { font-size: 1.8rem !important; }
-          .hfx-hero-desc { font-size: 0.9rem !important; margin-bottom: 20px !important; }
-          .hfx-hero-btns { flex-direction: column !important; width: 100% !important; padding: 0 15px !important; }
+          .hfx-hero-title { font-size: 1.9rem !important; }
+          .hfx-hero-desc { font-size: 0.85rem !important; }
+          .hfx-hero-btns { flex-direction: column !important; }
           .hfx-btn-hero { width: 100% !important; text-align: center !important; }
-          .hfx-section { padding: 30px 15px !important; }
-          .hfx-steps { grid-template-columns: 1fr !important; gap: 10px !important; }
-          .hfx-step-card { flex-direction: row !important; padding: 15px !important; text-align: right !important; gap: 12px !important; align-items: center !important; }
-          .hfx-step-icon { font-size: 1.8rem !important; }
-          .hfx-step-num { width: 32px !important; height: 32px !important; font-size: 0.9rem !important; flex-shrink: 0 !important; }
-          .hfx-pkg-grid { grid-template-columns: 1fr !important; padding: 0 5px !important; }
-          .hfx-why-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-          .hfx-why-card { padding: 15px 10px !important; }
-          .hfx-cta { padding: 40px 15px !important; }
-          .hfx-cta-btns { flex-direction: column !important; width: 100% !important; }
-          .hfx-section-title { font-size: 1.4rem !important; margin-bottom: 20px !important; }
+          .hfx-steps { grid-template-columns: 1fr !important; }
+          .hfx-pkg-grid { grid-template-columns: 1fr !important; }
+          .hfx-why-grid { grid-template-columns: 1fr 1fr !important; }
+          .hfx-services-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          .hfx-nav-btns { display: none !important; }
         }
       `}</style>
  
       {/* ===== NAV ===== */}
-     <nav className="hfx-nav" style={{
-  backgroundColor: '#006400', position: 'sticky',
-  top: 0, zIndex: 100, boxShadow: '0 2px 15px rgba(0,100,0,0.3)'
-}}>
-  {/* السطر الأول — الشعار وزر اللغة */}
-  <div style={{
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '10px 15px'
-  }}>
-    <Logo size="sm" theme="light" />
-    <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{
-      padding: '5px 12px', borderRadius: '8px',
-      border: '1.5px solid rgba(255,255,255,0.5)',
-      background: 'transparent', color: '#fff',
-      fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem'
-    }}>
-      {lang === 'ar' ? 'FR' : 'AR'}
-    </button>
-  </div>
-
-  {/* السطر الثاني — أزرار الدخول والاشتراك */}
-  <div style={{
-    display: 'flex', gap: '8px',
-    padding: '0 15px 10px'
-  }}>
-    <button onClick={onLoginClick} style={{
-      flex: 1, padding: '9px',
-      borderRadius: '10px',
-      border: '1.5px solid rgba(255,255,255,0.6)',
-      background: 'transparent', color: '#fff',
-      fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem'
-    }}>
-      {c.login}
-    </button>
-    <button onClick={onRegisterClick} style={{
-      flex: 1, padding: '9px',
-      borderRadius: '10px',
-      border: 'none', background: '#ffc107',
-      color: '#333', fontWeight: 'bold',
-      cursor: 'pointer', fontSize: '0.9rem'
-    }}>
-      {c.register}
-    </button>
-  </div>
-</nav>
+      <nav style={{
+        backgroundColor: scrolled ? 'rgba(0,100,0,0.97)' : '#006400',
+        position: 'sticky', top: 0, zIndex: 100,
+        boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 15px rgba(0,100,0,0.3)',
+        transition: 'all 0.3s ease'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px' }}>
+          <Logo size="sm" theme="light" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={{
+              padding: '5px 12px', borderRadius: '8px',
+              border: '1.5px solid rgba(255,255,255,0.5)',
+              background: 'transparent', color: '#fff',
+              fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem'
+            }}>
+              {lang === 'ar' ? 'FR' : 'AR'}
+            </button>
+            <button className="hfx-nav-btns" onClick={onLoginClick} style={{
+              padding: '7px 16px', borderRadius: '8px',
+              border: '1.5px solid rgba(255,255,255,0.5)',
+              background: 'transparent', color: '#fff',
+              fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem'
+            }}>
+              {c.login}
+            </button>
+            <button className="hfx-nav-btns" onClick={onRegisterClick} style={{
+              padding: '7px 16px', borderRadius: '8px',
+              border: 'none', background: '#ffc107',
+              color: '#333', fontWeight: 'bold',
+              cursor: 'pointer', fontSize: '0.85rem'
+            }}>
+              {c.register}
+            </button>
+          </div>
+        </div>
+        {/* السطر الثاني على الهاتف */}
+        <div style={{
+          display: 'flex', gap: '8px', padding: '0 15px 10px',
+          borderTop: '1px solid rgba(255,255,255,0.1)'
+        }} className="hfx-mobile-btns">
+          <style>{`.hfx-mobile-btns { display: none; } @media (max-width: 480px) { .hfx-mobile-btns { display: flex !important; } }`}</style>
+          <button onClick={onLoginClick} style={{
+            flex: 1, padding: '9px', borderRadius: '10px',
+            border: '1.5px solid rgba(255,255,255,0.6)',
+            background: 'transparent', color: '#fff',
+            fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem'
+          }}>
+            {c.login}
+          </button>
+          <button onClick={onRegisterClick} style={{
+            flex: 1, padding: '9px', borderRadius: '10px',
+            border: 'none', background: '#ffc107',
+            color: '#333', fontWeight: 'bold',
+            cursor: 'pointer', fontSize: '0.9rem'
+          }}>
+            {c.register}
+          </button>
+        </div>
+      </nav>
  
       {/* ===== HERO ===== */}
-      <section className="hfx-hero" style={{
-        background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)',
-        minHeight: '75vh', display: 'flex', flexDirection: 'column',
+      <section style={{
+        background: 'linear-gradient(135deg, #004d00 0%, #006400 40%, #228B22 100%)',
+        minHeight: '85vh', display: 'flex', flexDirection: 'column',
         justifyContent: 'center', alignItems: 'center',
-        position: 'relative', overflow: 'hidden', paddingBottom: '70px'
+        position: 'relative', overflow: 'hidden', paddingBottom: '80px'
       }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.06 }}>
-          <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: '#fff', top: '-100px', right: '-100px' }} />
-          <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', backgroundColor: '#fff', bottom: '-50px', left: '-50px' }} />
+        {/* دوائر خلفية */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', top: '-150px', right: '-150px' }} />
+          <div style={{ position: 'absolute', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', bottom: '-80px', left: '-80px' }} />
+          <div style={{ position: 'absolute', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(255,193,7,0.05)', top: '30%', left: '10%' }} />
         </div>
  
-        <div className="hfx-hero-content" style={{ textAlign: 'center', padding: '30px 20px', position: 'relative', zIndex: 2, width: '100%', maxWidth: '600px', boxSizing: 'border-box' }}>
-          <div style={{ display: 'inline-block', background: 'rgba(255,193,7,0.2)', border: '1px solid rgba(255,193,7,0.4)', color: '#ffc107', padding: '5px 15px', borderRadius: '30px', fontSize: '0.8rem', marginBottom: '15px' }}>
+        {/* أيقونات الخدمات الطافية */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          {services.map((icon, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              fontSize: i === activeService ? '2.5rem' : '1.5rem',
+              opacity: i === activeService ? 0.3 : 0.08,
+              transition: 'all 1s ease',
+              top: `${10 + (i * 11) % 70}%`,
+              left: i % 2 === 0 ? `${5 + i * 6}%` : 'auto',
+              right: i % 2 !== 0 ? `${5 + i * 6}%` : 'auto',
+            }}>
+              {icon}
+            </div>
+          ))}
+        </div>
+ 
+        <div style={{ textAlign: 'center', padding: '30px 20px', position: 'relative', zIndex: 2, width: '100%', maxWidth: '650px' }}>
+          {/* شارة المدينة */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'rgba(255,193,7,0.15)', border: '1px solid rgba(255,193,7,0.3)',
+            color: '#ffc107', padding: '5px 16px', borderRadius: '30px',
+            fontSize: '0.8rem', marginBottom: '20px'
+          }}>
             📍 {c.city}
           </div>
  
-          <h1 className="hfx-hero-title" style={{ fontSize: '2.2rem', color: '#fff', fontWeight: '900', lineHeight: 1.2, marginBottom: '12px' }}>
+          {/* العنوان الرئيسي */}
+          <h1 className="hfx-hero-title" style={{
+            fontSize: '2.8rem', color: '#fff', fontWeight: '900',
+            lineHeight: 1.15, marginBottom: '12px',
+            textShadow: '0 2px 20px rgba(0,0,0,0.2)'
+          }}>
             {c.hero}
           </h1>
  
-          <p className="hfx-hero-desc" style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '25px', maxWidth: '450px', margin: '0 auto 25px' }}>
+          {/* العنوان الفرعي */}
+          <p style={{
+            fontSize: '1.1rem', color: '#ffc107', fontWeight: '700',
+            marginBottom: '10px', letterSpacing: '0.5px'
+          }}>
+            {c.heroSub}
+          </p>
+ 
+          {/* وصف الخدمات */}
+          <p className="hfx-hero-desc" style={{
+            fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)',
+            marginBottom: '30px', letterSpacing: '1px'
+          }}>
             {c.heroDesc}
           </p>
  
-          <div className="hfx-hero-btns" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', padding: '0 10px' }}>
-            <button className="hfx-btn-hero" onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+          {/* الأزرار */}
+          <div className="hfx-hero-btns" style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="hfx-btn-hero" onClick={onRegisterClick} style={{
+              padding: '14px 30px', backgroundColor: '#ffc107', color: '#333',
+              border: 'none', borderRadius: '14px', fontWeight: 'bold',
+              fontSize: '1rem', cursor: 'pointer',
+              boxShadow: '0 8px 25px rgba(255,193,7,0.35)'
+            }}>
               🔧 {c.joinNow}
             </button>
-            <button className="hfx-btn-hero" onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
-              👷 {c.joinProvider}
+            <button className="hfx-btn-hero" onClick={onLoginClick} style={{
+              padding: '14px 30px', backgroundColor: 'rgba(255,255,255,0.1)',
+              color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)',
+              borderRadius: '14px', fontWeight: 'bold',
+              fontSize: '1rem', cursor: 'pointer'
+            }}>
+              {c.login}
             </button>
           </div>
         </div>
  
-        <svg viewBox="0 0 1440 60" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px', width: '100%' }} preserveAspectRatio="none">
-          <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#ffffff" />
+        {/* موجة الأسفل */}
+        <svg viewBox="0 0 1440 70" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '70px', width: '100%' }} preserveAspectRatio="none">
+          <path d="M0,70 C360,0 1080,0 1440,70 L1440,70 L0,70 Z" fill="#ffffff" />
         </svg>
       </section>
  
+      {/* ===== شريط الخدمات ===== */}
+      <section style={{ backgroundColor: '#fff', padding: '30px 20px' }}>
+        <p style={{ textAlign: 'center', color: '#888', fontSize: '0.85rem', marginBottom: '20px', letterSpacing: '1px' }}>
+          {c.servicesTitle}
+        </p>
+        <div className="hfx-services-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
+          gap: '10px', maxWidth: '700px', margin: '0 auto'
+        }}>
+          {[
+            { icon: '⚡', label: lang === 'ar' ? 'كهرباء' : 'Électricité' },
+            { icon: '💧', label: lang === 'ar' ? 'سباكة' : 'Plomberie' },
+            { icon: '❄️', label: lang === 'ar' ? 'تكييف' : 'Clim' },
+            { icon: '🔧', label: lang === 'ar' ? 'صيانة' : 'Maintenance' },
+            { icon: '🌀', label: lang === 'ar' ? 'ريحة' : 'Ventilo' },
+            { icon: '📺', label: lang === 'ar' ? 'تلفاز' : 'TV' },
+            { icon: '🚪', label: lang === 'ar' ? 'أبواب' : 'Portes' },
+            { icon: '🧊', label: lang === 'ar' ? 'ثلاجة' : 'Frigo' }
+          ].map((s, i) => (
+            <div key={i} style={{
+              textAlign: 'center', padding: '12px 5px',
+              borderRadius: '14px', background: '#f8f9fa',
+              border: '1px solid #eee'
+            }}>
+              <div style={{ fontSize: '1.6rem', marginBottom: '4px' }}>{s.icon}</div>
+              <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: '600' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+ 
       {/* ===== كيف يعمل ===== */}
-      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#fff' }}>
-        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+      <section style={{ padding: '50px 20px', backgroundColor: '#f8f9fa', textAlign: 'center' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 16px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '12px' }}>
           HOW IT WORKS
         </div>
-        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+        <h2 style={{ fontSize: '1.7rem', fontWeight: '900', marginBottom: '40px', color: '#2c2c2c' }}>
           {c.howTitle}
         </h2>
  
-        <div className="hfx-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '700px', margin: '0 auto' }}>
+        <div className="hfx-steps" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '20px', maxWidth: '750px', margin: '0 auto',
+          position: 'relative'
+        }}>
+          {/* خط الربط — يظهر فقط على الكومبيوتر */}
+          <div style={{
+            position: 'absolute', top: '40px', left: '20%', right: '20%',
+            height: '2px', background: 'linear-gradient(90deg, #ffc107, #006400)',
+            zIndex: 0, opacity: 0.3
+          }} />
+ 
           {[
-            { num: '١', title: c.step1Title, desc: c.step1Desc, icon: '💳' },
-            { num: '٢', title: c.step2Title, desc: c.step2Desc, icon: '📱' },
-            { num: '٣', title: c.step3Title, desc: c.step3Desc, icon: '🔧' }
+            { num: '١', title: c.step1Title, desc: c.step1Desc, icon: '💳', color: '#ffc107' },
+            { num: '٢', title: c.step2Title, desc: c.step2Desc, icon: '📱', color: '#3b82f6' },
+            { num: '٣', title: c.step3Title, desc: c.step3Desc, icon: '🔧', color: '#006400' }
           ].map((step, i) => (
-            <div key={i} className="hfx-step-card" style={{ background: '#f8f9fa', borderRadius: '16px', padding: '20px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', border: '1px solid #eee' }}>
-              <span className="hfx-step-icon" style={{ fontSize: '2rem' }}>{step.icon}</span>
-              <div className="hfx-step-num" style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#006400', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', flexShrink: 0 }}>
+            <div key={i} style={{
+              background: '#fff', borderRadius: '20px', padding: '25px 15px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.06)', border: '1px solid #eee',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+              position: 'relative', zIndex: 1
+            }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                backgroundColor: step.color, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', boxShadow: `0 4px 15px ${step.color}44`
+              }}>
+                {step.icon}
+              </div>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                backgroundColor: '#2c2c2c', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 'bold', fontSize: '0.9rem'
+              }}>
                 {step.num}
               </div>
               <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#333', margin: 0 }}>{step.title}</h3>
-              <p style={{ fontSize: '0.8rem', color: '#777', lineHeight: 1.5, margin: 0 }}>{step.desc}</p>
+              <p style={{ fontSize: '0.82rem', color: '#777', lineHeight: 1.5, margin: 0 }}>{step.desc}</p>
             </div>
           ))}
         </div>
       </section>
  
       {/* ===== الباقات ===== */}
-      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
-        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+      <section style={{ padding: '50px 20px', backgroundColor: '#fff', textAlign: 'center' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 16px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '12px' }}>
           PACKAGES · الباقات
         </div>
-        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+        <h2 style={{ fontSize: '1.7rem', fontWeight: '900', marginBottom: '40px', color: '#2c2c2c' }}>
           {c.packagesTitle}
         </h2>
  
-        <div className="hfx-pkg-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '950px', margin: '0 auto', padding: '0 5px' }}>
+        <div className="hfx-pkg-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '24px', maxWidth: '950px', margin: '0 auto'
+        }}>
           {c.packages.map((pkg, i) => (
-            <div key={i} style={{ border: `2px solid ${pkg.border}`, borderRadius: '20px', backgroundColor: pkg.color, position: 'relative', marginTop: '18px', boxShadow: '0 4px 15px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' }}>
- 
+            <div key={i} style={{
+              border: `2px solid ${pkg.border}`, borderRadius: '24px',
+              backgroundColor: pkg.color, position: 'relative',
+              marginTop: '18px', boxShadow: '0 6px 25px rgba(0,0,0,0.08)',
+              display: 'flex', flexDirection: 'column',
+              transition: 'transform 0.2s ease'
+            }}>
               {/* شارة */}
-              <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', backgroundColor: pkg.border, color: '#fff', padding: '4px 16px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+              <div style={{
+                position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
+                backgroundColor: pkg.border, color: '#fff', padding: '5px 18px',
+                borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold',
+                whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${pkg.border}55`
+              }}>
                 {pkg.badge}
               </div>
  
               {/* رأسية */}
-              <div style={{ padding: '20px', paddingTop: '28px', borderBottom: `2px solid ${pkg.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '2.2rem' }}>{pkg.icon}</span>
+              <div style={{
+                padding: '22px 20px', paddingTop: '28px',
+                borderBottom: `2px solid ${pkg.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '2.5rem' }}>{pkg.icon}</span>
                   <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: pkg.border }}>{pkg.name}</p>
+                    <p style={{ margin: 0, fontWeight: '900', fontSize: '1.15rem', color: pkg.border }}>{pkg.name}</p>
                     <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#666' }}>∞ {c.unlimited}</p>
                   </div>
                 </div>
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <div style={{ fontSize: '1.6rem', fontWeight: '900', color: pkg.border, lineHeight: 1 }}>{pkg.price}</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: '900', color: pkg.border, lineHeight: 1 }}>{pkg.price}</div>
                   <div style={{ fontSize: '0.7rem', color: '#888' }}>MRU/{c.perMonth}</div>
                 </div>
               </div>
  
               {/* التغطية */}
-              <div style={{ padding: '15px 18px', flex: 1 }}>
+              <div style={{ padding: '18px 20px', flex: 1 }}>
                 {pkg.items.map((item, j) => (
-                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ color: pkg.border, fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>✓</span>
+                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '9px' }}>
+                    <span style={{ color: pkg.border, fontWeight: 'bold', flexShrink: 0 }}>✓</span>
                     <span style={{ fontSize: '0.85rem', color: '#444', lineHeight: 1.4 }}>{item}</span>
                   </div>
                 ))}
-                <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(0,0,0,0.04)', borderRadius: '8px', fontSize: '0.75rem', color: '#777', textAlign: 'center', borderTop: `1px dashed ${pkg.border}` }}>
+                <div style={{
+                  marginTop: '14px', padding: '10px', background: 'rgba(0,0,0,0.04)',
+                  borderRadius: '10px', fontSize: '0.75rem', color: '#777',
+                  textAlign: 'center', borderTop: `1px dashed ${pkg.border}`
+                }}>
                   ⚠️ اليد العاملة فقط · Main d'œuvre uniquement
                 </div>
               </div>
  
               {/* الأزرار */}
-              <div style={{ padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button onClick={onRegisterClick} style={{ padding: '12px', backgroundColor: pkg.border, color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.95rem', cursor: 'pointer' }}>
+              <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button onClick={onRegisterClick} style={{
+                  padding: '13px', backgroundColor: pkg.border, color: '#fff',
+                  border: 'none', borderRadius: '12px', fontWeight: 'bold',
+                  fontSize: '0.95rem', cursor: 'pointer'
+                }}>
                   {c.register}
                 </button>
-                <button onClick={() => generatePdf(pkg)} style={{ padding: '10px', backgroundColor: 'transparent', border: `2px solid ${pkg.border}`, borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', color: pkg.border, cursor: 'pointer' }}>
+                <button onClick={() => generatePdf(pkg)} style={{
+                  padding: '11px', backgroundColor: 'transparent',
+                  border: `2px solid ${pkg.border}`, borderRadius: '12px',
+                  fontWeight: 'bold', fontSize: '0.85rem', color: pkg.border, cursor: 'pointer'
+                }}>
                   {c.downloadPdf}
                 </button>
               </div>
@@ -318,56 +490,103 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       </section>
  
       {/* ===== لماذا نحن ===== */}
-      <section className="hfx-section" style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: '#fff' }}>
-        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 14px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '10px' }}>
+      <section style={{ padding: '50px 20px', backgroundColor: '#f8f9fa', textAlign: 'center' }}>
+        <div style={{ display: 'inline-block', background: '#e8f5e9', color: '#006400', padding: '4px 16px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '12px' }}>
           WHY US · لماذا نحن
         </div>
-        <h2 className="hfx-section-title" style={{ fontSize: '1.6rem', color: '#2c2c2c', fontWeight: '900', marginBottom: '25px' }}>
+        <h2 style={{ fontSize: '1.7rem', fontWeight: '900', marginBottom: '35px', color: '#2c2c2c' }}>
           {c.whyTitle}
         </h2>
  
-        <div className="hfx-why-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', maxWidth: '700px', margin: '0 auto' }}>
+        <div className="hfx-why-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '16px', maxWidth: '800px', margin: '0 auto'
+        }}>
           {[
-            { icon: '🛡️', text: c.why1, bg: '#e8f5e9' },
-            { icon: '⚡', text: c.why2, bg: '#fff3e0' },
-            { icon: '∞', text: c.why3, bg: '#e3f2fd' },
-            { icon: '🏠', text: c.why4, bg: '#f3e5f5' }
+            { icon: '🛡️', text: c.why1, bg: '#e8f5e9', color: '#006400' },
+            { icon: '⚡', text: c.why2, bg: '#fff3e0', color: '#f59e0b' },
+            { icon: '∞', text: c.why3, bg: '#e3f2fd', color: '#3b82f6' },
+            { icon: '🏠', text: c.why4, bg: '#f3e5f5', color: '#9c27b0' }
           ].map((w, i) => (
-            <div key={i} className="hfx-why-card" style={{ background: '#fff', borderRadius: '16px', padding: '20px 15px', boxShadow: '0 3px 10px rgba(0,0,0,0.06)', border: '1px solid #eee', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: w.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem' }}>
+            <div key={i} style={{
+              background: '#fff', borderRadius: '20px', padding: '22px 15px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.06)', border: '1px solid #eee',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'
+            }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '16px',
+                backgroundColor: w.bg, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.7rem'
+              }}>
                 {w.icon}
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#444', fontWeight: '600', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>{w.text}</p>
+              <p style={{ fontSize: '0.85rem', color: '#444', fontWeight: '700', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
+                {w.text}
+              </p>
             </div>
           ))}
         </div>
       </section>
  
       {/* ===== CTA ===== */}
-      <section className="hfx-cta" style={{ background: 'linear-gradient(135deg, #006400 0%, #228B22 100%)', padding: '50px 20px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '1.8rem', color: '#fff', fontWeight: '900', marginBottom: '10px' }}>
-          {lang === 'ar' ? 'هل أنت مستعد؟' : 'Prêt à commencer ?'}
+      <section style={{
+        background: 'linear-gradient(135deg, #004d00 0%, #006400 50%, #228B22 100%)',
+        padding: '60px 20px', textAlign: 'center', position: 'relative', overflow: 'hidden'
+      }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
+          <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: '#fff', top: '-100px', right: '-100px' }} />
+        </div>
+        <h2 style={{ fontSize: '2rem', color: '#fff', fontWeight: '900', marginBottom: '10px', position: 'relative' }}>
+          {c.ctaTitle}
         </h2>
-        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem', marginBottom: '25px' }}>
-          {lang === 'ar' ? 'انضم الآن واحمِ منزلك مع HomeFix' : 'Rejoignez HomeFix et protégez votre maison'}
+        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1rem', marginBottom: '28px', position: 'relative' }}>
+          {c.ctaDesc}
         </p>
-        <div className="hfx-cta-btns" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
+          <button onClick={onRegisterClick} style={{
+            padding: '14px 30px', backgroundColor: '#ffc107', color: '#333',
+            border: 'none', borderRadius: '14px', fontWeight: 'bold',
+            fontSize: '1rem', cursor: 'pointer',
+            boxShadow: '0 8px 25px rgba(255,193,7,0.35)'
+          }}>
             🔧 {c.joinNow}
           </button>
-          <button onClick={onRegisterClick} style={{ padding: '13px 24px', backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+          <button onClick={onRegisterClick} style={{
+            padding: '14px 30px', backgroundColor: 'rgba(255,255,255,0.1)',
+            color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)',
+            borderRadius: '14px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer'
+          }}>
             👷 {c.joinProvider}
           </button>
         </div>
       </section>
  
       {/* ===== FOOTER ===== */}
-      <footer style={{ backgroundColor: '#1a1a1a', padding: '25px 20px', textAlign: 'center' }}>
-        <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>🏠 {c.appName}</div>
+      <footer style={{ backgroundColor: '#1a1a1a', padding: '30px 20px', textAlign: 'center' }}>
+        <div style={{ marginBottom: '15px' }}>
+          <Logo size="sm" theme="light" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '15px', flexWrap: 'wrap' }}>
+          <a href={`https://wa.me/${APP_CONFIG.whatsapp}`} target="_blank" rel="noreferrer" style={{
+            color: '#25D366', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold'
+          }}>
+            💬 WhatsApp
+          </a>
+          <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
+          <a href={`tel:${APP_CONFIG.phone}`} style={{
+            color: '#ffc107', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold'
+          }}>
+            📞 {APP_CONFIG.phone}
+          </a>
+        </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>{c.city}</p>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>© 2026 {c.appName} · {c.footer}</p>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: '4px 0' }}>
+          © 2026 S.M.A.M · {c.footer}
+        </p>
       </footer>
  
     </div>
   );
 }
+
