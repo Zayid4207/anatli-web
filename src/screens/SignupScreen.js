@@ -10,7 +10,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   const [otpCode, setOtpCode] = useState('');
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
- 
+ const [housePhoto, setHousePhoto] = useState(null);
   const [form, setForm] = useState({
     full_name: '',
     phone: '',
@@ -54,24 +54,32 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     setError('');
     handleSignup();
   };
- const handleSignup = async () => {
+  const handleSignup = async () => {
     setLoading(true);
     try {
+      const formData = new FormData();
+      formData.append('full_name', form.full_name);
+      formData.append('phone', form.phone);
+      formData.append('password', form.password);
+      formData.append('user_role', role);
+
+      if (role === 'customer') {
+        formData.append('district', form.district || '');
+        formData.append('address', form.address || '');
+        if (housePhoto) formData.append('house_photo', housePhoto);
+      }
+
+      if (role === 'provider') {
+        formData.append('bank_phone', form.bank_phone || '');
+        formData.append('bank_type', form.bank_type || '');
+        formData.append('covered_districts', coveredDistricts.join(','));
+      }
+
       const res = await fetch(`${apiUrl}/signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: form.full_name,
-          phone: form.phone,
-          password: form.password,
-          user_role: role,
-          district: role === 'customer' ? form.district : null,
-          address: role === 'customer' ? form.address : null,
-          bank_phone: role === 'provider' ? form.bank_phone : null,
-          bank_type: role === 'provider' ? form.bank_type : null,
-          covered_districts: role === 'provider' ? coveredDistricts.join(',') : null
-        })
+        body: formData
       });
+
       const data = await res.json();
       if (res.ok) {
         alert(lang === 'ar'
@@ -87,7 +95,6 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       setLoading(false);
     }
   };
- 
   const handleVerifyOtp = async () => {
     if (!otpCode) { setError(lang === 'ar' ? 'يرجى إدخال الرمز' : 'Veuillez entrer le code'); return; }
     setLoading(true);
@@ -197,6 +204,39 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
           value={form.address}
           onChange={e => update('address', e.target.value)}
         />
+        {/* صورة واجهة المنزل */}
+<label style={{
+  display: 'flex', flexDirection: 'column', alignItems: 'center',
+  justifyContent: 'center', gap: '8px', padding: '20px',
+  border: `2px dashed ${housePhoto ? '#28a745' : '#006400'}`,
+  borderRadius: '14px', cursor: 'pointer',
+  backgroundColor: housePhoto ? '#f0fff0' : '#fafffe'
+}}>
+  <input
+    type="file" accept="image/*" style={{ display: 'none' }}
+    onChange={e => {
+      const file = e.target.files[0];
+      if (file && file.size > 5 * 1024 * 1024) {
+        alert(lang === 'ar' ? 'حجم الصورة كبير جداً' : 'Image trop grande');
+        return;
+      }
+      setHousePhoto(file);
+    }}
+  />
+  <span style={{ fontSize: '2rem' }}>{housePhoto ? '✅' : '🏠'}</span>
+  <div style={{ textAlign: 'center' }}>
+    <p style={{ margin: 0, fontWeight: 'bold', color: housePhoto ? '#28a745' : '#006400', fontSize: '0.9rem' }}>
+      {housePhoto
+        ? housePhoto.name.substring(0, 25) + '...'
+        : (lang === 'ar' ? 'صورة واجهة منزلك' : 'Photo de votre maison')}
+    </p>
+    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#888' }}>
+      {lang === 'ar'
+        ? 'ارفع صورة للواجهة الخارجية — تساعد الفني على إيجادك'
+        : 'Photo de la façade — aide le technicien à vous trouver'}
+    </p>
+  </div>
+</label>
       </>
     ) : (
       <>

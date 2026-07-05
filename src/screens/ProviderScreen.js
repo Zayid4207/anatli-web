@@ -167,7 +167,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
             )}
  
             {/* بيانات الزبون — تظهر فقط بعد القبول */}
-            {selectedRequest.status === 'assigned' || selectedRequest.status === 'completed' ? (
+       {selectedRequest.status === 'assigned' || selectedRequest.status === 'completed' ? (
               <div style={{ ...s.infoBox, backgroundColor: '#d4edda', border: '1px solid #c3e6cb' }}>
                 <p style={{ ...s.infoLabel, color: '#155724', fontWeight: 'bold' }}>
                   {lang === 'ar' ? '👤 بيانات الزبون:' : '👤 Informations client:'}
@@ -179,6 +179,27 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                 <p style={{ ...s.infoValue, marginTop: '8px' }}>
                   📍 {selectedRequest.district} — {selectedRequest.address}
                 </p>
+                {/* صورة منزل الزبون */}
+{selectedRequest.house_photo_url && (
+  <div style={{ marginTop: '12px' }}>
+    <p style={{ ...s.infoLabel, marginBottom: '6px' }}>
+      🏠 {lang === 'ar' ? 'واجهة منزل الزبون:' : 'Façade de la maison:'}
+    </p>
+    <img
+      src={selectedRequest.house_photo_url}
+      alt="house"
+      style={{
+        width: '100%', borderRadius: '12px',
+        maxHeight: '180px', objectFit: 'cover',
+        cursor: 'pointer', border: '2px solid #006400'
+      }}
+      onClick={() => window.open(selectedRequest.house_photo_url, '_blank')}
+    />
+    <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#888', textAlign: 'center' }}>
+      {lang === 'ar' ? '⚠️ تأكد من تطابق الواجهة قبل الدخول' : '⚠️ Vérifiez la façade avant d\'entrer'}
+    </p>
+  </div>
+)}
                 {/* زر الانطلاق بالملاحة */}
 {selectedRequest.latitude && selectedRequest.longitude && (
   <button
