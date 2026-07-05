@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../translations';
- 
+ import Logo from '../Logo';
 export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
@@ -265,14 +265,18 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
             {/* الرأسية */}
             <div style={s.homeHeader}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ margin: 0, color: '#fff', fontSize: '0.9rem', opacity: 0.85 }}>{t.welcomeBack}</p>
-                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.3rem', fontWeight: 'bold' }}>{userData?.full_name}</h2>
-                </div>
-                <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
-                  {lang === 'ar' ? 'FR' : 'AR'}
-                </button>
+            <Logo size="sm" theme="light" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
+                       {lang === 'ar' ? 'FR' : 'AR'}
+                  </button>
               </div>
+                           </div>
+                      {/* اسم الزبون تحت الشعار */}
+                 <div style={{ marginTop: '12px' }}>
+                             <p style={{ margin: 0, color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' }}>{t.welcomeBack}</p>
+                       <h2 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 'bold' }}>{userData?.full_name}</h2>
+                      </div>
  
               {/* رمز العميل */}
               <div style={s.clientCodeBox}>

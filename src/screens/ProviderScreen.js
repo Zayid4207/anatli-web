@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../translations';
- 
+ import Logo from '../Logo';
 export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
@@ -279,17 +279,18 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
         {/* ===== الطلبات المتاحة ===== */}
         {activeTab === 'home' && (
           <div style={s.screen}>
-            <div style={s.screenHeader}>
-              <div>
-                <h2 style={s.screenTitle}>{t.availableRequests}</h2>
-                <p style={s.screenSub}>
-                  {lang === 'ar' ? `${availableRequests.length} طلب متاح` : `${availableRequests.length} demande(s)`}
-                </p>
-              </div>
-              <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
-                {lang === 'ar' ? 'FR' : 'AR'}
-              </button>
-            </div>
+           <div style={s.screenHeader}>
+  <Logo size="sm" theme="dark" />
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
+      {lang === 'ar' ? 'FR' : 'AR'}
+    </button>
+  </div>
+</div>
+<div style={{ marginBottom: '15px' }}>
+  <h2 style={s.screenTitle}>{t.availableRequests}</h2>
+  <p style={s.screenSub}>{lang === 'ar' ? `${availableRequests.length} طلب متاح` : `${availableRequests.length} demande(s)`}</p>
+</div>
  
             {availableRequests.length === 0 ? (
               <div style={s.emptyBox}>
