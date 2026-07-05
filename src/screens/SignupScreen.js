@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from '../translations';
- 
+import Logo from '../Logo';
 export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('customer');
@@ -138,8 +138,11 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       <div style={s.card}>
  
         {/* الرأسية */}
+       {/* الرأسية */}
         <div style={s.header}>
-          <div style={s.logoIcon}>🏠</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <Logo size="md" theme="dark" />
+          </div>
           <h2 style={s.title}>{t.createAccount}</h2>
           <div style={s.steps}>
             {[1,2].map(n => (
