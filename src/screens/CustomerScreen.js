@@ -19,6 +19,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [voiceBlob, setVoiceBlob] = useState(null);
   const [voiceUrl, setVoiceUrl] = useState(null);
   const [description, setDescription] = useState('');
+   const [serviceType, setServiceType] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [step, setStep] = useState(1);
   const mediaRecorderRef = useRef(null);
@@ -139,7 +140,12 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     if (!image && !voiceBlob) {
       alert(lang === 'ar' ? 'يرجى إرفاق صورة أو وصف صوتي' : 'Veuillez joindre une photo ou un message vocal');
       return;
+      if (!serviceType) {
+      alert(lang === 'ar' ? 'يرجى تحديد نوع المشكلة' : 'Veuillez choisir le type de problème');
+      return;}
+      
     }
+    
      if (!location) {
     alert(lang === 'ar' ? 'يرجى تحديد موقعك أولاً' : 'Veuillez d\'abord localiser votre position');
     return;
@@ -150,6 +156,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       formData.append('latitude', location.lat);
       formData.append('longitude', location.lng);
       formData.append('customer_id', user.id);
+      formData.append('service_type', serviceType);
       if (description) formData.append('description', description);
       if (image) formData.append('image', image);
       if (voiceBlob) formData.append('voice_note', voiceBlob, 'voice.webm');
@@ -166,6 +173,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
         setVoiceBlob(null);
         setVoiceUrl(null);
         setDescription('');
+         setServiceType('');
         setStep(1);
         setActiveTab('requests');
         fetchRequests();
@@ -383,6 +391,32 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
             </div>
  
             <div style={s.form}>
+              {/* نوع المشكلة — إجباري */}
+              <div>
+                <label style={s.fieldLabel}>
+                  {lang === 'ar' ? '🔧 نوع المشكلة *' : '🔧 Type de problème *'}
+                </label>
+                <select
+                  style={s.selectInput}
+                  value={serviceType}
+                  onChange={e => setServiceType(e.target.value)}
+                >
+                  <option value="">
+                    {lang === 'ar' ? '-- اختر نوع المشكلة --' : '-- Choisir le type --'}
+                  </option>
+                  {(() => {
+                    const myPackage = packages.find(p => p.id === userData?.package_id);
+                    const items = myPackage?.coverage_items
+                      ? myPackage.coverage_items
+                          .split('|')
+                          .filter(item => item.trim() !== 'أولوية قصوى في الاستجابة')
+                      : [];
+                    return items.map((item, i) => (
+                      <option key={i} value={item.trim()}>{item.trim()}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
               {/* صورة المشكلة */}
               <label style={s.uploadLabel}>
                 <input type="file" accept="image/*" style={{ display: 'none' }}
@@ -1337,6 +1371,24 @@ const s = {
     boxSizing: 'border-box',
     outline: 'none',
     backgroundColor: '#fafafa'
+  },
+  selectInput: {
+    width: '100%',
+    padding: '13px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '0.95rem',
+    boxSizing: 'border-box',
+    outline: 'none',
+    backgroundColor: '#fafafa',
+    color: '#333'
+  },
+  fieldLabel: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#444',
+    marginBottom: '6px',
+    display: 'block'
   },
   btnPrimary: {
     padding: '15px',
