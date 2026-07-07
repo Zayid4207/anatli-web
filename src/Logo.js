@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
-
+ 
 export default function Logo({ size = 'md', theme = 'light' }) {
   const [isArabic, setIsArabic] = useState(true);
-
+ 
   useEffect(() => {
     const interval = setInterval(() => {
       setIsArabic(prev => !prev);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
-
+ 
   const sizes = {
     sm: { box: 32, abbr: '0.8rem', sub: '0.5rem', gap: 8 },
     md: { box: 44, abbr: '1rem', sub: '0.6rem', gap: 10 },
     lg: { box: 58, abbr: '1.25rem', sub: '0.72rem', gap: 12 },
     xl: { box: 75, abbr: '1.55rem', sub: '0.9rem', gap: 16 }
   };
-
+ 
   const s = sizes[size] || sizes.md;
   const isLight = theme === 'light';
   const textColor = isLight ? '#fff' : '#006400';
   const subColor = isLight ? 'rgba(255,255,255,0.75)' : 'rgba(0,100,0,0.65)';
   const dividerColor = isLight ? 'rgba(255,255,255,0.3)' : 'rgba(0,100,0,0.2)';
-
+ 
   return (
     <div style={{
       display: 'flex',
@@ -30,7 +30,7 @@ export default function Logo({ size = 'md', theme = 'light' }) {
       gap: s.gap,
       direction: 'ltr'
     }}>
-      {/* الأيقونة — منزل بسيط */}
+      {/* الأيقونة — منزل بألوان العلم الموريتاني */}
       <div style={{
         width: s.box,
         height: s.box,
@@ -45,35 +45,35 @@ export default function Logo({ size = 'md', theme = 'light' }) {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* سقف */}
+        {/* سقف — أخضر (العلم الموريتاني) */}
         <div style={{
           width: 0, height: 0,
           borderLeft: `${s.box * 0.38}px solid transparent`,
           borderRight: `${s.box * 0.38}px solid transparent`,
-          borderBottom: `${s.box * 0.3}px solid #333`,
+          borderBottom: `${s.box * 0.3}px solid #00843D`,
           position: 'absolute',
           top: s.box * 0.1
         }} />
-        {/* جسم */}
+        {/* جسم — أخضر (العلم الموريتاني) */}
         <div style={{
           position: 'absolute',
           bottom: s.box * 0.1,
           width: s.box * 0.5,
           height: s.box * 0.36,
-          backgroundColor: '#333',
+          backgroundColor: '#00843D',
           borderRadius: '2px 2px 0 0'
         }} />
-        {/* باب */}
+        {/* باب — أحمر (العلم الموريتاني) */}
         <div style={{
           position: 'absolute',
           bottom: s.box * 0.1,
           width: s.box * 0.16,
           height: s.box * 0.2,
-          backgroundColor: '#ffc107',
+          backgroundColor: '#D21034',
           borderRadius: '2px 2px 0 0'
         }} />
       </div>
-
+ 
       {/* النص المتبادل */}
       <div style={{
         display: 'flex',
@@ -95,7 +95,7 @@ export default function Logo({ size = 'md', theme = 'light' }) {
         }}>
           {isArabic ? 'ش.م.ت.ا.م' : 'S.M.A.M'}
         </div>
-
+ 
         {/* خط فاصل */}
         <div style={{
           width: '100%',
@@ -103,7 +103,7 @@ export default function Logo({ size = 'md', theme = 'light' }) {
           backgroundColor: dividerColor,
           margin: '2px 0'
         }} />
-
+ 
         {/* الوصف */}
         <div style={{
           fontSize: s.sub,
@@ -114,10 +114,11 @@ export default function Logo({ size = 'md', theme = 'light' }) {
           transition: 'all 0.5s ease'
         }}>
           {isArabic
-            ? 'الشركة الموريتانية لتأمين إصلاح المنازل'
-            : "Sté Mauritanienne d'Assurance de Maintenance"}
+            ? 'خدمة تأمين إصلاح المنازل'
+            : "Service d'assurance de réparation de maison"}
         </div>
       </div>
     </div>
   );
 }
+ 
