@@ -153,22 +153,22 @@ function App() {
           position: 'relative',
           overflow: 'hidden'
         }}>
-          <div style={{
+        <div style={{
             width: 0, height: 0,
             borderLeft: '42px solid transparent',
             borderRight: '42px solid transparent',
-            borderBottom: '34px solid #333',
+            borderBottom: '34px solid #00843D',
             position: 'absolute', top: '12px'
           }} />
           <div style={{
             position: 'absolute', bottom: '12px',
             width: '56px', height: '40px',
-            backgroundColor: '#333', borderRadius: '3px 3px 0 0'
+            backgroundColor: '#00843D', borderRadius: '3px 3px 0 0'
           }} />
           <div style={{
             position: 'absolute', bottom: '12px',
             width: '18px', height: '24px',
-            backgroundColor: '#ffc107', borderRadius: '3px 3px 0 0'
+            backgroundColor: '#D21034', borderRadius: '3px 3px 0 0'
           }} />
           <div style={{
             position: 'absolute', bottom: '30px', right: '22px',
@@ -187,7 +187,7 @@ function App() {
           color: '#ffc107', letterSpacing: '8px',
           fontFamily: 'Georgia, serif', marginBottom: '8px'
         }}>
-          S.M.A.M
+          S.A.R.M
         </div>
  
         <div style={{
@@ -202,20 +202,20 @@ function App() {
           lineHeight: 1.6, fontFamily: "'Tajawal', sans-serif",
           opacity: 0.9
         }}>
-          الشركة الموريتانية
+     خدمة تأمين 
         </div>
         <div style={{
           fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)',
           fontFamily: "'Tajawal', sans-serif", marginBottom: '4px'
         }}>
-          لتأمين إصلاح المنازل
+           إصلاح المنازل
         </div>
  
         <div style={{
           fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)',
           fontFamily: 'Georgia, serif', letterSpacing: '1px', marginTop: '4px'
         }}>
-          Sté Mauritanienne d'Assurance de Maintenance
+          Service d'Assurance de réparation de maison
         </div>
  
         <div style={{ display: 'flex', gap: '8px', marginTop: '40px' }}>

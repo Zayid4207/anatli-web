@@ -93,7 +93,7 @@ export default function Logo({ size = 'md', theme = 'light' }) {
           transition: 'all 0.5s ease',
           opacity: 1
         }}>
-          {isArabic ? 'ش.م.ت.ا.م' : 'S.M.A.M'}
+          {isArabic ? 'خ.ت.ا.م' : 'S.A.R.M'}
         </div>
  
         {/* خط فاصل */}
