@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../translations';
- import Logo from '../Logo';
+import Logo from '../Logo';
+import AgoraRTC from 'agora-rtc-sdk-ng';
+ 
 export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
@@ -19,7 +21,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [voiceBlob, setVoiceBlob] = useState(null);
   const [voiceUrl, setVoiceUrl] = useState(null);
   const [description, setDescription] = useState('');
-   const [serviceType, setServiceType] = useState('');
+  const [serviceType, setServiceType] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [step, setStep] = useState(1);
   const mediaRecorderRef = useRef(null);
@@ -29,6 +31,16 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [subProof, setSubProof] = useState(null);
+ 
+  // ===== الاتصال الصوتي (Agora) =====
+  const [callState, setCallState] = useState('idle'); // idle, calling, connected
+  const [callChannel, setCallChannel] = useState(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const agoraClientRef = useRef(null);
+  const localAudioTrackRef = useRef(null);
+  const callPollRef = useRef(null);
+  const callTimerRef = useRef(null);
+  const ringElapsedRef = useRef(0);
  
   const token = localStorage.getItem('userToken');
  
@@ -41,6 +53,13 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       fetchUserData();
     }, 15000);
     return () => clearInterval(interval);
+  }, []);
+ 
+  // تنظيف الاتصال عند إغلاق الصفحة
+  useEffect(() => {
+    return () => {
+      cleanupCall();
+    };
   }, []);
  
   const fetchUserData = async () => {
@@ -73,23 +92,23 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
-
+ 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm')
         ? 'audio/webm'
         : MediaRecorder.isTypeSupported('audio/mp4')
         ? 'audio/mp4'
         : '';
-
+ 
       const recorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream);
-
+ 
       mediaRecorderRef.current = recorder;
-
+ 
       recorder.ondataavailable = e => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
-
+ 
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, {
           type: mimeType || 'audio/mp4'
@@ -98,10 +117,10 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
         setVoiceUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
       };
-
+ 
       recorder.start(100);
       setIsRecording(true);
-
+ 
     } catch (err) {
       alert(lang === 'ar'
         ? 'يرجى السماح بالوصول للميكروفون'
@@ -137,15 +156,14 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
  
   // --- إرسال الطلب ---
   const handleSendRequest = async () => {
+    if (!serviceType) {
+      alert(lang === 'ar' ? 'يرجى تحديد نوع المشكلة' : 'Veuillez choisir le type de problème');
+      return;
+    }
     if (!image && !voiceBlob) {
       alert(lang === 'ar' ? 'يرجى إرفاق صورة أو وصف صوتي' : 'Veuillez joindre une photo ou un message vocal');
       return;
-      if (!serviceType) {
-      alert(lang === 'ar' ? 'يرجى تحديد نوع المشكلة' : 'Veuillez choisir le type de problème');
-      return;}
-      
     }
-    
      if (!location) {
     alert(lang === 'ar' ? 'يرجى تحديد موقعك أولاً' : 'Veuillez d\'abord localiser votre position');
     return;
@@ -173,7 +191,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
         setVoiceBlob(null);
         setVoiceUrl(null);
         setDescription('');
-         setServiceType('');
+        setServiceType('');
         setStep(1);
         setActiveTab('requests');
         fetchRequests();
@@ -205,7 +223,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
         formData.append('user_id', user.id);
         formData.append('package_id', selectedPackage);
         formData.append('proof_image', subProof);
-
+ 
         const res = await fetch(`${apiUrl}/subscription/request`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
@@ -243,6 +261,135 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     } catch (err) {}
   };
  
+  // ===== منطق الاتصال الصوتي =====
+  const formatCallDuration = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+ 
+  const cleanupCall = async () => {
+    if (callPollRef.current) { clearInterval(callPollRef.current); callPollRef.current = null; }
+    if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
+    if (localAudioTrackRef.current) {
+      try { localAudioTrackRef.current.stop(); localAudioTrackRef.current.close(); } catch (err) {}
+      localAudioTrackRef.current = null;
+    }
+    if (agoraClientRef.current) {
+      try { await agoraClientRef.current.leave(); } catch (err) {}
+      agoraClientRef.current = null;
+    }
+  };
+ 
+  const endCall = async (silent) => {
+    const channel = callChannel;
+    await cleanupCall();
+    setCallState('idle');
+    setCallDuration(0);
+    setCallChannel(null);
+    ringElapsedRef.current = 0;
+    if (channel) {
+      try {
+        await fetch(`${apiUrl}/calls/${channel}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) {}
+    }
+    if (!silent) return;
+  };
+ 
+  const startCall = async () => {
+    if (!isSubscribed) {
+      alert(lang === 'ar' ? 'يجب الاشتراك أولاً' : 'Abonnement requis');
+      setActiveTab('subscription');
+      return;
+    }
+    setCallState('calling');
+    ringElapsedRef.current = 0;
+    try {
+      const startRes = await fetch(`${apiUrl}/calls/start`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const startData = await startRes.json();
+      if (!startRes.ok) {
+        alert(startData.error || t.serverError);
+        setCallState('idle');
+        return;
+      }
+      const channelName = startData.channelName;
+      setCallChannel(channelName);
+ 
+      const tokenRes = await fetch(`${apiUrl}/agora/token`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelName })
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) {
+        alert(tokenData.error || t.serverError);
+        setCallState('idle');
+        return;
+      }
+ 
+      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+      agoraClientRef.current = client;
+ 
+      client.on('user-published', async (remoteUser, mediaType) => {
+        await client.subscribe(remoteUser, mediaType);
+        if (mediaType === 'audio') remoteUser.audioTrack.play();
+      });
+ 
+      await client.join(tokenData.appId, channelName, tokenData.token, tokenData.uid);
+      const micTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      localAudioTrackRef.current = micTrack;
+      await client.publish([micTrack]);
+ 
+      // استطلاع دوري لمعرفة هل ردت الإدارة
+      callPollRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`${apiUrl}/calls/${channelName}/status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.status === 'answered') {
+            clearInterval(callPollRef.current);
+            callPollRef.current = null;
+            setCallState('connected');
+            callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+          } else if (data.status === 'ended') {
+            clearInterval(callPollRef.current);
+            callPollRef.current = null;
+            await cleanupCall();
+            setCallState('idle');
+            setCallChannel(null);
+            alert(lang === 'ar' ? 'أنهت الإدارة المكالمة' : 'L\'administration a raccroché');
+          } else {
+            ringElapsedRef.current += 2;
+            if (ringElapsedRef.current >= 45) {
+              clearInterval(callPollRef.current);
+              callPollRef.current = null;
+              endCall();
+              alert(lang === 'ar'
+                ? 'لم يتمكن أحد من الرد الآن، يرجى المحاولة لاحقاً'
+                : 'Personne n\'a répondu, veuillez réessayer plus tard');
+            }
+          }
+        } catch (err) {}
+      }, 2000);
+ 
+    } catch (err) {
+      alert(lang === 'ar'
+        ? 'يرجى السماح بالوصول للميكروفون'
+        : 'Veuillez autoriser le microphone');
+      await cleanupCall();
+      setCallState('idle');
+      setCallChannel(null);
+    }
+  };
+ 
   const getDaysLeft = () => {
     if (!userData?.subscription_end_date) return 0;
     const diff = new Date(userData.subscription_end_date) - new Date();
@@ -263,6 +410,29 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
  
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+ 
+      {/* ===== شاشة المكالمة ===== */}
+      {callState !== 'idle' && (
+        <div style={s.callOverlay}>
+          <div style={s.callCard}>
+            <div style={s.callAvatar}>📞</div>
+            <p style={s.callName}>
+              {lang === 'ar' ? 'الإدارة' : 'Administration'}
+            </p>
+            <p style={s.callStatus}>
+              {callState === 'calling'
+                ? (lang === 'ar' ? 'جاري الاتصال...' : 'Appel en cours...')
+                : formatCallDuration(callDuration)}
+            </p>
+            {callState === 'calling' && (
+              <div style={s.pulseDot} />
+            )}
+            <button style={s.endCallBtn} onClick={() => endCall()}>
+              📵 {lang === 'ar' ? 'إنهاء المكالمة' : 'Raccrocher'}
+            </button>
+          </div>
+        </div>
+      )}
  
       {/* المحتوى الرئيسي */}
       <main style={s.main}>
@@ -331,23 +501,17 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               </div>
             )}
  
-            {/* زر الطلب */}
+            {/* زر الاتصال بالإدارة */}
             <button
               style={{ ...s.requestBtn, opacity: isSubscribed ? 1 : 0.6 }}
-              onClick={() => {
-                if (!isSubscribed) {
-                  alert(lang === 'ar' ? 'يجب الاشتراك أولاً' : 'Abonnement requis');
-                  setActiveTab('subscription');
-                  return;
-                }
-                setActiveTab('newRequest');
-                setStep(1);
-              }}
+              onClick={startCall}
             >
-              <span style={{ fontSize: '2rem' }}>🔧</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{t.requestNow}</span>
+              <span style={{ fontSize: '2rem' }}>📞</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                {lang === 'ar' ? 'اتصل بالإدارة' : 'Appeler l\'administration'}
+              </span>
               <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-                {lang === 'ar' ? 'اطلب فنياً الآن' : 'Demander un technicien'}
+                {lang === 'ar' ? 'اطلب الخدمة مباشرة بصوتك' : 'Demander le service directement'}
               </span>
             </button>
  
@@ -1102,8 +1266,8 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
             ) : null}
           </div>
         )}
-
-
+ 
+ 
         {/* ===== حسابي ===== */}
         {activeTab === 'profile' && (
           <div style={s.screen}>
@@ -1542,6 +1706,67 @@ const s = {
     color: '#006400',
     fontWeight: 'bold',
     padding: '5px 0'
+  },
+  // ===== شاشة المكالمة =====
+  callOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,20,0,0.92)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5000
+  },
+  callCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '30px'
+  },
+  callAvatar: {
+    width: '100px',
+    height: '100px',
+    borderRadius: '50%',
+    backgroundColor: '#006400',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '2.5rem',
+    marginBottom: '10px'
+  },
+  callName: {
+    color: '#fff',
+    fontSize: '1.3rem',
+    fontWeight: 'bold',
+    margin: 0
+  },
+  callStatus: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: '1rem',
+    margin: 0
+  },
+  pulseDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: '#ffc107',
+    marginTop: '5px',
+    animationName: 'pulse',
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+    animationDirection: 'alternate'
+  },
+  endCallBtn: {
+    marginTop: '30px',
+    padding: '16px 40px',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '30px',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    boxShadow: '0 6px 20px rgba(220,53,69,0.4)'
   }
 };
- 
