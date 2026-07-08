@@ -316,7 +316,11 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       });
  
       await client.join(tokenData.appId, incomingCall.channelName, tokenData.token, tokenData.uid);
-      const micTrack = await AgoraRTC.createMicrophoneAudioTrack();
+       const micTrack = await AgoraRTC.createMicrophoneAudioTrack({
+  AEC: true, // إلغاء الصدى
+  ANS: true, // إلغاء الضجيج
+  AGC: true  // ضبط مستوى الصوت تلقائيًا
+});
       localAudioTrackRef.current = micTrack;
       await client.publish([micTrack]);
  
