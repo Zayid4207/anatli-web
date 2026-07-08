@@ -26,7 +26,17 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [loading, setLoading] = useState(false);
  
   // فلتر الطلبات
+  // فلتر الطلبات
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // إنشاء طلب لزبون متصل
+  const [callCode, setCallCode] = useState('');
+  const [callCustomer, setCallCustomer] = useState(null);
+  const [callSearchError, setCallSearchError] = useState('');
+  const [callServiceType, setCallServiceType] = useState('');
+  const [callPrice, setCallPrice] = useState('');
+  const [callDescription, setCallDescription] = useState('');
+  const [callCreateLoading, setCallCreateLoading] = useState(false);
  
   // ===== المكالمات الواردة (Agora) =====
   const [incomingCall, setIncomingCall] = useState(null); // { channelName, customerName }
@@ -258,7 +268,6 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       fetchEarnings();
     } catch (err) {}
   };
- 
   // البحث برمز العميل
   const handleClientSearch = async () => {
     if (!clientCode.trim()) return;
@@ -276,6 +285,68 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       }
     } catch (err) {
       setClientError(t.serverError);
+    }
+  };
+
+  // البحث عن زبون لإنشاء طلب له مباشرة (تبويب مستقل)
+  const handleCallClientSearch = async () => {
+    if (!callCode.trim()) return;
+    setCallSearchError('');
+    setCallCustomer(null);
+    setCallServiceType('');
+    try {
+      const res = await fetch(`${apiUrl}/admin/client/${callCode.trim()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCallCustomer(data.user);
+      } else {
+        setCallSearchError(t.clientNotFound);
+      }
+    } catch (err) {
+      setCallSearchError(t.serverError);
+    }
+  };
+
+  // نشر الطلب مباشرة للفنيين
+  const handleCreateForCustomer = async () => {
+    if (!callServiceType) {
+      alert(lang === 'ar' ? 'يرجى اختيار نوع المشكلة' : 'Veuillez choisir le type de problème');
+      return;
+    }
+    if (!callPrice || isNaN(callPrice) || parseInt(callPrice) <= 0) {
+      alert(lang === 'ar' ? 'يرجى إدخال سعر صحيح' : 'Veuillez entrer un prix valide');
+      return;
+    }
+    setCallCreateLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/admin/requests/create-for-customer`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_code: callCustomer.client_code,
+          service_type: callServiceType,
+          quoted_price: parseInt(callPrice),
+          description: callDescription
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(lang === 'ar' ? '✅ تم إنشاء الطلب ونشره للفنيين' : '✅ Demande créée et publiée');
+        setCallCode('');
+        setCallCustomer(null);
+        setCallServiceType('');
+        setCallPrice('');
+        setCallDescription('');
+        fetchAllRequests();
+      } else {
+        alert(data.error || t.error);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setCallCreateLoading(false);
     }
   };
  
@@ -730,6 +801,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
               { id: 'earnings', icon: '💰', label: lang === 'ar' ? 'المستحقات' : 'Revenus', color: '#e8f5e9', border: '#006400', count: earnings.length },
               { id: 'subscriptions', icon: '💳', label: lang === 'ar' ? 'الاشتراكات' : 'Abonnements', color: '#fce4ec', border: '#e91e63', count: subscriptions.length },
               { id: 'search', icon: '🔍', label: lang === 'ar' ? 'بحث بالرمز' : 'Recherche', color: '#e8eaf6', border: '#1a237e', count: null },
+              { id: 'createForCustomer', icon: '🆕', label: lang === 'ar' ? 'طلب لزبون' : 'Nouvelle demande', color: '#e0f7fa', border: '#00838f', count: null },
             ].map(tab => (
               <div
                 key={tab.id}
@@ -1099,6 +1171,95 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         );
                       })}
                     </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {/* ===== إنشاء طلب لزبون متصل ===== */}
+          {activeTab === 'createForCustomer' && (
+            <div>
+              <p style={s.sectionTitle}>
+                {lang === 'ar' ? '📞 إنشاء طلب لزبون اتصل بك' : '📞 Créer une demande pour un client'}
+              </p>
+
+              <div style={s.searchRow}>
+                <input
+                  style={s.searchInput}
+                  placeholder={t.enterClientCode}
+                  value={callCode}
+                  onChange={e => setCallCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && handleCallClientSearch()}
+                />
+                <button style={s.searchBtn} onClick={handleCallClientSearch}>
+                  {t.search}
+                </button>
+              </div>
+
+              {callSearchError && <p style={s.errorText}>{callSearchError}</p>}
+
+              {callCustomer && (
+                <div style={s.clientCard}>
+                  <div style={s.cardTop}>
+                    <span style={s.cardName}>{callCustomer.full_name}</span>
+                    <span style={s.clientCodeBadge}>{callCustomer.client_code}</span>
+                  </div>
+                  <p style={s.cardInfo}>📞 {callCustomer.phone}</p>
+                  <p style={s.cardInfo}>📍 {callCustomer.district} — {callCustomer.address}</p>
+                  <p style={s.cardInfo}>📦 {callCustomer.package_name || '-'}</p>
+
+                  {!(callCustomer.package_id && callCustomer.subscription_end_date && new Date(callCustomer.subscription_end_date) > new Date()) ? (
+                    <p style={{ ...s.errorText, marginTop: '10px' }}>
+                      {lang === 'ar' ? '⚠️ اشتراك هذا الزبون غير فعال حالياً' : '⚠️ Abonnement inactif'}
+                    </p>
+                  ) : (
+                    <div style={{ marginTop: '15px' }}>
+                      <p style={s.sectionLabel}>
+                        {lang === 'ar' ? '🔧 نوع المشكلة' : '🔧 Type de problème'}
+                      </p>
+                      <select
+                        style={s.priceInput}
+                        value={callServiceType}
+                        onChange={e => setCallServiceType(e.target.value)}
+                      >
+                        <option value="">
+                          {lang === 'ar' ? '-- اختر نوع المشكلة --' : '-- Choisir --'}
+                        </option>
+                        {(callCustomer.coverage_items ? callCustomer.coverage_items.split('|') : [])
+                          .filter(item => item.trim() !== 'أولوية قصوى في الاستجابة')
+                          .map((item, i) => (
+                            <option key={i} value={item.trim()}>{item.trim()}</option>
+                          ))}
+                      </select>
+
+                      <p style={{ ...s.sectionLabel, marginTop: '12px' }}>{t.setPrice}</p>
+                      <input
+                        style={s.priceInput}
+                        type="number"
+                        placeholder={t.pricePlaceholder}
+                        value={callPrice}
+                        onChange={e => setCallPrice(e.target.value)}
+                      />
+
+                      <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
+                        {lang === 'ar' ? 'ملاحظة (اختياري)' : 'Note (optionnel)'}
+                      </p>
+                      <textarea
+                        style={{ ...s.priceInput, textAlign: 'right', height: '70px', resize: 'none' }}
+                        value={callDescription}
+                        onChange={e => setCallDescription(e.target.value)}
+                      />
+
+                      <button
+                        style={{ ...s.btnSuccess, width: '100%', marginTop: '15px', opacity: callCreateLoading ? 0.7 : 1 }}
+                        onClick={handleCreateForCustomer}
+                        disabled={callCreateLoading}
+                      >
+                        {callCreateLoading
+                          ? '...'
+                          : (lang === 'ar' ? '🚀 نشر الطلب للفنيين' : '🚀 Publier aux techniciens')}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

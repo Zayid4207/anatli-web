@@ -363,6 +363,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   };
  
   const startCall = async () => {
+    if (callState !== 'idle') return; // منع بدء مكالمة ثانية أثناء وجود مكالمة شغالة
     if (!isSubscribed) {
       alert(lang === 'ar' ? 'يجب الاشتراك أولاً' : 'Abonnement requis');
       setActiveTab('subscription');
