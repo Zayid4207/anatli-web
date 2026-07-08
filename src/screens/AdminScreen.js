@@ -35,8 +35,11 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const agoraClientRef = useRef(null);
   const localAudioTrackRef = useRef(null);
   const callTimerRef = useRef(null);
-  const incomingPollRef = useRef(null);
+ const incomingPollRef = useRef(null);
   const callStateRef = useRef('idle');
+  const [isMuted, setIsMuted] = useState(false);
+  const audioCtxRef = useRef(null);
+  const ringIntervalRef = useRef(null);
  
   useEffect(() => { callStateRef.current = callState; }, [callState]);
  
@@ -75,13 +78,21 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }, 3000);
     return () => clearInterval(incomingPollRef.current);
   }, []);
- 
-  // تنظيف عند إغلاق الصفحة
+ // تنظيف عند إغلاق الصفحة
   useEffect(() => {
     return () => {
       cleanupAgora();
     };
   }, []);
+
+  // رنة المكالمة الواردة
+  useEffect(() => {
+    if (callState === 'ringing') {
+      playRingTone();
+    } else {
+      stopRingTone();
+    }
+  }, [callState]);
  
   const fetchPendingRequests = useCallback(async () => {
     try {
@@ -275,7 +286,41 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     return `${m}:${s}`;
   };
  
+ const playRingTone = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      const beep = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = 480;
+        gain.gain.value = 0.12;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => { try { osc.stop(); } catch (err) {} }, 800);
+      };
+      beep();
+      ringIntervalRef.current = setInterval(beep, 1500);
+    } catch (err) {}
+  };
+
+  const stopRingTone = () => {
+    if (ringIntervalRef.current) { clearInterval(ringIntervalRef.current); ringIntervalRef.current = null; }
+  };
+
+  const toggleMute = () => {
+    if (localAudioTrackRef.current) {
+      localAudioTrackRef.current.setEnabled(isMuted);
+      setIsMuted(!isMuted);
+    }
+  };
+
   const cleanupAgora = async () => {
+    stopRingTone();
+    setIsMuted(false);
     if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
     if (localAudioTrackRef.current) {
       try { localAudioTrackRef.current.stop(); localAudioTrackRef.current.close(); } catch (err) {}
@@ -401,16 +446,36 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         </div>
       )}
  
-      {/* ===== شاشة المكالمة النشطة ===== */}
+     {/* ===== شاشة المكالمة النشطة ===== */}
       {callState === 'connected' && incomingCall && (
         <div style={s.callOverlay}>
           <div style={s.callCard}>
             <div style={s.callAvatar}>📞</div>
             <p style={s.callName}>{incomingCall.customerName}</p>
             <p style={s.callStatus}>{formatCallDuration(callDuration)}</p>
-            <button style={s.endCallBtn} onClick={endActiveCall}>
-              📵 {lang === 'ar' ? 'إنهاء المكالمة' : 'Raccrocher'}
-            </button>
+
+            <div style={s.callControlsRow}>
+              <div style={s.circleBtnWrap}>
+                <button
+                  style={isMuted ? s.muteCircleBtnActive : s.muteCircleBtn}
+                  onClick={toggleMute}
+                >
+                  {isMuted ? '🔇' : '🎤'}
+                </button>
+                <span style={s.controlLabel}>
+                  {isMuted ? (lang === 'ar' ? 'إلغاء الكتم' : 'Activer') : (lang === 'ar' ? 'كتم' : 'Muet')}
+                </span>
+              </div>
+
+              <div style={s.circleBtnWrap}>
+                <button style={s.endCallCircleBtn} onClick={endActiveCall}>
+                  📵
+                </button>
+                <span style={s.controlLabel}>
+                  {lang === 'ar' ? 'إنهاء' : 'Terminer'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1599,7 +1664,7 @@ const s = {
     cursor: 'pointer',
     boxShadow: '0 6px 20px rgba(220,53,69,0.4)'
   },
-  endCallBtn: {
+ endCallBtn: {
     marginTop: '30px',
     padding: '16px 40px',
     backgroundColor: '#dc3545',
@@ -1610,5 +1675,62 @@ const s = {
     fontSize: '1rem',
     cursor: 'pointer',
     boxShadow: '0 6px 20px rgba(220,53,69,0.4)'
+  },
+  callControlsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '30px',
+    marginTop: '40px'
+  },
+  circleBtnWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  muteCircleBtn: {
+    width: '60px',
+    height: '60px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    color: '#fff',
+    fontSize: '1.5rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  muteCircleBtnActive: {
+    width: '60px',
+    height: '60px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: '#fff',
+    color: '#dc3545',
+    fontSize: '1.5rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  endCallCircleBtn: {
+    width: '70px',
+    height: '70px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    fontSize: '1.8rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 6px 20px rgba(220,53,69,0.5)'
+  },
+  controlLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: '0.75rem'
   }
 };
