@@ -169,6 +169,18 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               </div>
             )}
  
+            {/* نوع الخدمة المطلوبة */}
+            {jobDetail.service_type && (
+              <div style={{ ...s.infoBox, backgroundColor: '#e8f5e9', border: '1px solid #006400' }}>
+                <p style={{ ...s.infoLabel, color: '#006400', fontWeight: 'bold' }}>
+                  {lang === 'ar' ? '🔧 نوع المشكلة:' : '🔧 Type de problème:'}
+                </p>
+                <p style={{ ...s.infoValue, fontWeight: 'bold', fontSize: '1rem' }}>
+                  {jobDetail.service_type}
+                </p>
+              </div>
+            )}
+ 
             {/* الوصف النصي */}
             {jobDetail.description && (
               <div style={s.infoBox}>
@@ -289,6 +301,18 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               </div>
             )}
  
+            {/* نوع الخدمة المطلوبة */}
+            {selectedRequest.service_type && (
+              <div style={{ ...s.infoBox, backgroundColor: '#e8f5e9', border: '1px solid #006400' }}>
+                <p style={{ ...s.infoLabel, color: '#006400', fontWeight: 'bold' }}>
+                  {lang === 'ar' ? '🔧 نوع المشكلة:' : '🔧 Type de problème:'}
+                </p>
+                <p style={{ ...s.infoValue, fontWeight: 'bold', fontSize: '1rem' }}>
+                  {selectedRequest.service_type}
+                </p>
+              </div>
+            )}
+ 
             {/* الوصف النصي */}
             {selectedRequest.description && (
               <div style={s.infoBox}>
@@ -377,6 +401,12 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                     <span style={s.cardDistrict}>📍 {req.district}</span>
                   </div>
  
+                  {req.service_type && (
+                    <p style={{ margin: '0 0 8px', fontSize: '0.9rem', fontWeight: 'bold', color: '#006400' }}>
+                      🔧 {req.service_type}
+                    </p>
+                  )}
+ 
                   {/* أيقونات المحتوى */}
                   <div style={s.cardIcons}>
                     {req.image_url && <span style={s.contentIcon}>📷</span>}
@@ -442,6 +472,12 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                     <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
                       📍 {job.district}
                     </p>
+ 
+                    {job.service_type && (
+                      <p style={{ margin: '5px 0 0', fontSize: '0.85rem', fontWeight: 'bold', color: '#006400' }}>
+                        🔧 {job.service_type}
+                      </p>
+                    )}
  
                     {job.quoted_price && (
                       <p style={{ margin: '5px 0 0', fontWeight: 'bold', color: '#006400' }}>
@@ -1057,3 +1093,4 @@ const s = {
     padding: '5px 0'
   }
 };
+
