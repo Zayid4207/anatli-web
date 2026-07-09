@@ -15,7 +15,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [earnings, setEarnings] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
- 
+  
   // البحث برمز العميل
   const [clientCode, setClientCode] = useState('');
   const [clientResult, setClientResult] = useState(null);
