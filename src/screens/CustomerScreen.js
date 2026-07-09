@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../translations';
 import Logo from '../Logo';
-import AgoraRTC from 'agora-rtc-sdk-ng';
- 
 export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
@@ -11,7 +9,6 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(user);
- 
   // بيانات الطلب الجديد
   const [location, setLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -362,7 +359,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     if (!silent) return;
   };
  
-  const startCall = async () => {
+ const startCall = async () => {
     if (callState !== 'idle') return; // منع بدء مكالمة ثانية أثناء وجود مكالمة شغالة
     if (!isSubscribed) {
       alert(lang === 'ar' ? 'يجب الاشتراك أولاً' : 'Abonnement requis');
@@ -372,6 +369,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     setCallState('calling');
     ringElapsedRef.current = 0;
     try {
+      const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
       const startRes = await fetch(`${apiUrl}/calls/start`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }

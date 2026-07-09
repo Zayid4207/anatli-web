@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../translations';
-import AgoraRTC from 'agora-rtc-sdk-ng';
  
 export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
@@ -416,6 +415,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const acceptCall = async () => {
     if (!incomingCall) return;
     try {
+      const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
       await fetch(`${apiUrl}/calls/${incomingCall.channelName}/answer`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
