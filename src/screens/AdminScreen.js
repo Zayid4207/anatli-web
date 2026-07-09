@@ -66,9 +66,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }, 20000);
     return () => clearInterval(interval);
   }, []);
-  useEffect(() => {
-    if (activeTab === 'callLogs') fetchCallLogs();
-  }, [activeTab, fetchCallLogs]);
+ 
  
   // استطلاع المكالمات الواردة كل 3 ثوان
   useEffect(() => {
@@ -157,7 +155,9 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       if (res.ok) setCallLogs(await res.json());
     } catch (err) {}
   }, [apiUrl, token]);
- 
+   useEffect(() => {
+    if (activeTab === 'callLogs') fetchCallLogs();
+  }, [activeTab, fetchCallLogs]);
   // تسعير الطلب ونشره
   const handleQuote = async (requestId) => {
     if (!price || isNaN(price) || parseInt(price) <= 0) {
