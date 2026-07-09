@@ -7,7 +7,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const t = useTranslation(lang);
   const [activeTab, setActiveTab] = useState('pending');
   const [subscriptions, setSubscriptions] = useState([]);
- 
+  const [callLogs, setCallLogs] = useState([]);
   // البيانات
   const [pendingRequests, setPendingRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
@@ -26,9 +26,8 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [loading, setLoading] = useState(false);
  
   // فلتر الطلبات
-  // فلتر الطلبات
   const [statusFilter, setStatusFilter] = useState('all');
-
+ 
   // إنشاء طلب لزبون متصل
   const [callCode, setCallCode] = useState('');
   const [callCustomer, setCallCustomer] = useState(null);
@@ -68,6 +67,9 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }, 20000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (activeTab === 'callLogs') fetchCallLogs();
+  }, [activeTab, fetchCallLogs]);
  
   // استطلاع المكالمات الواردة كل 3 ثوان
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       cleanupAgora();
     };
   }, []);
-
+ 
   // رنة المكالمة الواردة
   useEffect(() => {
     if (callState === 'ringing') {
@@ -146,6 +148,14 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setEarnings(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+  const fetchCallLogs = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/calls`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setCallLogs(await res.json());
     } catch (err) {}
   }, [apiUrl, token]);
  
@@ -287,7 +297,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       setClientError(t.serverError);
     }
   };
-
+ 
   // البحث عن زبون لإنشاء طلب له مباشرة (تبويب مستقل)
   const handleCallClientSearch = async () => {
     if (!callCode.trim()) return;
@@ -308,7 +318,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       setCallSearchError(t.serverError);
     }
   };
-
+ 
   // نشر الطلب مباشرة للفنيين
   const handleCreateForCustomer = async () => {
     if (!callServiceType) {
@@ -377,18 +387,18 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       ringIntervalRef.current = setInterval(beep, 1500);
     } catch (err) {}
   };
-
+ 
   const stopRingTone = () => {
     if (ringIntervalRef.current) { clearInterval(ringIntervalRef.current); ringIntervalRef.current = null; }
   };
-
+ 
   const toggleMute = () => {
     if (localAudioTrackRef.current) {
       localAudioTrackRef.current.setEnabled(isMuted);
       setIsMuted(!isMuted);
     }
   };
-
+ 
   const cleanupAgora = async () => {
     stopRingTone();
     setIsMuted(false);
@@ -524,7 +534,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
             <div style={s.callAvatar}>📞</div>
             <p style={s.callName}>{incomingCall.customerName}</p>
             <p style={s.callStatus}>{formatCallDuration(callDuration)}</p>
-
+ 
             <div style={s.callControlsRow}>
               <div style={s.circleBtnWrap}>
                 <button
@@ -537,7 +547,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                   {isMuted ? (lang === 'ar' ? 'إلغاء الكتم' : 'Activer') : (lang === 'ar' ? 'كتم' : 'Muet')}
                 </span>
               </div>
-
+ 
               <div style={s.circleBtnWrap}>
                 <button style={s.endCallCircleBtn} onClick={endActiveCall}>
                   📵
@@ -802,6 +812,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
               { id: 'subscriptions', icon: '💳', label: lang === 'ar' ? 'الاشتراكات' : 'Abonnements', color: '#fce4ec', border: '#e91e63', count: subscriptions.length },
               { id: 'search', icon: '🔍', label: lang === 'ar' ? 'بحث بالرمز' : 'Recherche', color: '#e8eaf6', border: '#1a237e', count: null },
               { id: 'createForCustomer', icon: '🆕', label: lang === 'ar' ? 'طلب لزبون' : 'Nouvelle demande', color: '#e0f7fa', border: '#00838f', count: null },
+              { id: 'callLogs', icon: '📋', label: lang === 'ar' ? 'سجل المكالمات' : 'Historique appels', color: '#fff0f0', border: '#c62828', count: callLogs.filter(c => c.status === 'missed').length || null },
             ].map(tab => (
               <div
                 key={tab.id}
@@ -1182,7 +1193,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
               <p style={s.sectionTitle}>
                 {lang === 'ar' ? '📞 إنشاء طلب لزبون اتصل بك' : '📞 Créer une demande pour un client'}
               </p>
-
+ 
               <div style={s.searchRow}>
                 <input
                   style={s.searchInput}
@@ -1195,9 +1206,9 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                   {t.search}
                 </button>
               </div>
-
+ 
               {callSearchError && <p style={s.errorText}>{callSearchError}</p>}
-
+ 
               {callCustomer && (
                 <div style={s.clientCard}>
                   <div style={s.cardTop}>
@@ -1207,7 +1218,32 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                   <p style={s.cardInfo}>📞 {callCustomer.phone}</p>
                   <p style={s.cardInfo}>📍 {callCustomer.district} — {callCustomer.address}</p>
                   <p style={s.cardInfo}>📦 {callCustomer.package_name || '-'}</p>
-
+ 
+                  {callCustomer.last_latitude && callCustomer.last_longitude ? (
+                    <div style={{ marginTop: '8px' }}>
+                      <p style={{ ...s.cardInfo, color: '#006400', fontWeight: 'bold' }}>
+                        ✅ {lang === 'ar' ? 'يوجد موقع GPS محدد لهذا الزبون' : 'Position GPS disponible'}
+                        {callCustomer.location_updated_at && (
+                          <span style={{ fontWeight: 'normal', color: '#888' }}>
+                            {' '}({new Date(callCustomer.location_updated_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')})
+                          </span>
+                        )}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps?q=${callCustomer.last_latitude},${callCustomer.last_longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: '0.8rem', color: '#1a237e' }}
+                      >
+                        🗺️ {lang === 'ar' ? 'عرض الموقع على الخريطة' : 'Voir sur la carte'}
+                      </a>
+                    </div>
+                  ) : (
+                    <p style={{ ...s.errorText, marginTop: '8px' }}>
+                      ⚠️ {lang === 'ar' ? 'لا يوجد موقع GPS محدد لهذا الزبون بعد' : 'Aucune position GPS enregistrée'}
+                    </p>
+                  )}
+ 
                   {!(callCustomer.package_id && callCustomer.subscription_end_date && new Date(callCustomer.subscription_end_date) > new Date()) ? (
                     <p style={{ ...s.errorText, marginTop: '10px' }}>
                       {lang === 'ar' ? '⚠️ اشتراك هذا الزبون غير فعال حالياً' : '⚠️ Abonnement inactif'}
@@ -1231,7 +1267,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                             <option key={i} value={item.trim()}>{item.trim()}</option>
                           ))}
                       </select>
-
+ 
                       <p style={{ ...s.sectionLabel, marginTop: '12px' }}>{t.setPrice}</p>
                       <input
                         style={s.priceInput}
@@ -1240,7 +1276,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         value={callPrice}
                         onChange={e => setCallPrice(e.target.value)}
                       />
-
+ 
                       <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
                         {lang === 'ar' ? 'ملاحظة (اختياري)' : 'Note (optionnel)'}
                       </p>
@@ -1249,7 +1285,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         value={callDescription}
                         onChange={e => setCallDescription(e.target.value)}
                       />
-
+ 
                       <button
                         style={{ ...s.btnSuccess, width: '100%', marginTop: '15px', opacity: callCreateLoading ? 0.7 : 1 }}
                         onClick={handleCreateForCustomer}
@@ -1262,6 +1298,67 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+          {/* ===== سجل المكالمات ===== */}
+          {activeTab === 'callLogs' && (
+            <div>
+              <p style={s.sectionTitle}>
+                {lang === 'ar' ? '📋 سجل المكالمات' : '📋 Historique des appels'}
+              </p>
+
+              {callLogs.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>📭</span>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا توجد مكالمات بعد' : 'Aucun appel pour le moment'}
+                  </p>
+                </div>
+              ) : (
+                callLogs.map(call => {
+                  const isMissed = call.status === 'missed';
+                  return (
+                    <div
+                      key={call.id}
+                      style={{
+                        ...s.requestCard,
+                        backgroundColor: isMissed ? '#fff5f5' : '#fff',
+                        border: isMissed ? '1.5px solid #dc3545' : '1px solid #f0f0f0',
+                        cursor: 'default'
+                      }}
+                    >
+                      <div style={s.cardTop}>
+                        <span style={{ fontWeight: 'bold', color: '#333' }}>
+                          {call.customer_name}
+                        </span>
+                        <span style={{
+                          ...s.statusBadge,
+                          backgroundColor: isMissed ? '#f8d7da' : '#d4edda',
+                          color: isMissed ? '#721c24' : '#155724'
+                        }}>
+                          {isMissed
+                            ? (lang === 'ar' ? '🔴 فائتة' : '🔴 Manqué')
+                            : (lang === 'ar' ? '🟢 تم الرد' : '🟢 Répondu')}
+                        </span>
+                      </div>
+
+                      {call.client_code && (
+                        <p style={{ margin: '6px 0 0' }}>
+                          <span style={s.clientCodeBadge}>{call.client_code}</span>
+                        </p>
+                      )}
+
+                      {call.customer_phone && (
+                        <p style={s.cardInfo}>📞 {call.customer_phone}</p>
+                      )}
+
+                      <p style={s.cardDate}>
+                        {new Date(call.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                      </p>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
@@ -1895,3 +1992,4 @@ const s = {
     fontSize: '0.75rem'
   }
 };
+
