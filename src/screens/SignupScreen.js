@@ -11,6 +11,10 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
  const [housePhoto, setHousePhoto] = useState(null);
+  const [location, setLocation] = useState(null);
+  const [locationChoice, setLocationChoice] = useState(null); // null | 'yes' | 'no'
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [form, setForm] = useState({
     full_name: '',
     phone: '',
@@ -23,6 +27,24 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   });
  
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+ 
+  const getLocation = () => {
+    setLocationLoading(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationLoading(false);
+      },
+      err => {
+        setLocationError(lang === 'ar'
+          ? 'فشل تحديد موقعك، يرجى السماح بالوصول للموقع'
+          : 'Impossible de localiser, veuillez autoriser la géolocalisation');
+        setLocationLoading(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
  
   const handleStep1 = () => {
     if (!form.full_name || !form.phone || !form.password || !form.confirm_password) {
@@ -62,24 +84,28 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       formData.append('phone', form.phone);
       formData.append('password', form.password);
       formData.append('user_role', role);
-
+ 
       if (role === 'customer') {
         formData.append('district', form.district || '');
         formData.append('address', form.address || '');
         if (housePhoto) formData.append('house_photo', housePhoto);
+        if (location) {
+          formData.append('latitude', location.lat);
+          formData.append('longitude', location.lng);
+        }
       }
-
+ 
       if (role === 'provider') {
         formData.append('bank_phone', form.bank_phone || '');
         formData.append('bank_type', form.bank_type || '');
         formData.append('covered_districts', coveredDistricts.join(','));
       }
-
+ 
       const res = await fetch(`${apiUrl}/signup`, {
         method: 'POST',
         body: formData
       });
-
+ 
       const data = await res.json();
       if (res.ok) {
         alert(lang === 'ar'
@@ -193,13 +219,13 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       <>
         <p style={s.stepTitle}>{t.locationInfo}</p>
         <p style={s.stepDesc}>{t.locationDesc}</p>
-
+ 
         <label style={s.label}>{t.district}</label>
         <select style={s.input} value={form.district} onChange={e => update('district', e.target.value)}>
           <option value="">{t.chooseDistrict}</option>
           {t.districts.map((d, i) => <option key={i} value={d}>{d}</option>)}
         </select>
-
+ 
         <label style={s.label}>{t.address}</label>
         <textarea
           style={{ ...s.input, height: '80px', resize: 'none' }}
@@ -240,12 +266,100 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     </p>
   </div>
 </label>
+ 
+        {/* سؤال: هل أنت بالمنزل الآن؟ */}
+        <div style={{
+          border: `2px solid ${locationChoice === 'yes' && location ? '#28a745' : '#ffc107'}`,
+          borderRadius: '14px',
+          padding: '15px',
+          backgroundColor: locationChoice === 'yes' && location ? '#f0fff0' : '#fffbf0',
+          textAlign: 'center'
+        }}>
+          {locationChoice === null && (
+            <div>
+              <p style={{ margin: '0 0 12px', color: '#856404', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                📍 {lang === 'ar' ? 'هل أنت في المنزل الآن؟' : 'Êtes-vous chez vous maintenant ?'}
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: '#888' }}>
+                {lang === 'ar'
+                  ? 'يساعدنا هذا في تحديد موقع منزلك بدقة للفنيين'
+                  : 'Cela nous aide à localiser précisément votre domicile'}
+              </p>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  style={{ padding: '10px 18px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
+                  onClick={() => { setLocationChoice('yes'); getLocation(); }}
+                >
+                  {lang === 'ar' ? '✅ نعم، أنا بالمنزل' : '✅ Oui'}
+                </button>
+                <button
+                  type="button"
+                  style={{ padding: '10px 18px', backgroundColor: '#fff', color: '#666', border: '1.5px solid #ccc', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
+                  onClick={() => setLocationChoice('no')}
+                >
+                  {lang === 'ar' ? 'لا، لست الآن' : 'Non'}
+                </button>
+              </div>
+            </div>
+          )}
+ 
+          {locationChoice === 'yes' && (
+            location ? (
+              <div>
+                <p style={{ margin: 0, color: '#28a745', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                  ✅ {lang === 'ar' ? 'تم تحديد موقع منزلك بنجاح' : 'Position localisée avec succès'}
+                </p>
+                <button
+                  type="button"
+                  style={{ marginTop: '8px', background: 'none', border: '1px solid #28a745', color: '#28a745', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}
+                  onClick={() => { setLocation(null); getLocation(); }}
+                >
+                  {lang === 'ar' ? 'إعادة التحديد' : 'Relocaliser'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                {locationError && (
+                  <p style={{ color: '#dc3545', fontSize: '0.75rem', margin: '0 0 8px' }}>{locationError}</p>
+                )}
+                <button
+                  type="button"
+                  style={{ padding: '10px 18px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.9rem', cursor: locationLoading ? 'not-allowed' : 'pointer' }}
+                  onClick={getLocation}
+                  disabled={locationLoading}
+                >
+                  {locationLoading
+                    ? (lang === 'ar' ? '⏳ جاري التحديد...' : '⏳ Localisation...')
+                    : (lang === 'ar' ? '📍 حاول مرة أخرى' : '📍 Réessayer')}
+                </button>
+              </div>
+            )
+          )}
+ 
+          {locationChoice === 'no' && (
+            <div>
+              <p style={{ margin: 0, color: '#666', fontSize: '0.85rem' }}>
+                {lang === 'ar'
+                  ? 'تم تخطي تحديد الموقع. يمكنك تحديده لاحقاً من صفحة "حسابي"'
+                  : 'Localisation ignorée. Vous pourrez la définir plus tard depuis "Mon compte"'}
+              </p>
+              <button
+                type="button"
+                style={{ marginTop: '8px', background: 'none', border: '1px solid #006400', color: '#006400', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}
+                onClick={() => setLocationChoice(null)}
+              >
+                {lang === 'ar' ? 'رجوع' : 'Retour'}
+              </button>
+            </div>
+          )}
+        </div>
       </>
     ) : (
       <>
         <p style={s.stepTitle}>{t.paymentInfo}</p>
         <p style={s.stepDesc}>{t.paymentDesc}</p>
-
+ 
         <label style={s.label}>{t.bankType}</label>
         <div style={s.bankRow}>
           {[
@@ -263,10 +377,10 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
             </div>
           ))}
         </div>
-
+ 
         <label style={s.label}>{t.bankPhone}</label>
         <input style={s.input} placeholder={t.bankPhonePlaceholder} value={form.bank_phone} onChange={e => update('bank_phone', e.target.value)} />
-
+ 
         {/* اختيار المقاطعات */}
         <label style={s.label}>
           {lang === 'ar' ? 'المقاطعات التي تغطيها' : 'Communes que vous couvrez'}
@@ -274,7 +388,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
         <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-8px', marginBottom: '5px' }}>
           {lang === 'ar' ? 'اختر كل المقاطعات التي يمكنك العمل فيها' : 'Sélectionnez les communes où vous pouvez travailler'}
         </p>
-
+ 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           {t.districts.map((district, i) => {
             const isSelected = coveredDistricts.includes(district);
@@ -305,7 +419,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
             );
           })}
         </div>
-
+ 
         {/* زر تحديد الكل */}
         <button
           type="button"
@@ -333,7 +447,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
         </button>
       </>
     )}
-
+ 
     {error && <p style={s.error}>{error}</p>}
     <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }} onClick={handleStep2} disabled={loading}>
       {loading ? (lang === 'ar' ? 'جاري التسجيل...' : 'Inscription...') : t.createBtn}
@@ -493,3 +607,4 @@ const s = {
     textAlign: 'center'
   }
 };
+

@@ -158,6 +158,27 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
    useEffect(() => {
     if (activeTab === 'callLogs') fetchCallLogs();
   }, [activeTab, fetchCallLogs]);
+  const deleteCallLog = async (id) => {
+    if (!window.confirm(lang === 'ar' ? 'هل تريد حذف سجل هذه المكالمة؟' : 'Supprimer cet appel ?')) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/calls/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchCallLogs();
+    } catch (err) {}
+  };
+
+  const deleteAllCallLogs = async () => {
+    if (!window.confirm(lang === 'ar' ? 'هل تريد حذف كل سجل المكالمات؟ هذا الإجراء لا يمكن التراجع عنه' : 'Supprimer tout l\'historique ? Action irréversible')) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/calls`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchCallLogs();
+    } catch (err) {}
+  };
   // تسعير الطلب ونشره
   const handleQuote = async (requestId) => {
     if (!price || isNaN(price) || parseInt(price) <= 0) {
@@ -1304,9 +1325,19 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
           {/* ===== سجل المكالمات ===== */}
           {activeTab === 'callLogs' && (
             <div>
-              <p style={s.sectionTitle}>
-                {lang === 'ar' ? '📋 سجل المكالمات' : '📋 Historique des appels'}
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <p style={{ ...s.sectionTitle, margin: 0 }}>
+                  {lang === 'ar' ? '📋 سجل المكالمات' : '📋 Historique des appels'}
+                </p>
+                {callLogs.length > 0 && (
+                  <button
+                    style={{ ...s.btnDanger, padding: '6px 12px', fontSize: '0.8rem' }}
+                    onClick={deleteAllCallLogs}
+                  >
+                    🗑️ {lang === 'ar' ? 'حذف الكل' : 'Tout supprimer'}
+                  </button>
+                )}
+              </div>
 
               {callLogs.length === 0 ? (
                 <div style={s.emptyBox}>
@@ -1353,9 +1384,25 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         <p style={s.cardInfo}>📞 {call.customer_phone}</p>
                       )}
 
-                      <p style={s.cardDate}>
+                    <p style={s.cardDate}>
                         {new Date(call.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                       </p>
+                      <button
+                        style={{
+                          marginTop: '8px',
+                          padding: '6px 12px',
+                          background: 'none',
+                          border: '1px solid #dc3545',
+                          color: '#dc3545',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          width: '100%'
+                        }}
+                        onClick={() => deleteCallLog(call.id)}
+                      >
+                        🗑️ {lang === 'ar' ? 'حذف' : 'Supprimer'}
+                      </button>
                     </div>
                   );
                 })

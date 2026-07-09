@@ -9,6 +9,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(user);
+  const [profileLocationLoading, setProfileLocationLoading] = useState(false);
   // بيانات الطلب الجديد
   const [location, setLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -62,7 +63,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       cleanupCall();
     };
   }, []);
-
+ 
   // رنة الاتصال + تذكير صوتي بعد 10 ثوان
   useEffect(() => {
     if (callState === 'calling') {
@@ -95,6 +96,34 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       });
       if (res.ok) setUserData(await res.json());
     } catch (err) {}
+  };
+ 
+  const saveMyLocation = () => {
+    setProfileLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const res = await fetch(`${apiUrl}/users/${user.id}/location`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude })
+          });
+          if (res.ok) {
+            alert(lang === 'ar' ? '✅ تم حفظ موقع منزلك بنجاح' : '✅ Position enregistrée');
+            fetchUserData();
+          }
+        } catch (err) {
+          alert(t.serverError);
+        } finally {
+          setProfileLocationLoading(false);
+        }
+      },
+      err => {
+        alert(lang === 'ar' ? 'فشل تحديد موقعك، يرجى السماح بالوصول للموقع' : 'Échec de localisation');
+        setProfileLocationLoading(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   };
  
   const fetchRequests = async () => {
@@ -314,18 +343,18 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       ringIntervalRef.current = setInterval(beep, 3000);
     } catch (err) {}
   };
-
+ 
   const stopRingTone = () => {
     if (ringIntervalRef.current) { clearInterval(ringIntervalRef.current); ringIntervalRef.current = null; }
   };
-
+ 
   const toggleMute = () => {
     if (localAudioTrackRef.current) {
       localAudioTrackRef.current.setEnabled(isMuted);
       setIsMuted(!isMuted);
     }
   };
-
+ 
   const cleanupCall = async () => {
     stopRingTone();
     setIsMuted(false);
@@ -493,7 +522,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
             {callState === 'calling' && (
               <div style={s.pulseDot} />
             )}
-
+ 
             <div style={s.callControlsRow}>
               <div style={s.circleBtnWrap}>
                 <button
@@ -506,7 +535,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                   {isMuted ? (lang === 'ar' ? 'إلغاء الكتم' : 'Activer') : (lang === 'ar' ? 'كتم' : 'Muet')}
                 </span>
               </div>
-
+ 
               <div style={s.circleBtnWrap}>
                 <button style={s.endCallCircleBtn} onClick={() => endCall()}>
                   📵
@@ -1390,6 +1419,53 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 <span style={s.infoLabel}>{t.currentPackage}</span>
                 <span style={s.infoValue}>{userData?.package_name || '-'}</span>
               </div>
+            </div>
+ 
+            {/* موقع المنزل */}
+            <div style={{
+              ...s.infoBox,
+              backgroundColor: userData?.last_latitude ? '#f0fff0' : '#fffbf0',
+              border: `1.5px solid ${userData?.last_latitude ? '#28a745' : '#ffc107'}`,
+              marginBottom: '20px'
+            }}>
+              <p style={{ ...s.infoLabel, fontWeight: 'bold', marginBottom: '8px' }}>
+                📍 {lang === 'ar' ? 'موقع المنزل' : 'Position du domicile'}
+              </p>
+              {userData?.last_latitude ? (
+                <p style={{ margin: '0 0 8px', color: '#28a745', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  ✅ {lang === 'ar' ? 'محدد' : 'Défini'}
+                  {userData?.location_updated_at && (
+                    <span style={{ fontWeight: 'normal', color: '#888' }}>
+                      {' '}({new Date(userData.location_updated_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')})
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p style={{ margin: '0 0 8px', color: '#856404', fontSize: '0.85rem' }}>
+                  ⚠️ {lang === 'ar' ? 'لم تحدد موقع منزلك بعد' : 'Position non définie'}
+                </p>
+              )}
+              <button
+                style={{
+                  padding: '10px 18px',
+                  backgroundColor: '#006400',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: profileLocationLoading ? 'not-allowed' : 'pointer',
+                  width: '100%'
+                }}
+                onClick={saveMyLocation}
+                disabled={profileLocationLoading}
+              >
+                {profileLocationLoading
+                  ? (lang === 'ar' ? '⏳ جاري التحديد...' : '⏳ Localisation...')
+                  : (userData?.last_latitude
+                      ? (lang === 'ar' ? '📍 تحديث الموقع' : '📍 Mettre à jour')
+                      : (lang === 'ar' ? '📍 تحديد موقع المنزل الآن' : '📍 Définir maintenant'))}
+              </button>
             </div>
  
             <button style={s.logoutBtn} onClick={onLogout}>{t.logout}</button>
