@@ -13,6 +13,28 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
+    const data = payload.data || {};
+
+    // إشعار مكالمة — نبنيه يدويًا بأزرار قبول/رفض
+    if (data.type === 'call') {
+        self.registration.showNotification('📞 مكالمة واردة', {
+            body: `${data.customerName} يتصل بك الآن`,
+            icon: '/icon-notif.png',
+            badge: '/icon-notif.png',
+            vibrate: [300, 100, 300, 100, 300],
+            tag: 'incoming-call',
+            renotify: true,
+            requireInteraction: true,
+            actions: [
+                { action: 'accept-call', title: '✅ قبول' },
+                { action: 'decline-call', title: '❌ رفض' }
+            ],
+            data: { type: 'call', channelName: data.channelName, customerName: data.customerName }
+        });
+        return;
+    }
+
+    // باقي الإشعارات العادية — بدون تغيير
     const notificationTitle = payload.notification?.title || "إشعار جديد";
     const notificationOptions = {
         body: payload.notification?.body || "",
@@ -30,6 +52,30 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const data = event.notification.data || {};
+
+    // نقرة على إشعار مكالمة — مرر channelName والإجراء (قبول/رفض) للتطبيق
+    if (data.type === 'call' && data.channelName) {
+        const action = event.action === 'decline-call' ? 'decline' : 'accept';
+        const urlToOpen = `https://leplombiermr.com/?call=${data.channelName}&callAction=${action}`;
+
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+                for (let client of windowClients) {
+                    if ('focus' in client) {
+                        client.postMessage({ type: 'CALL_ACTION', channelName: data.channelName, action });
+                        return client.focus();
+                    }
+                }
+                if (clients.openWindow) {
+                    return clients.openWindow(urlToOpen);
+                }
+            })
+        );
+        return;
+    }
+
+    // النقرة على إشعار عادي — بدون تغيير
     const urlToOpen = event.notification.data?.url || 'https://leplombiermr.com';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {

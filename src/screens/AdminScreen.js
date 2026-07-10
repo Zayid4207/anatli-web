@@ -104,6 +104,66 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       cleanupAgora();
     };
   }, []);
+  // معالجة إشعارات المكالمة — سواء جاءت من نقرة إشعار (التطبيق كان مغلق) أو أثناء التطبيق مفتوح
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callParam = params.get('call');
+    const actionParam = params.get('callAction');
+    if (callParam) {
+      handleNotificationCallAction(callParam, actionParam || 'accept');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    const handleSWMessage = (event) => {
+      if (event.data?.type === 'CALL_ACTION') {
+        handleNotificationCallAction(event.data.channelName, event.data.action);
+      }
+    };
+    const handleForegroundPush = (event) => {
+      const data = event.detail || {};
+      if (data.channelName) {
+        handleNotificationCallAction(data.channelName, 'accept');
+      }
+    };
+
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
+    window.addEventListener('incoming-call-push', handleForegroundPush);
+
+    return () => {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
+      window.removeEventListener('incoming-call-push', handleForegroundPush);
+    };
+  }, []);
+
+  const handleNotificationCallAction = async (channelName, action) => {
+    if (action === 'decline') {
+      try {
+        await fetch(`${apiUrl}/calls/${channelName}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) {}
+      return;
+    }
+    // قبول: تأكد من وجود المكالمة فعليًا ثم اقبلها مباشرة
+    try {
+      const res = await fetch(`${apiUrl}/calls/incoming`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.call && data.call.channelName === channelName) {
+          setIncomingCall(data.call);
+          setCallState('ringing');
+          acceptCall(data.call);
+        }
+      }
+    } catch (err) {}
+  };
  
   // رنة المكالمة الواردة
   useEffect(() => {
@@ -507,19 +567,20 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }
   };
  
-  const acceptCall = async () => {
-    if (!incomingCall) return;
+  const acceptCall = async (callOverride) => {
+    const call = callOverride || incomingCall;
+    if (!call) return;
     try {
       const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
-      await fetch(`${apiUrl}/calls/${incomingCall.channelName}/answer`, {
+      await fetch(`${apiUrl}/calls/${call.channelName}/answer`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
- 
+
       const tokenRes = await fetch(`${apiUrl}/agora/token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName: incomingCall.channelName })
+        body: JSON.stringify({ channelName: call.channelName })
       });
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) {
@@ -527,24 +588,24 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         declineCall();
         return;
       }
- 
+
       const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
       agoraClientRef.current = client;
- 
+
       client.on('user-published', async (remoteUser, mediaType) => {
         await client.subscribe(remoteUser, mediaType);
         if (mediaType === 'audio') remoteUser.audioTrack.play();
       });
- 
-      await client.join(tokenData.appId, incomingCall.channelName, tokenData.token, tokenData.uid);
+
+      await client.join(tokenData.appId, call.channelName, tokenData.token, tokenData.uid);
        const micTrack = await AgoraRTC.createMicrophoneAudioTrack({
-  AEC: true, // إلغاء الصدى
-  ANS: true, // إلغاء الضجيج
-  AGC: true  // ضبط مستوى الصوت تلقائيًا
+  AEC: true,
+  ANS: true,
+  AGC: true
 });
       localAudioTrackRef.current = micTrack;
       await client.publish([micTrack]);
- 
+
       setCallState('connected');
       callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     } catch (err) {
@@ -614,7 +675,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
               <button style={s.declineBtn} onClick={declineCall}>
                 ✕ {lang === 'ar' ? 'رفض' : 'Refuser'}
               </button>
-              <button style={s.acceptBtn} onClick={acceptCall}>
+              <button style={s.acceptBtn} onClick={() => acceptCall()}>
                 📞 {lang === 'ar' ? 'قبول' : 'Accepter'}
               </button>
             </div>

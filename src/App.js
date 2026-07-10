@@ -112,7 +112,14 @@ function App() {
     setupNotifications();
  
     const unsubscribe = onMessage(messaging, (payload) => {
-      alert(`${payload.notification.title}\n${payload.notification.body}`);
+      // إشعار مكالمة وصل والتطبيق مفتوح بالمقدمة — مرره لواجهة الإدارة مباشرة، بدون alert
+      if (payload.data?.type === 'call') {
+        window.dispatchEvent(new CustomEvent('incoming-call-push', { detail: payload.data }));
+        return;
+      }
+      if (payload.notification) {
+        alert(`${payload.notification.title}\n${payload.notification.body}`);
+      }
     });
  
     return () => unsubscribe();
