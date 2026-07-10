@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../translations';
 import Logo from '../Logo';
 export default function ProviderScreen({ user, apiUrl, onLogout }) {
@@ -12,6 +12,12 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [jobDetail, setJobDetail] = useState(null); // صفحة تفاصيل المهمة (بيانات الزبون)
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(user);
+ 
+  // ===== تشغيل الرسالة الصوتية بشكل واتساب =====
+  const [voiceIsPlaying, setVoiceIsPlaying] = useState(false);
+  const [voiceProgress, setVoiceProgress] = useState(0);
+  const [voiceDuration, setVoiceDuration] = useState(0);
+  const voiceAudioRef = useRef(null);
  
   const token = localStorage.getItem('userToken');
  
@@ -61,6 +67,30 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
       if (res.ok) setEarnings(await res.json());
     } catch (err) {}
   }, [apiUrl, token, user.id]);
+ 
+  // ===== دوال تشغيل الصوت بشكل واتساب =====
+  const formatVoiceDuration = (seconds) => {
+    if (!seconds || !isFinite(seconds)) return '00:00';
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+ 
+  const toggleVoicePlayback = () => {
+    const audio = voiceAudioRef.current;
+    if (!audio) return;
+    if (voiceIsPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+  };
+ 
+  const resetVoicePlayerState = () => {
+    setVoiceIsPlaying(false);
+    setVoiceProgress(0);
+    setVoiceDuration(0);
+  };
  
   // قبول طلب
   const handleAccept = async (requestId) => {
@@ -137,7 +167,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
         <main style={s.main}>
           <div style={s.screen}>
             <div style={s.screenHeader}>
-              <button style={s.backBtn} onClick={() => setJobDetail(null)}>
+              <button style={s.backBtn} onClick={() => { setJobDetail(null); resetVoicePlayerState(); }}>
                 {lang === 'ar' ? '→ رجوع' : '← Retour'}
               </button>
               <span style={s.modalBadge}>
@@ -161,11 +191,31 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               />
             )}
  
-            {/* الوصف الصوتي */}
+            {/* الوصف الصوتي — فقاعة بشكل واتساب */}
             {jobDetail.voice_note_url && (
               <div style={s.voiceBox}>
                 <p style={s.voiceLabel}>🎙 {t.playVoice}</p>
-                <audio controls src={jobDetail.voice_note_url} style={{ width: '100%' }} />
+                <div style={s.waBubble}>
+                  <button style={s.waPlayBtn} onClick={toggleVoicePlayback}>
+                    {voiceIsPlaying ? '⏸' : '▶️'}
+                  </button>
+                  <div style={s.waWaveTrack}>
+                    <div style={{ ...s.waWaveFill, width: `${voiceProgress}%` }} />
+                  </div>
+                  <span style={s.waDuration}>
+                    {formatVoiceDuration(voiceDuration)}
+                  </span>
+                  <audio
+                    ref={voiceAudioRef}
+                    src={jobDetail.voice_note_url}
+                    onPlay={() => setVoiceIsPlaying(true)}
+                    onPause={() => setVoiceIsPlaying(false)}
+                    onEnded={() => { setVoiceIsPlaying(false); setVoiceProgress(0); }}
+                    onLoadedMetadata={e => setVoiceDuration(e.target.duration)}
+                    onTimeUpdate={e => setVoiceProgress((e.target.currentTime / e.target.duration) * 100 || 0)}
+                    style={{ display: 'none' }}
+                  />
+                </div>
               </div>
             )}
  
@@ -271,7 +321,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
       {selectedRequest && (
         <div style={s.overlay}>
           <div style={s.modal}>
-            <button style={s.closeBtn} onClick={() => setSelectedRequest(null)}>✕</button>
+            <button style={s.closeBtn} onClick={() => { setSelectedRequest(null); resetVoicePlayerState(); }}>✕</button>
  
             {/* رأسية المودال */}
             <div style={s.modalHeader}>
@@ -293,11 +343,31 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               />
             )}
  
-            {/* الوصف الصوتي */}
+            {/* الوصف الصوتي — فقاعة بشكل واتساب */}
             {selectedRequest.voice_note_url && (
               <div style={s.voiceBox}>
                 <p style={s.voiceLabel}>🎙 {t.playVoice}</p>
-                <audio controls src={selectedRequest.voice_note_url} style={{ width: '100%' }} />
+                <div style={s.waBubble}>
+                  <button style={s.waPlayBtn} onClick={toggleVoicePlayback}>
+                    {voiceIsPlaying ? '⏸' : '▶️'}
+                  </button>
+                  <div style={s.waWaveTrack}>
+                    <div style={{ ...s.waWaveFill, width: `${voiceProgress}%` }} />
+                  </div>
+                  <span style={s.waDuration}>
+                    {formatVoiceDuration(voiceDuration)}
+                  </span>
+                  <audio
+                    ref={voiceAudioRef}
+                    src={selectedRequest.voice_note_url}
+                    onPlay={() => setVoiceIsPlaying(true)}
+                    onPause={() => setVoiceIsPlaying(false)}
+                    onEnded={() => { setVoiceIsPlaying(false); setVoiceProgress(0); }}
+                    onLoadedMetadata={e => setVoiceDuration(e.target.duration)}
+                    onTimeUpdate={e => setVoiceProgress((e.target.currentTime / e.target.duration) * 100 || 0)}
+                    style={{ display: 'none' }}
+                  />
+                </div>
               </div>
             )}
  
@@ -348,6 +418,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                   } catch (err) {}
                   setAvailableRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
                   setSelectedRequest(null);
+                  resetVoicePlayerState();
                 }}
               >
                 {t.ignoreRequest}
@@ -1091,6 +1162,44 @@ const s = {
     color: '#006400',
     fontWeight: 'bold',
     padding: '5px 0'
+  },
+  // ===== فقاعة تشغيل صوتي بشكل واتساب =====
+  waBubble: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 14px',
+    background: '#dcf8c6',
+    borderRadius: '30px'
+  },
+  waPlayBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: '#006400',
+    color: '#fff',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    flexShrink: 0
+  },
+  waWaveTrack: {
+    flex: 1,
+    height: '4px',
+    backgroundColor: 'rgba(0,100,0,0.25)',
+    borderRadius: '2px',
+    overflow: 'hidden'
+  },
+  waWaveFill: {
+    height: '100%',
+    backgroundColor: '#006400',
+    borderRadius: '2px'
+  },
+  waDuration: {
+    fontSize: '0.75rem',
+    color: '#333',
+    fontWeight: 'bold',
+    minWidth: '38px',
+    textAlign: 'center'
   }
 };
-
