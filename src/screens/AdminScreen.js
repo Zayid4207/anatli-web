@@ -35,6 +35,17 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [callPrice, setCallPrice] = useState('');
   const [callDescription, setCallDescription] = useState('');
   const [callCreateLoading, setCallCreateLoading] = useState(false);
+  const [callVoiceBlob, setCallVoiceBlob] = useState(null);
+  const [callVoiceUrl, setCallVoiceUrl] = useState(null);
+  const [callIsRecording, setCallIsRecording] = useState(false);
+  const [callRecordSeconds, setCallRecordSeconds] = useState(0);
+  const [callIsPlaying, setCallIsPlaying] = useState(false);
+  const [callPlaybackProgress, setCallPlaybackProgress] = useState(0);
+  const [callPlaybackDuration, setCallPlaybackDuration] = useState(0);
+  const callMediaRecorderRef = useRef(null);
+  const callChunksRef = useRef([]);
+  const callRecordTimerRef = useRef(null);
+  const callAudioRef = useRef(null);
  
   // ===== المكالمات الواردة (Agora) =====
   const [incomingCall, setIncomingCall] = useState(null); // { channelName, customerName }
@@ -340,7 +351,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   };
  
   // نشر الطلب مباشرة للفنيين
-  const handleCreateForCustomer = async () => {
+   const handleCreateForCustomer = async () => {
     if (!callServiceType) {
       alert(lang === 'ar' ? 'يرجى اختيار نوع المشكلة' : 'Veuillez choisir le type de problème');
       return;
@@ -351,15 +362,17 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }
     setCallCreateLoading(true);
     try {
+      const formData = new FormData();
+      formData.append('client_code', callCustomer.client_code);
+      formData.append('service_type', callServiceType);
+      formData.append('quoted_price', parseInt(callPrice));
+      if (callDescription) formData.append('description', callDescription);
+      if (callVoiceBlob) formData.append('voice_note', callVoiceBlob, 'voice.webm');
+
       const res = await fetch(`${apiUrl}/admin/requests/create-for-customer`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_code: callCustomer.client_code,
-          service_type: callServiceType,
-          quoted_price: parseInt(callPrice),
-          description: callDescription
-        })
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       });
       const data = await res.json();
       if (res.ok) {
@@ -369,6 +382,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         setCallServiceType('');
         setCallPrice('');
         setCallDescription('');
+        discardCallVoice();
         fetchAllRequests();
       } else {
         alert(data.error || t.error);
@@ -377,6 +391,66 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       alert(t.serverError);
     } finally {
       setCallCreateLoading(false);
+    }
+  };
+  const formatVoiceTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const startCallRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      callChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      callMediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) callChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(callChunksRef.current, { type: mimeType || 'audio/mp4' });
+        setCallVoiceBlob(blob);
+        setCallVoiceUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      recorder.start(100);
+      setCallIsRecording(true);
+      setCallRecordSeconds(0);
+      callRecordTimerRef.current = setInterval(() => setCallRecordSeconds(s => s + 1), 1000);
+    } catch (err) {
+      alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
+    }
+  };
+
+  const stopCallRecording = () => {
+    if (callMediaRecorderRef.current) callMediaRecorderRef.current.stop();
+    setCallIsRecording(false);
+    if (callRecordTimerRef.current) { clearInterval(callRecordTimerRef.current); callRecordTimerRef.current = null; }
+  };
+
+  const discardCallVoice = () => {
+    setCallVoiceBlob(null);
+    setCallVoiceUrl(null);
+    setCallIsPlaying(false);
+    setCallPlaybackProgress(0);
+    setCallPlaybackDuration(0);
+  };
+
+  const toggleCallVoicePlayback = () => {
+    const audio = callAudioRef.current;
+    if (!audio) return;
+    if (callIsPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
     }
   };
  
@@ -1306,7 +1380,49 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         value={callDescription}
                         onChange={e => setCallDescription(e.target.value)}
                       />
- 
+
+                      <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
+                        {lang === 'ar' ? '🎙 رسالة صوتية (اختياري)' : '🎙 Message vocal (optionnel)'}
+                      </p>
+
+                      {!callVoiceUrl ? (
+                        callIsRecording ? (
+                          <div style={s.waRecordingBar}>
+                            <span style={s.waRecDot} />
+                            <span style={s.waRecTimer}>{formatVoiceTime(callRecordSeconds)}</span>
+                            <span style={{ flex: 1 }} />
+                            <button style={s.waStopBtn} onClick={stopCallRecording}>⏹</button>
+                          </div>
+                        ) : (
+                          <button style={s.waMicBtn} onClick={startCallRecording}>
+                            🎙️ {lang === 'ar' ? 'اضغط لتسجيل رسالة صوتية' : 'Appuyer pour enregistrer'}
+                          </button>
+                        )
+                      ) : (
+                        <div style={s.waBubble}>
+                          <button style={s.waPlayBtn} onClick={toggleCallVoicePlayback}>
+                            {callIsPlaying ? '⏸' : '▶️'}
+                          </button>
+                          <div style={s.waWaveTrack}>
+                            <div style={{ ...s.waWaveFill, width: `${callPlaybackProgress}%` }} />
+                          </div>
+                          <span style={s.waDuration}>
+                            {formatVoiceTime(callPlaybackDuration || 0)}
+                          </span>
+                          <button style={s.waDeleteBtn} onClick={discardCallVoice}>🗑️</button>
+                          <audio
+                            ref={callAudioRef}
+                            src={callVoiceUrl}
+                            onPlay={() => setCallIsPlaying(true)}
+                            onPause={() => setCallIsPlaying(false)}
+                            onEnded={() => { setCallIsPlaying(false); setCallPlaybackProgress(0); }}
+                            onLoadedMetadata={e => setCallPlaybackDuration(e.target.duration)}
+                            onTimeUpdate={e => setCallPlaybackProgress((e.target.currentTime / e.target.duration) * 100 || 0)}
+                            style={{ display: 'none' }}
+                          />
+                        </div>
+                      )}
+
                       <button
                         style={{ ...s.btnSuccess, width: '100%', marginTop: '15px', opacity: callCreateLoading ? 0.7 : 1 }}
                         onClick={handleCreateForCustomer}
@@ -2033,6 +2149,97 @@ const s = {
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 6px 20px rgba(220,53,69,0.5)'
+  },
+  // ===== تسجيل صوتي بشكل واتساب =====
+  waMicBtn: {
+    width: '100%',
+    padding: '14px',
+    background: '#f0fff0',
+    border: '2px dashed #006400',
+    borderRadius: '30px',
+    color: '#006400',
+    fontWeight: 'bold',
+    fontSize: '0.9rem',
+    cursor: 'pointer'
+  },
+  waRecordingBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '12px 16px',
+    background: '#fff0f0',
+    border: '1.5px solid #dc3545',
+    borderRadius: '30px'
+  },
+  waRecDot: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    backgroundColor: '#dc3545',
+    animationName: 'pulse',
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+    animationDirection: 'alternate'
+  },
+  waRecTimer: {
+    fontWeight: 'bold',
+    color: '#dc3545',
+    fontSize: '0.95rem'
+  },
+  waStopBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    fontSize: '1rem',
+    cursor: 'pointer'
+  },
+  waBubble: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 14px',
+    background: '#dcf8c6',
+    borderRadius: '30px'
+  },
+  waPlayBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: '#006400',
+    color: '#fff',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    flexShrink: 0
+  },
+  waWaveTrack: {
+    flex: 1,
+    height: '4px',
+    backgroundColor: 'rgba(0,100,0,0.25)',
+    borderRadius: '2px',
+    overflow: 'hidden'
+  },
+  waWaveFill: {
+    height: '100%',
+    backgroundColor: '#006400',
+    borderRadius: '2px'
+  },
+  waDuration: {
+    fontSize: '0.75rem',
+    color: '#333',
+    fontWeight: 'bold',
+    minWidth: '38px',
+    textAlign: 'center'
+  },
+  waDeleteBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    flexShrink: 0
   },
   controlLabel: {
     color: 'rgba(255,255,255,0.7)',
