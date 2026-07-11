@@ -707,6 +707,26 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 </span>
               </label>
  
+              {/* الوصف الصوتي */}
+              <div style={s.voiceBox}>
+                {!voiceUrl ? (
+                  <button
+                    style={{ ...s.voiceBtn, backgroundColor: isRecording ? '#dc3545' : '#006400' }}
+                    onClick={isRecording ? stopRecording : startRecording}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>{isRecording ? '⏹' : '🎙'}</span>
+                    <span>{isRecording ? t.stopRecording : t.recordVoice}</span>
+                  </button>
+                ) : (
+                  <div style={s.voicePlayBox}>
+                    <span style={{ color: '#006400', fontWeight: 'bold' }}>{t.voiceRecorded}</span>
+                    <audio controls src={voiceUrl} style={{ width: '100%', marginTop: '8px' }} />
+                    <button style={s.reRecordBtn} onClick={() => { setVoiceBlob(null); setVoiceUrl(null); }}>
+                      {t.reRecord}
+                    </button>
+                  </div>
+                )}
+              </div>
  
               {/* وصف نصي اختياري */}
               <textarea
@@ -888,16 +908,6 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 alt="problem"
                 style={{ width: '100%', borderRadius: '16px', marginBottom: '15px', maxHeight: '200px', objectFit: 'cover' }}
               />
-            )}
- 
-            {/* الوصف الصوتي */}
-            {selectedRequest.voice_note_url && (
-              <div style={s.voicePlayBox}>
-                <p style={{ margin: '0 0 8px', fontWeight: 'bold', color: '#333' }}>
-                  {lang === 'ar' ? '🎙 الوصف الصوتي:' : '🎙 Note vocale:'}
-                </p>
-                <audio controls src={selectedRequest.voice_note_url} style={{ width: '100%' }} />
-              </div>
             )}
  
             {/* الوصف النصي */}
