@@ -115,7 +115,7 @@ export default function Logo({ size = 'md', theme = 'light' }) {
         }}>
           {isArabic
             ? 'خدمة تأمين إصلاح المنازل'
-            : "Service d'assurance de réparation de maison"}
+            : "Service d'assurance du réparation de maison"}
         </div>
       </div>
     </div>

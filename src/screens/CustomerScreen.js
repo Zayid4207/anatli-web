@@ -707,26 +707,6 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 </span>
               </label>
  
-              {/* الوصف الصوتي */}
-              <div style={s.voiceBox}>
-                {!voiceUrl ? (
-                  <button
-                    style={{ ...s.voiceBtn, backgroundColor: isRecording ? '#dc3545' : '#006400' }}
-                    onClick={isRecording ? stopRecording : startRecording}
-                  >
-                    <span style={{ fontSize: '1.5rem' }}>{isRecording ? '⏹' : '🎙'}</span>
-                    <span>{isRecording ? t.stopRecording : t.recordVoice}</span>
-                  </button>
-                ) : (
-                  <div style={s.voicePlayBox}>
-                    <span style={{ color: '#006400', fontWeight: 'bold' }}>{t.voiceRecorded}</span>
-                    <audio controls src={voiceUrl} style={{ width: '100%', marginTop: '8px' }} />
-                    <button style={s.reRecordBtn} onClick={() => { setVoiceBlob(null); setVoiceUrl(null); }}>
-                      {t.reRecord}
-                    </button>
-                  </div>
-                )}
-              </div>
  
               {/* وصف نصي اختياري */}
               <textarea
