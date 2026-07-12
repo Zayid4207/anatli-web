@@ -49,13 +49,14 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
  
   // ===== المكالمات الواردة (Agora) =====
   const [incomingCall, setIncomingCall] = useState(null); // { channelName, customerName }
-  const [callState, setCallState] = useState('idle'); // idle, ringing, connected
+  const [callState, setCallState] = useState('idle'); // idle, ringing, connecting, connected
   const [callDuration, setCallDuration] = useState(0);
   const agoraClientRef = useRef(null);
   const localAudioTrackRef = useRef(null);
   const callTimerRef = useRef(null);
  const incomingPollRef = useRef(null);
   const callStateRef = useRef('idle');
+  const isAcceptingRef = useRef(false); // قفل يمنع استدعاء acceptCall أكثر من مرة بالتوازي
   const [isMuted, setIsMuted] = useState(false);
   const audioCtxRef = useRef(null);
   const ringIntervalRef = useRef(null);
@@ -113,7 +114,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       handleNotificationCallAction(callParam, actionParam || 'accept');
       window.history.replaceState({}, '', window.location.pathname);
     }
-
+ 
     const handleSWMessage = (event) => {
       if (event.data?.type === 'CALL_ACTION') {
         handleNotificationCallAction(event.data.channelName, event.data.action);
@@ -125,12 +126,12 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         handleNotificationCallAction(data.channelName, 'accept');
       }
     };
-
+ 
     if (navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener('message', handleSWMessage);
     }
     window.addEventListener('incoming-call-push', handleForegroundPush);
-
+ 
     return () => {
       if (navigator.serviceWorker) {
         navigator.serviceWorker.removeEventListener('message', handleSWMessage);
@@ -138,7 +139,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       window.removeEventListener('incoming-call-push', handleForegroundPush);
     };
   }, []);
-
+ 
   const handleNotificationCallAction = async (channelName, action) => {
     if (action === 'decline') {
       try {
@@ -239,7 +240,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       if (res.ok) fetchCallLogs();
     } catch (err) {}
   };
-
+ 
   const deleteAllCallLogs = async () => {
     if (!window.confirm(lang === 'ar' ? 'هل تريد حذف كل سجل المكالمات؟ هذا الإجراء لا يمكن التراجع عنه' : 'Supprimer tout l\'historique ? Action irréversible')) return;
     try {
@@ -428,7 +429,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       formData.append('quoted_price', parseInt(callPrice));
       if (callDescription) formData.append('description', callDescription);
       if (callVoiceBlob) formData.append('voice_note', callVoiceBlob, 'voice.webm');
-
+ 
       const res = await fetch(`${apiUrl}/admin/requests/create-for-customer`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -458,7 +459,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     const s = Math.floor(seconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
-
+ 
   const startCallRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -470,7 +471,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         : '';
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       callMediaRecorderRef.current = recorder;
-
+ 
       recorder.ondataavailable = e => {
         if (e.data && e.data.size > 0) callChunksRef.current.push(e.data);
       };
@@ -480,7 +481,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         setCallVoiceUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
       };
-
+ 
       recorder.start(100);
       setCallIsRecording(true);
       setCallRecordSeconds(0);
@@ -489,13 +490,13 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
     }
   };
-
+ 
   const stopCallRecording = () => {
     if (callMediaRecorderRef.current) callMediaRecorderRef.current.stop();
     setCallIsRecording(false);
     if (callRecordTimerRef.current) { clearInterval(callRecordTimerRef.current); callRecordTimerRef.current = null; }
   };
-
+ 
   const discardCallVoice = () => {
     setCallVoiceBlob(null);
     setCallVoiceUrl(null);
@@ -503,7 +504,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     setCallPlaybackProgress(0);
     setCallPlaybackDuration(0);
   };
-
+ 
   const toggleCallVoicePlayback = () => {
     const audio = callAudioRef.current;
     if (!audio) return;
@@ -567,16 +568,21 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }
   };
  
+  // الإدارة تقبل المكالمة — محمية بقفل isAcceptingRef يمنع الاستدعاء المزدوج
+  // (الاستدعاء المزدوج كان يُنشئ اتصالين صوتيين متوازيين من نفس الجهاز، مسبباً صدى وتدهور الجودة)
   const acceptCall = async (callOverride) => {
+    if (isAcceptingRef.current) return; // مكالمة قيد القبول بالفعل — تجاهل أي استدعاء إضافي
     const call = callOverride || incomingCall;
     if (!call) return;
+    isAcceptingRef.current = true;
+    setCallState('connecting'); // تغيير الحالة فوراً لإخفاء زر القبول ومنع ضغطات متكررة
     try {
       const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
       await fetch(`${apiUrl}/calls/${call.channelName}/answer`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
+ 
       const tokenRes = await fetch(`${apiUrl}/agora/token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -588,29 +594,32 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
         declineCall();
         return;
       }
-
+ 
       const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
       agoraClientRef.current = client;
-
+ 
       client.on('user-published', async (remoteUser, mediaType) => {
         await client.subscribe(remoteUser, mediaType);
         if (mediaType === 'audio') remoteUser.audioTrack.play();
       });
-
+ 
       await client.join(tokenData.appId, call.channelName, tokenData.token, tokenData.uid);
        const micTrack = await AgoraRTC.createMicrophoneAudioTrack({
   AEC: true,
   ANS: true,
-  AGC: true
+  AGC: true,
+  encoderConfig: 'high_quality' // جودة صوت أعلى بكثير من الإعداد الافتراضي (128kbps بدل 18kbps) — تقارب مكالمات واتساب
 });
       localAudioTrackRef.current = micTrack;
       await client.publish([micTrack]);
-
+ 
       setCallState('connected');
       callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     } catch (err) {
       alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
       declineCall();
+    } finally {
+      isAcceptingRef.current = false;
     }
   };
  
@@ -679,6 +688,19 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                 📞 {lang === 'ar' ? 'قبول' : 'Accepter'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+ 
+      {/* ===== شاشة "جاري الاتصال" — تظهر أثناء إعداد المكالمة لمنع الضغط المتكرر ===== */}
+      {callState === 'connecting' && incomingCall && (
+        <div style={s.callOverlay}>
+          <div style={s.callCard}>
+            <div style={s.callAvatar}>📞</div>
+            <p style={s.callName}>{incomingCall.customerName}</p>
+            <p style={s.callStatus}>
+              {lang === 'ar' ? 'جاري الاتصال...' : 'Connexion en cours...'}
+            </p>
           </div>
         </div>
       )}
@@ -1441,11 +1463,11 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         value={callDescription}
                         onChange={e => setCallDescription(e.target.value)}
                       />
-
+ 
                       <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
                         {lang === 'ar' ? '🎙 رسالة صوتية (اختياري)' : '🎙 Message vocal (optionnel)'}
                       </p>
-
+ 
                       {!callVoiceUrl ? (
                         callIsRecording ? (
                           <div style={s.waRecordingBar}>
@@ -1483,7 +1505,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                           />
                         </div>
                       )}
-
+ 
                       <button
                         style={{ ...s.btnSuccess, width: '100%', marginTop: '15px', opacity: callCreateLoading ? 0.7 : 1 }}
                         onClick={handleCreateForCustomer}
@@ -1515,7 +1537,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                   </button>
                 )}
               </div>
-
+ 
               {callLogs.length === 0 ? (
                 <div style={s.emptyBox}>
                   <span style={{ fontSize: '3rem' }}>📭</span>
@@ -1550,17 +1572,17 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                             : (lang === 'ar' ? '🟢 تم الرد' : '🟢 Répondu')}
                         </span>
                       </div>
-
+ 
                       {call.client_code && (
                         <p style={{ margin: '6px 0 0' }}>
                           <span style={s.clientCodeBadge}>{call.client_code}</span>
                         </p>
                       )}
-
+ 
                       {call.customer_phone && (
                         <p style={s.cardInfo}>📞 {call.customer_phone}</p>
                       )}
-
+ 
                     <p style={s.cardDate}>
                         {new Date(call.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                       </p>
@@ -2307,4 +2329,4 @@ const s = {
     fontSize: '0.75rem'
   }
 };
-
+ 

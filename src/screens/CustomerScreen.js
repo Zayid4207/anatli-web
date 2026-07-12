@@ -436,7 +436,8 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       const micTrack = await AgoraRTC.createMicrophoneAudioTrack({
   AEC: true, // إلغاء الصدى
   ANS: true, // إلغاء الضجيج
-  AGC: true  // ضبط مستوى الصوت تلقائيًا
+  AGC: true, // ضبط مستوى الصوت تلقائيًا
+  encoderConfig: 'high_quality' // جودة صوت أعلى بكثير من الإعداد الافتراضي (128kbps بدل 18kbps) — تقارب مكالمات واتساب
 });
       localAudioTrackRef.current = micTrack;
       await client.publish([micTrack]);
