@@ -105,56 +105,101 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
  
   const c = content[lang];
  
- const generatePdf = async (pkg) => {
+  // فصل الإيموجي عن النص العربي لتفادي خلل ترتيب الحروف عند التصدير كصورة
+  const splitIcon = (str) => {
+    const match = str.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F]+)\s*(.*)$/u);
+    if (match) return { icon: match[1], text: match[2] };
+    return { icon: '', text: str };
+  };
+ 
+  const generatePdf = async (pkg) => {
     const items = pkg.items || [];
     const div = document.createElement('div');
-    div.style.cssText = `position:fixed;left:-9999px;top:0;width:420px;background:#f4f6f5;font-family:Arial,sans-serif;direction:rtl;border-radius:28px;overflow:hidden;`;
+    div.style.cssText = `position:fixed;left:-9999px;top:0;width:620px;background:#e5e7eb;padding:20px;font-family:'Tajawal',Arial,sans-serif;direction:rtl;`;
+ 
+    const itemsHtml = items.map((item, idx) => {
+      const { icon, text } = splitIcon(item);
+      return `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 10px;background:${idx % 2 === 0 ? '#f7f7f8' : 'transparent'};border-radius:8px;">
+          <span style="color:${pkg.border};font-weight:900;flex-shrink:0;font-size:14px;">✓</span>
+          <span style="flex-shrink:0;font-size:14px;">${icon}</span>
+          <span dir="rtl" style="unicode-bidi:isolate;flex:1;line-height:1.45;font-size:13.5px;color:#2c2c2c;">${text}</span>
+        </div>
+      `;
+    }).join('');
+ 
     div.innerHTML = `
-      <div style="background:linear-gradient(135deg, ${pkg.border} 0%, ${pkg.border}cc 100%);padding:30px 24px 44px;text-align:center;color:white;position:relative;">
-        <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
-        <div style="position:absolute;bottom:-50px;left:-30px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.07);"></div>
-        <div style="position:relative;">
-          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;">
-            <div style="width:44px;height:44px;background:#ffc107;border-radius:9px;position:relative;overflow:hidden;box-shadow:0 3px 10px rgba(255,193,7,0.35);flex-shrink:0;">
-              <div style="width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-bottom:13px solid #00843D;position:absolute;top:4px;left:5px;"></div>
-              <div style="position:absolute;bottom:4px;left:11px;width:22px;height:16px;background:#00843D;border-radius:2px 2px 0 0;"></div>
-              <div style="position:absolute;bottom:4px;left:18px;width:7px;height:9px;background:#D21034;border-radius:2px 2px 0 0;"></div>
+      <div style="width:100%;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.12);">
+ 
+        <div style="background:linear-gradient(135deg, ${pkg.border} 0%, ${pkg.border}dd 100%);padding:34px 40px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
+          <div style="position:absolute;bottom:-70px;left:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+ 
+          <div style="display:flex;align-items:center;justify-content:space-between;position:relative;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:52px;height:52px;background:#ffc107;border-radius:11px;position:relative;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.2);">
+                <div style="width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:15px solid #00843D;position:absolute;top:5px;left:6px;"></div>
+                <div style="position:absolute;bottom:5px;left:13px;width:26px;height:19px;background:#00843D;border-radius:2px 2px 0 0;"></div>
+                <div style="position:absolute;bottom:5px;left:21px;width:8px;height:11px;background:#D21034;border-radius:2px 2px 0 0;"></div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:3px;line-height:1;">S.A.R.M</div>
+                <div dir="rtl" style="unicode-bidi:isolate;font-size:9.5px;color:rgba(255,255,255,0.9);margin-top:3px;">خدمة تأمين إصلاح المنازل</div>
+              </div>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:16px;font-weight:900;color:#ffc107;letter-spacing:3px;line-height:1;">S.A.R.M</div>
-              <div style="font-size:9px;color:rgba(255,255,255,0.85);margin-top:3px;">خدمة تأمين إصلاح المنازل</div>
+            <div style="font-size:44px;line-height:1;">${pkg.icon}</div>
+          </div>
+ 
+          <div style="text-align:center;margin-top:26px;position:relative;">
+            <div dir="rtl" style="unicode-bidi:isolate;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px;">${pkg.name}</div>
+            <div style="display:inline-block;background:rgba(0,0,0,0.18);padding:7px 22px;border-radius:20px;">
+              <span style="font-size:15px;font-weight:bold;color:#fff;">${pkg.price} MRU</span>
+              <span dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:rgba(255,255,255,0.85);"> / شهرياً</span>
             </div>
           </div>
-          <div style="font-size:48px;line-height:1;margin-bottom:10px;">${pkg.icon}</div>
-          <div style="font-size:22px;font-weight:900;margin-bottom:6px;">${pkg.name}</div>
-          <div style="display:inline-block;background:rgba(0,0,0,0.15);padding:6px 20px;border-radius:20px;font-size:14px;font-weight:bold;">
-            ${pkg.price} MRU / شهرياً
+        </div>
+ 
+        <div style="padding:30px 36px;">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:18px;">
+            <span style="font-size:15px;">✨</span>
+            <span dir="rtl" style="unicode-bidi:isolate;font-size:15px;font-weight:900;color:${pkg.border};letter-spacing:0.5px;">ما تشمله هذه الباقة</span>
+          </div>
+ 
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;">
+            ${itemsHtml}
+          </div>
+ 
+          <div style="display:flex;align-items:center;gap:8px;justify-content:center;background:#fff8e1;border:1px solid #ffc10766;border-radius:12px;padding:12px 16px;margin-top:20px;">
+            <span style="font-size:14px;">⚠️</span>
+            <span dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:#8a6d00;line-height:1.5;text-align:center;">
+              <strong>تغطية اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
+            </span>
           </div>
         </div>
-      </div>
-      <div style="background:#fff;margin:-20px 16px 0;border-radius:20px;position:relative;box-shadow:0 8px 24px rgba(0,0,0,0.08);padding:24px 22px;">
-        <div style="font-size:14px;font-weight:900;color:${pkg.border};letter-spacing:1px;margin-bottom:16px;text-align:center;">
-          ✨ ما تشمله هذه الباقة
-        </div>
-        ${items.map((item, idx) => `
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:11px;font-size:13.5px;color:#333;background:${idx % 2 === 0 ? '#fafafa' : 'transparent'};padding:6px 8px;border-radius:10px;">
-            <span style="color:${pkg.border};font-weight:900;flex-shrink:0;">✓</span>
-            <span style="line-height:1.4;">${item}</span>
+ 
+        <div style="background:${pkg.border}14;padding:22px 36px;text-align:center;border-top:1px solid #eee;">
+          <div dir="rtl" style="unicode-bidi:isolate;font-size:13.5px;font-weight:900;color:#1a1a1a;margin-bottom:8px;">
+            للاشتراك الآن تواصل معنا
           </div>
-        `).join('')}
-        <div style="background:#fff8e1;border:1px solid #ffc10766;border-radius:12px;padding:12px 14px;margin-top:16px;font-size:11.5px;color:#8a6d00;text-align:center;line-height:1.5;">
-          ⚠️ <strong>تغطية اليد العاملة فقط</strong><br/>قطع الغيار على عاتق الزبون
+          <div style="display:flex;justify-content:center;gap:22px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:13px;">📞</span>
+              <span style="font-size:13px;font-weight:bold;color:#333;" dir="ltr">${APP_CONFIG.phone}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:13px;">💬</span>
+              <span style="font-size:13px;font-weight:bold;color:#25D366;">WhatsApp</span>
+            </div>
+          </div>
+          <div dir="rtl" style="unicode-bidi:isolate;font-size:10.5px;color:#999;margin-top:10px;">نواكشوط، موريتانيا</div>
         </div>
-      </div>
-      <div style="text-align:center;padding:22px 20px 26px;">
-        <div style="font-size:13px;font-weight:900;color:#1a1a1a;letter-spacing:2px;margin-bottom:4px;">S.A.R.M</div>
-        <div style="font-size:11px;color:#888;">نواكشوط، موريتانيا</div>
+ 
       </div>
     `;
     document.body.appendChild(div);
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#f4f6f5' });
+      const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#e5e7eb' });
       const link = document.createElement('a');
       link.download = `SARM-${pkg.name}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -616,3 +661,4 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
     </div>
   );
 }
+
