@@ -105,31 +105,58 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
  
   const c = content[lang];
  
-  const generatePdf = async (pkg) => {
+ const generatePdf = async (pkg) => {
     const items = pkg.items || [];
     const div = document.createElement('div');
-    div.style.cssText = `position:fixed;left:-9999px;top:0;width:390px;background:white;font-family:Arial,sans-serif;direction:rtl;`;
+    div.style.cssText = `position:fixed;left:-9999px;top:0;width:420px;background:#f4f6f5;font-family:Arial,sans-serif;direction:rtl;border-radius:28px;overflow:hidden;`;
     div.innerHTML = `
-      <div style="background:${pkg.border};padding:30px 20px;text-align:center;color:white;">
-        <div style="font-size:24px;font-weight:900;margin-bottom:8px;">S.M.A.M</div>
-        <div style="font-size:18px;font-weight:bold;margin-bottom:5px;">${pkg.icon} ${pkg.name}</div>
-        <div style="font-size:15px;opacity:0.9;">${pkg.price} MRU / شهرياً</div>
-      </div>
-      <div style="padding:20px;">
-        <div style="font-size:15px;font-weight:bold;color:${pkg.border};border-bottom:2px solid ${pkg.border};padding-bottom:8px;margin-bottom:15px;">ما تشمله هذه الباقة</div>
-        ${items.map(item => `<div style="display:flex;gap:10px;margin-bottom:10px;font-size:13px;"><span style="color:${pkg.border};font-weight:bold;">✓</span><span>${item}</span></div>`).join('')}
-        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-top:20px;font-size:12px;color:#856404;text-align:center;">
-          ⚠️ <strong>اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
+      <div style="background:linear-gradient(135deg, ${pkg.border} 0%, ${pkg.border}cc 100%);padding:30px 24px 44px;text-align:center;color:white;position:relative;">
+        <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
+        <div style="position:absolute;bottom:-50px;left:-30px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.07);"></div>
+        <div style="position:relative;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;">
+            <div style="width:44px;height:44px;background:#ffc107;border-radius:9px;position:relative;overflow:hidden;box-shadow:0 3px 10px rgba(255,193,7,0.35);flex-shrink:0;">
+              <div style="width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-bottom:13px solid #00843D;position:absolute;top:4px;left:5px;"></div>
+              <div style="position:absolute;bottom:4px;left:11px;width:22px;height:16px;background:#00843D;border-radius:2px 2px 0 0;"></div>
+              <div style="position:absolute;bottom:4px;left:18px;width:7px;height:9px;background:#D21034;border-radius:2px 2px 0 0;"></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:16px;font-weight:900;color:#ffc107;letter-spacing:3px;line-height:1;">S.A.R.M</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.85);margin-top:3px;">خدمة تأمين إصلاح المنازل</div>
+            </div>
+          </div>
+          <div style="font-size:48px;line-height:1;margin-bottom:10px;">${pkg.icon}</div>
+          <div style="font-size:22px;font-weight:900;margin-bottom:6px;">${pkg.name}</div>
+          <div style="display:inline-block;background:rgba(0,0,0,0.15);padding:6px 20px;border-radius:20px;font-size:14px;font-weight:bold;">
+            ${pkg.price} MRU / شهرياً
+          </div>
         </div>
       </div>
-      <div style="background:#2c2c2c;color:white;text-align:center;padding:15px;font-size:11px;">S.M.A.M — نواكشوط، موريتانيا</div>
+      <div style="background:#fff;margin:-20px 16px 0;border-radius:20px;position:relative;box-shadow:0 8px 24px rgba(0,0,0,0.08);padding:24px 22px;">
+        <div style="font-size:14px;font-weight:900;color:${pkg.border};letter-spacing:1px;margin-bottom:16px;text-align:center;">
+          ✨ ما تشمله هذه الباقة
+        </div>
+        ${items.map((item, idx) => `
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:11px;font-size:13.5px;color:#333;background:${idx % 2 === 0 ? '#fafafa' : 'transparent'};padding:6px 8px;border-radius:10px;">
+            <span style="color:${pkg.border};font-weight:900;flex-shrink:0;">✓</span>
+            <span style="line-height:1.4;">${item}</span>
+          </div>
+        `).join('')}
+        <div style="background:#fff8e1;border:1px solid #ffc10766;border-radius:12px;padding:12px 14px;margin-top:16px;font-size:11.5px;color:#8a6d00;text-align:center;line-height:1.5;">
+          ⚠️ <strong>تغطية اليد العاملة فقط</strong><br/>قطع الغيار على عاتق الزبون
+        </div>
+      </div>
+      <div style="text-align:center;padding:22px 20px 26px;">
+        <div style="font-size:13px;font-weight:900;color:#1a1a1a;letter-spacing:2px;margin-bottom:4px;">S.A.R.M</div>
+        <div style="font-size:11px;color:#888;">نواكشوط، موريتانيا</div>
+      </div>
     `;
     document.body.appendChild(div);
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#f4f6f5' });
       const link = document.createElement('a');
-      link.download = `SMAM-${pkg.name}.png`;
+      link.download = `SARM-${pkg.name}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -582,11 +609,10 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>{c.city}</p>
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: '4px 0' }}>
-          © 2026 S.M.A.M · {c.footer}
+          © 2026 S.A.R.M · {c.footer}
         </p>
       </footer>
  
     </div>
   );
 }
-

@@ -45,7 +45,7 @@ messaging.onBackgroundMessage((payload) => {
         renotify: true,
         requireInteraction: true,
         actions: [{ action: 'open', title: 'فتح التطبيق' }],
-        data: { url: 'https://leplombiermr.com' }
+        data: { url: 'https://sarm-mr.com' }
     };
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
@@ -57,7 +57,7 @@ self.addEventListener('notificationclick', (event) => {
     // نقرة على إشعار مكالمة — مرر channelName والإجراء (قبول/رفض) للتطبيق
     if (data.type === 'call' && data.channelName) {
         const action = event.action === 'decline-call' ? 'decline' : 'accept';
-        const urlToOpen = `https://leplombiermr.com/?call=${data.channelName}&callAction=${action}`;
+        const urlToOpen = `https://sarm-mr.com/?call=${data.channelName}&callAction=${action}`;
 
         event.waitUntil(
             clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
@@ -76,7 +76,7 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     // النقرة على إشعار عادي — بدون تغيير
-    const urlToOpen = event.notification.data?.url || 'https://leplombiermr.com';
+    const urlToOpen = event.notification.data?.url || 'https://sarm-mr.com';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
             for (let client of windowClients) {
