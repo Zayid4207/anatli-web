@@ -162,7 +162,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         <div style="padding:30px 36px;">
           <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:18px;">
             <span style="font-size:15px;">✨</span>
-            <span dir="rtl" style="unicode-bidi:isolate;font-size:15px;font-weight:900;color:${pkg.border};letter-spacing:0.5px;">ما تشمله هذه الباقة</span>
+            <span dir="rtl" style="unicode-bidi:isolate;font-size:15px;font-weight:900;color:${pkg.border};">ما تشمله هذه الباقة</span>
           </div>
  
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;">
