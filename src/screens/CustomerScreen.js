@@ -45,6 +45,15 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const speechTimeoutRef = useRef(null);
   const token = localStorage.getItem('userToken');
  
+  // ===== ساعات العمل (8 صباحًا حتى 11 مساءً) =====
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000); // تحديث كل دقيقة
+    return () => clearInterval(timer);
+  }, []);
+  const currentHour = now.getHours();
+  const isWorkingNow = currentHour >= 8 && currentHour < 23;
+ 
   useEffect(() => {
     fetchUserData();
     fetchRequests();
@@ -631,6 +640,27 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 {lang === 'ar' ? 'اطلب الخدمة مباشرة بصوتك' : 'Demander le service directement'}
               </span>
             </button>
+ 
+            {/* مؤشر ساعات العمل — معلوماتي فقط، لا يمنع الاتصال */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              marginBottom: '20px', marginTop: '-10px',
+              fontSize: '0.8rem', color: isWorkingNow ? '#006400' : '#888',
+              flexWrap: 'wrap', textAlign: 'center'
+            }}>
+              <span style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                backgroundColor: isWorkingNow ? '#28a745' : '#dc3545',
+                display: 'inline-block', flexShrink: 0
+              }} />
+              <span>
+                {isWorkingNow
+                  ? (lang === 'ar' ? 'نحن متاحون الآن' : 'Nous sommes disponibles')
+                  : (lang === 'ar' ? 'خارج أوقات العمل حاليًا' : 'Actuellement fermé')}
+                {' · '}
+                {lang === 'ar' ? 'ساعات العمل: 8 صباحًا – 11 مساءً' : 'Horaires : 8h – 23h'}
+              </span>
+            </div>
  
             {/* آخر الطلبات */}
             {requests.length > 0 && (
@@ -1981,3 +2011,4 @@ const s = {
     fontSize: '0.75rem'
   }
 };
+ 
