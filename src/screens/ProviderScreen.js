@@ -11,6 +11,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [selectedRequest, setSelectedRequest] = useState(null); // مودال الطلبات المتاحة فقط
   const [jobDetail, setJobDetail] = useState(null); // صفحة تفاصيل المهمة (بيانات الزبون)
   const [loading, setLoading] = useState(false);
+  const [unassignLoading, setUnassignLoading] = useState(false);
   const [userData, setUserData] = useState(user);
  
   // ===== تشغيل الرسالة الصوتية بشكل واتساب =====
@@ -146,6 +147,41 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
       alert(t.serverError);
     } finally {
       setLoading(false);
+    }
+  };
+ 
+  // التراجع عن مهمة قُبلت مسبقاً — تعود للقائمة المتاحة لبقية الفنيين
+  const handleUnassign = async (requestId) => {
+    const confirm = window.confirm(
+      lang === 'ar'
+        ? 'هل أنت متأكد أنك لن تتمكن من تنفيذ هذه المهمة؟ ستعود للقائمة المتاحة لبقية الفنيين، وسيتم إشعار الإدارة بذلك.'
+        : 'Voulez-vous vraiment annuler cette mission ? Elle redeviendra disponible pour les autres techniciens et l\'administration sera notifiée.'
+    );
+    if (!confirm) return;
+    setUnassignLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/provider/requests/${requestId}/unassign`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ provider_id: user.id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(lang === 'ar' ? '✅ تم التراجع عن المهمة، وأُبلغت الإدارة' : '✅ Mission annulée, l\'administration a été notifiée');
+        setJobDetail(null);
+        resetVoicePlayerState();
+        fetchMyJobs();
+        fetchAvailableRequests();
+      } else {
+        alert(data.error || t.error);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setUnassignLoading(false);
     }
   };
  
@@ -294,13 +330,31 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
  
             {/* أزرار الإجراء */}
             {jobDetail.status === 'assigned' && (
-              <button
-                style={{ ...s.btnSuccess, width: '100%', opacity: loading ? 0.7 : 1, marginTop: '10px' }}
-                onClick={() => handleComplete(jobDetail.id)}
-                disabled={loading}
-              >
-                {loading ? '...' : t.completeJob}
-              </button>
+              <>
+                <button
+                  style={{ ...s.btnSuccess, width: '100%', opacity: loading ? 0.7 : 1, marginTop: '10px' }}
+                  onClick={() => handleComplete(jobDetail.id)}
+                  disabled={loading}
+                >
+                  {loading ? '...' : t.completeJob}
+                </button>
+ 
+                {/* التراجع عن المهمة — لحالات الطوارئ فقط */}
+                <button
+                  style={{ ...s.btnUnassign, width: '100%', opacity: unassignLoading ? 0.7 : 1, marginTop: '10px' }}
+                  onClick={() => handleUnassign(jobDetail.id)}
+                  disabled={unassignLoading}
+                >
+                  {unassignLoading
+                    ? '...'
+                    : (lang === 'ar' ? '⚠️ لم أعد أستطيع التنفيذ — إلغاء' : '⚠️ Je ne peux plus intervenir — Annuler')}
+                </button>
+                <p style={s.unassignHint}>
+                  {lang === 'ar'
+                    ? 'سيعود الطلب لقائمة الطلبات المتاحة لبقية الفنيين، وسيتم إشعار الإدارة'
+                    : 'La demande redeviendra disponible pour les autres techniciens, et l\'administration sera notifiée'}
+                </p>
+              </>
             )}
  
             {jobDetail.status === 'completed' && (
@@ -1032,6 +1086,23 @@ const s = {
     fontWeight: 'bold',
     fontSize: '0.95rem',
     cursor: 'pointer'
+  },
+  btnUnassign: {
+    padding: '13px',
+    backgroundColor: '#fff',
+    color: '#b8860b',
+    border: '1.5px solid #ffc107',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '0.9rem',
+    cursor: 'pointer'
+  },
+  unassignHint: {
+    margin: '8px 0 0',
+    fontSize: '0.75rem',
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: '1.4'
   },
   completedBadge: {
     width: '100%',
