@@ -1083,106 +1083,251 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                   </button>
                 </div>
  
-                {/* بطاقات الباقات — من قاعدة البيانات */}
-                {packages.map(pkg => {
-                  const styles = {
-                    3: { color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: lang === 'ar' ? '⭐ الأكثر شمولاً' : '⭐ Le plus complet' },
-                    2: { color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: lang === 'ar' ? '🔥 الأكثر طلباً' : '🔥 Le plus demandé' },
-                    1: { color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: lang === 'ar' ? '✅ للبداية' : '✅ Pour commencer' }
-                  };
-                  const ps = styles[pkg.id] || { color: '#f5f5f5', border: '#999', icon: '📦', badge: '' };
-                  const items = pkg.coverage_items ? pkg.coverage_items.split('|') : [];
- 
-                  return (
-                    <div key={pkg.id} style={{
-                      border: `2px solid ${ps.border}`,
-                      borderRadius: '20px',
-                      marginBottom: '20px',
-                      marginTop: '18px',
-                      overflow: 'visible',
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.07)',
-                      backgroundColor: ps.color,
-                      position: 'relative'
-                    }}>
- 
-                      {/* شارة مميزة */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '-14px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        backgroundColor: ps.border,
-                        color: '#fff',
-                        padding: '5px 18px',
-                        borderRadius: '20px',
-                        fontSize: '0.78rem',
-                        fontWeight: 'bold',
-                        whiteSpace: 'nowrap',
-                        boxShadow: `0 3px 10px ${ps.border}66`
-                      }}>
-                        {ps.badge}
-                      </div>
- 
-                      {/* رأسية الباقة */}
-                      <div style={{
-                        padding: '20px',
-                        paddingTop: '28px',
-                        borderBottom: `2px solid ${ps.border}`,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '2.5rem' }}>{ps.icon}</span>
-                          <div>
-                            <p style={{ margin: 0, fontWeight: '900', fontSize: '1.2rem', color: ps.border }}>
-                              {pkg.name}
-                            </p>
-                            <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#666' }}>
-                              {lang === 'ar' ? '∞ طلبات غير محدودة' : '∞ Demandes illimitées'}
-                            </p>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: ps.border, lineHeight: 1 }}>
-                            {pkg.price}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#888' }}>
-                            MRU/{lang === 'ar' ? 'شهر' : 'mois'}
-                          </div>
-                        </div>
-                      </div>
- 
-                      {/* قائمة التغطية */}
-                      <div style={{ padding: '15px 20px' }}>
-                        {items.map((item, i) => (
-                          <div key={i} style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '10px',
-                            marginBottom: '8px'
-                          }}>
-                            <span style={{ color: ps.border, fontWeight: 'bold', fontSize: '1rem', flexShrink: 0 }}>✓</span>
-                            <span style={{ fontSize: '0.88rem', color: '#444', lineHeight: '1.5' }}>{item}</span>
-                          </div>
-                        ))}
- 
-                        {/* تنبيه اليد العاملة */}
-                        <div style={{
-                          marginTop: '12px',
-                          padding: '10px 12px',
-                          background: 'rgba(0,0,0,0.04)',
-                          borderRadius: '10px',
-                          fontSize: '0.78rem',
-                          color: '#777',
-                          textAlign: 'center',
-                          borderTop: `1px dashed ${ps.border}`
-                        }}>
-                          ⚠️ {lang === 'ar'
-                            ? 'تأمين اليد العاملة فقط — قطع الغيار على عاتق الزبون'
-                            : 'Main d\'œuvre uniquement — pièces à la charge du client'}
-                        </div>
-                      </div>
+                
+{/* بطاقات الباقات — من قاعدة البيانات */}
+{packages.map(pkg => {
+  // تنسيق الباقات حسب الاسم، بدل الاعتماد على أرقام id ثابتة
+  const packageStyles = {
+    'راحة البال': {
+      color: '#fff8e1',
+      border: '#f59e0b',
+      icon: '🥇',
+      badge: lang === 'ar'
+        ? '⭐ الأكثر شمولاً'
+        : '⭐ Le plus complet'
+    },
+    'البيت المعمور': {
+      color: '#f0f4ff',
+      border: '#3b82f6',
+      icon: '🥈',
+      badge: lang === 'ar'
+        ? '🔥 الأكثر طلباً'
+        : '🔥 Le plus demandé'
+    },
+    'السلامة': {
+      color: '#f0fff4',
+      border: '#22c55e',
+      icon: '🥉',
+      badge: lang === 'ar'
+        ? '✅ للبداية'
+        : '✅ Pour commencer'
+    }
+  };
+
+  const ps = packageStyles[pkg.name] || {
+    color: '#f5f5f5',
+    border: '#999',
+    icon: '📦',
+    badge: ''
+  };
+
+  // معالجة الخدمات القادمة من PostgreSQL JSONB
+  const items = (() => {
+    const coverage = pkg.coverage_items;
+
+    if (Array.isArray(coverage)) {
+      return coverage;
+    }
+
+    if (typeof coverage === 'string') {
+      const value = coverage.trim();
+
+      if (!value) return [];
+
+      try {
+        const parsed = JSON.parse(value);
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+
+        return value.split('|').map(item => item.trim()).filter(Boolean);
+      } catch {
+        return value.split('|').map(item => item.trim()).filter(Boolean);
+      }
+    }
+
+    return [];
+  })();
+
+  return (
+    <div
+      key={pkg.id}
+      style={{
+        border: `2px solid ${ps.border}`,
+        borderRadius: '20px',
+        marginBottom: '20px',
+        marginTop: '18px',
+        overflow: 'visible',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.07)',
+        backgroundColor: ps.color,
+        position: 'relative'
+      }}
+    >
+      {/* شارة مميزة */}
+      {ps.badge && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-14px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: ps.border,
+            color: '#fff',
+            padding: '5px 18px',
+            borderRadius: '20px',
+            fontSize: '0.78rem',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            boxShadow: `0 3px 10px ${ps.border}66`
+          }}
+        >
+          {ps.badge}
+        </div>
+      )}
+
+      {/* رأسية الباقة */}
+      <div
+        style={{
+          padding: '20px',
+          paddingTop: '28px',
+          borderBottom: `2px solid ${ps.border}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}
+        >
+          <span style={{ fontSize: '2.5rem' }}>
+            {ps.icon}
+          </span>
+
+          <div>
+            <p
+              style={{
+                margin: 0,
+                fontWeight: '900',
+                fontSize: '1.2rem',
+                color: ps.border
+              }}
+            >
+              {pkg.name}
+            </p>
+
+            <p
+              style={{
+                margin: '3px 0 0',
+                fontSize: '0.8rem',
+                color: '#666'
+              }}
+            >
+              {lang === 'ar'
+                ? '∞ طلبات غير محدودة'
+                : '∞ Demandes illimitées'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              fontSize: '1.8rem',
+              fontWeight: '900',
+              color: ps.border,
+              lineHeight: 1
+            }}
+          >
+            {pkg.price}
+          </div>
+
+          <div
+            style={{
+              fontSize: '0.75rem',
+              color: '#888'
+            }}
+          >
+            MRU/{lang === 'ar' ? 'شهر' : 'mois'}
+          </div>
+        </div>
+      </div>
+
+      {/* قائمة التغطية */}
+      <div style={{ padding: '15px 20px' }}>
+        {items.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              marginBottom: '8px'
+            }}
+          >
+            <span
+              style={{
+                color: ps.border,
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}
+            >
+              ✓
+            </span>
+
+            <span
+              style={{
+                fontSize: '0.88rem',
+                color: '#444',
+                lineHeight: '1.5'
+              }}
+            >
+              {String(item)}
+            </span>
+          </div>
+        ))}
+
+        {/* رسالة عند عدم وجود خدمات */}
+        {items.length === 0 && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: '0.85rem',
+              color: '#777',
+              textAlign: 'center'
+            }}
+          >
+            {lang === 'ar'
+              ? 'لا توجد تفاصيل تغطية متاحة لهذه الباقة حالياً.'
+              : 'Aucun détail de couverture disponible pour le moment.'}
+          </p>
+        )}
+
+        {/* تنبيه اليد العاملة */}
+        <div
+          style={{
+            marginTop: '12px',
+            padding: '10px 12px',
+            background: 'rgba(0,0,0,0.04)',
+            borderRadius: '10px',
+            fontSize: '0.78rem',
+            color: '#777',
+            textAlign: 'center',
+            borderTop: `1px dashed ${ps.border}`
+          }}
+        >
+          ⚠️ {lang === 'ar'
+            ? 'تأمين اليد العاملة فقط — قطع الغيار على عاتق الزبون'
+            : "Main d'œuvre uniquement — pièces à la charge du client"}
+        </div>
+      </div>
+   
+
  
                       {/* زر الاختيار */}
                       <div style={{ padding: '0 20px 20px' }}>
