@@ -1439,11 +1439,32 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
                         <option value="">
                           {lang === 'ar' ? '-- اختر نوع المشكلة --' : '-- Choisir --'}
                         </option>
-                        {(callCustomer.coverage_items ? callCustomer.coverage_items.split('|') : [])
-                          .filter(item => item.trim() !== 'أولوية قصوى في الاستجابة')
-                          .map((item, i) => (
-                            <option key={i} value={item.trim()}>{item.trim()}</option>
-                          ))}
+                       {(
+  Array.isArray(callCustomer.coverage_items)
+    ? callCustomer.coverage_items
+    : typeof callCustomer.coverage_items === 'string'
+      ? (() => {
+          try {
+            const parsed = JSON.parse(callCustomer.coverage_items);
+            return Array.isArray(parsed)
+              ? parsed
+              : callCustomer.coverage_items.split('|');
+          } catch {
+            return callCustomer.coverage_items.split('|');
+          }
+        })()
+      : []
+)
+  .filter(item =>
+    typeof item === 'string' &&
+    item.trim() !== '' &&
+    item.trim() !== 'أولوية قصوى في الاستجابة'
+  )
+  .map((item, i) => (
+    <option key={i} value={item.trim()}>
+      {item.trim()}
+    </option>
+  ))}
                       </select>
  
                       <p style={{ ...s.sectionLabel, marginTop: '12px' }}>{t.setPrice}</p>
