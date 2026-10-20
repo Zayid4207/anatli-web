@@ -412,7 +412,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   };
  
   // نشر الطلب مباشرة للفنيين
-   const handleCreateForCustomer = async () => {
+ const handleCreateForCustomer = async () => {
     if (!callServiceType) {
       alert(lang === 'ar' ? 'يرجى اختيار نوع المشكلة' : 'Veuillez choisir le type de problème');
       return;
@@ -428,8 +428,17 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       formData.append('service_type', callServiceType);
       formData.append('quoted_price', parseInt(callPrice));
       if (callDescription) formData.append('description', callDescription);
-      if (callVoiceBlob) formData.append('voice_note', callVoiceBlob, 'voice.webm');
- 
+      // هنا يبدا 
+      console.log('🎙️ تسجيل الإدارة:', {
+  exists: Boolean(callVoiceBlob),
+  type: callVoiceBlob?.type,
+  size: callVoiceBlob?.size
+});
+
+if (callVoiceBlob && callVoiceBlob.size > 0) {
+  formData.append('voice_note', callVoiceBlob, 'voice.webm');
+}
+ // هنا ينتهي 
       const res = await fetch(`${apiUrl}/admin/requests/create-for-customer`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
