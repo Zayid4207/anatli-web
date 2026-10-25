@@ -62,11 +62,11 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
 setStep(2);
   };
  const handleStep2 = () => {
-    if (role === 'customer') {
-      if (!form.district || !form.address) {
-        setError(lang === 'ar' ? 'يرجى تحديد المقاطعة والعنوان' : 'Veuillez choisir la commune et l\'adresse'); return;
-      }
-    }
+   if (role === 'customer') {
+  if (!form.district) {
+    setError(lang === 'ar' ? 'يرجى تحديد المقاطعة' : 'Veuillez choisir la commune'); return;
+  }
+}
     if (role === 'provider') {
       if (!form.bank_phone) {
         setError(lang === 'ar' ? 'يرجى إدخال رقم الهاتف البنكي' : 'Veuillez entrer le numéro bancaire'); return;
