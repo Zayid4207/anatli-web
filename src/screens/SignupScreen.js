@@ -79,8 +79,8 @@ if (role === 'customer') {
         setError(lang === 'ar' ? 'يرجى اختيار مقاطعة واحدة على الأقل' : 'Veuillez choisir au moins une commune'); return;
       }
     }
-    setError('');
-    handleSignup();
+   setError('');
+setShowTerms(true);
   };
   const handleSignup = async () => {
     setLoading(true);
@@ -149,12 +149,12 @@ if (role === 'customer') {
       setLoading(false);
     }
   };
-  if (showTerms) {
+ if (showTerms) {
   return (
     <TermsScreen
       lang={lang}
-      onAccept={() => { setShowTerms(false); setStep(2); }}
-      onDecline={() => { setShowTerms(false); setStep(1); }}
+      onAccept={() => { setShowTerms(false); handleSignup(); }}
+      onDecline={() => { setShowTerms(false); }}
     />
   );
 }

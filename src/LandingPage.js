@@ -212,10 +212,11 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       document.body.removeChild(div);
     }
   };
-  if (showTerms) {
+ if (showTerms) {
   return (
     <TermsScreen
       lang={lang}
+      readOnly={true}
       onAccept={() => setShowTerms(false)}
       onDecline={() => setShowTerms(false)}
     />

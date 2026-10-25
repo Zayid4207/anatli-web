@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
  
-export default function TermsScreen({ onAccept, onDecline, lang: initialLang = 'ar' }) {
+export default function TermsScreen({ onAccept, onDecline, lang: initialLang = 'ar', readOnly = false }) {
   const [lang, setLang] = useState(initialLang);
   const [checked, setChecked] = useState(false);
  
@@ -41,7 +41,7 @@ export default function TermsScreen({ onAccept, onDecline, lang: initialLang = '
           icon: '💳',
           title: 'الاشتراك والدفع',
           items: [
-            'الاشتراك شخصي لا يُنقل لشخص آخر أو عقار آخر.',
+            'الاشتراك الشخصي لا يُنقل ولا يستفاد منه لشخص آخر أو عقار آخر.',
             'لا يحق استرداد رسوم الاشتراك بعد التفعيل.',
             'انتهاء الاشتراك يوقف الخدمة فوراً.',
             'إثبات الدفع المزور يؤدي لحظر الحساب نهائياً.',
@@ -277,16 +277,19 @@ export default function TermsScreen({ onAccept, onDecline, lang: initialLang = '
       </div>
  
       {/* شريط القبول الثابت في الأسفل */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        backgroundColor: '#fff',
-        borderTop: '1px solid #eee',
-        padding: '14px 20px',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
-        zIndex: 100,
-        maxWidth: '620px',
-        margin: '0 auto',
-      }}>
+     {!readOnly && (
+  <div style={{
+    position: 'fixed', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#fff',
+    borderTop: '1px solid #eee',
+    padding: '14px 20px',
+    boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+    zIndex: 100,
+    maxWidth: '620px',
+    margin: '0 auto',
+  }}>
+    
+ 
  
         {/* خانة الموافقة */}
         <label style={{
@@ -341,6 +344,8 @@ export default function TermsScreen({ onAccept, onDecline, lang: initialLang = '
           </button>
         </div>
       </div>
+       
+)}
     </div>
   );
 }
