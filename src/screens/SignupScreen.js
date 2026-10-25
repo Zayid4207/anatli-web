@@ -58,12 +58,8 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     if (form.phone.length < 8) {
       setError(t.phoneInvalid); return;
     }
-    setError('');
-if (role === 'customer') {
-  setShowTerms(true); // الزبون يرى الشروط أولاً
-} else {
-  setStep(2); // مقدم الخدمة يكمل مباشرة
-}
+   setError('');
+setStep(2);
   };
  const handleStep2 = () => {
     if (role === 'customer') {
@@ -80,7 +76,11 @@ if (role === 'customer') {
       }
     }
    setError('');
-setShowTerms(true);
+if (role === 'customer') {
+  setShowTerms(true);
+} else {
+  handleSignup();
+}
   };
   const handleSignup = async () => {
     setLoading(true);
