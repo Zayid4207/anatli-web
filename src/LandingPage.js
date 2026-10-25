@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Logo from './Logo';
+import TermsScreen from './screens/TermsScreen';
 import APP_CONFIG from './config';
  
 export default function LandingPage({ onLoginClick, onRegisterClick }) {
+  const [showTerms, setShowTerms] = useState(false);
   const [lang, setLang] = useState('ar');
   const [scrolled, setScrolled] = useState(false);
   const [activeService, setActiveService] = useState(0);
@@ -210,6 +212,15 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       document.body.removeChild(div);
     }
   };
+  if (showTerms) {
+  return (
+    <TermsScreen
+      lang={lang}
+      onAccept={() => setShowTerms(false)}
+      onDecline={() => setShowTerms(false)}
+    />
+  );
+}
  
   return (
     <div style={{ fontFamily: "'Tajawal', sans-serif", direction: lang === 'ar' ? 'rtl' : 'ltr', color: '#2c2c2c', overflowX: 'hidden' }}>
@@ -656,6 +667,21 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: '4px 0' }}>
           © 2026 S.A.R.M · {c.footer}
         </p>
+        <button
+  onClick={() => setShowTerms(true)}
+  style={{
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    marginTop: '6px',
+    fontFamily: "'Tajawal', sans-serif"
+  }}
+>
+  {lang === 'ar' ? '📄 الشروط والأحكام' : '📄 Conditions d\'utilisation'}
+</button>
       </footer>
  
     </div>

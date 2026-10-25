@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from '../translations';
 import Logo from '../Logo';
+import TermsScreen from './TermsScreen';
 export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
+  const [showTerms, setShowTerms] = useState(false);
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('customer');
   const [coveredDistricts, setCoveredDistricts] = useState([]);
@@ -57,7 +59,11 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       setError(t.phoneInvalid); return;
     }
     setError('');
-    setStep(2);
+if (role === 'customer') {
+  setShowTerms(true); // الزبون يرى الشروط أولاً
+} else {
+  setStep(2); // مقدم الخدمة يكمل مباشرة
+}
   };
  const handleStep2 = () => {
     if (role === 'customer') {
@@ -143,7 +149,15 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
       setLoading(false);
     }
   };
- 
+  if (showTerms) {
+  return (
+    <TermsScreen
+      lang={lang}
+      onAccept={() => { setShowTerms(false); setStep(2); }}
+      onDecline={() => { setShowTerms(false); setStep(1); }}
+    />
+  );
+}
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
  
