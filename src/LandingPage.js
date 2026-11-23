@@ -29,14 +29,34 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       appName: APP_CONFIG.name,
       appSub: APP_CONFIG.taglineAr,
       hero: 'بيتك في أيدٍ أمينة',
-      heroSub: 'اشتراك صيانة لفصل كامل — 4 أشهر',
-      heroDesc: 'سباكة • كهرباء • تكييف • صيانة وأكثر',
+      heroSub: 'اتصل مرة واحدة، ونرسل لك فنّيًا من فريقنا',
+      heroDesc: 'سعر ثابت • بلا مساومة • بلا مفاجآت',
+      heroMeta: 'اشتراك لفصل كامل (4 أشهر) • سباكة • كهرباء • تكييف وأكثر',
       login: 'دخول',
       register: 'اشترك الآن',
+      painBadge: 'SOLUTION · الحل',
+      painTitle: 'تعبت من البحث عن حرفي؟',
+      pains: [
+        {
+          icon: '🕒',
+          problem: 'حرفي يتأخر أو لا يرد',
+          solution: 'طلبك يصل إلى الإدارة، فتعيّن لك فنّيًا من فريقنا وتتابع الطلب حتى يُنجز'
+        },
+        {
+          icon: '💸',
+          problem: 'مساومة وفواتير مفاجئة',
+          solution: 'اشتراك بسعر ثابت تعرفه قبل أن تبدأ، فلا مساومة ولا مفاجآت'
+        },
+        {
+          icon: '⭐',
+          problem: 'لا أحد تسأله عن جودة العمل',
+          solution: 'فنّيونا موظفون ومتابَعون، وتقيّم الفنّي بعد كل زيارة'
+        }
+      ],
       howTitle: 'كيف يعمل؟',
       step1Title: 'اشترك', step1Desc: 'اختر باقتك لمدة 4 أشهر',
       step2Title: 'اطلب', step2Desc: 'صورة أو وصف صوتي للمشكلة',
-      step3Title: 'الفني يصلك', step3Desc: 'في أقرب وقت ممكن',
+      step3Title: 'الفني يصلك', step3Desc: 'تتابع مراحله: في الطريق • بدأ العمل • انتهى',
       packagesTitle: 'باقات الصيانة',
       packagesSub: 'ادفع مرة واحدة لفصل كامل — الأسعار بالأوقية الجديدة (MRU)',
       perMonth: 'شهر',
@@ -47,27 +67,47 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       included: 'الخدمات المشمولة',
       labourOnly: 'الخدمة تشمل اليد العاملة فقط — قطع الغيار على عاتق الزبون',
       downloadPdf: '📄 تحميل تفاصيل الباقة',
-      whyTitle: 'لماذا نحن؟',
-      why1: 'فنيون موثوقون', why2: 'استجابة سريعة',
-      why3: 'زيارات تستعملها متى شئت', why4: 'خدمات متنوعة لبيتك',
+      whyTitle: 'لماذا دارفكس؟',
+      why1: 'فنيون موظفون ومتابَعون', why2: 'طلب واحد والإدارة تتولى الباقي',
+      why3: 'سعر ثابت، بلا مساومة', why4: 'تقيّم الفني بعد كل زيارة',
       joinNow: 'ابدأ الآن',
       footer: 'جميع الحقوق محفوظة', city: 'نواكشوط، موريتانيا',
       servicesTitle: 'خدماتنا',
-      ctaTitle: 'هل أنت مستعد؟',
-      ctaDesc: 'اشترك الآن وارتح من هموم صيانة بيتك',
+      ctaTitle: 'جاهز لتستريح من هموم بيتك؟',
+      ctaDesc: 'اشترك اليوم، ودع فريق دارفكس يهتم بالباقي',
     },
     fr: {
       appName: APP_CONFIG.nameFr,
       appSub: APP_CONFIG.taglineFr,
       hero: 'Votre maison entre de bonnes mains',
-      heroSub: "Abonnement d'entretien pour une saison — 4 mois",
-      heroDesc: 'Plomberie • Électricité • Climatisation • Maintenance',
+      heroSub: 'Un seul appel, et nous envoyons un technicien de notre équipe',
+      heroDesc: 'Prix fixe • Sans marchandage • Sans mauvaise surprise',
+      heroMeta: 'Abonnement pour une saison (4 mois) • Plomberie • Électricité • Climatisation et plus',
       login: 'Connexion',
       register: "S'abonner",
+      painBadge: 'SOLUTION',
+      painTitle: 'Fatigué de chercher un artisan ?',
+      pains: [
+        {
+          icon: '🕒',
+          problem: 'Un artisan en retard ou injoignable',
+          solution: "Votre demande arrive à l'administration, qui vous affecte un technicien de notre équipe et suit la demande jusqu'au bout"
+        },
+        {
+          icon: '💸',
+          problem: 'Marchandage et factures surprises',
+          solution: 'Un abonnement à prix fixe, connu avant de commencer : pas de marchandage, pas de surprise'
+        },
+        {
+          icon: '⭐',
+          problem: 'Personne à qui demander des comptes',
+          solution: 'Nos techniciens sont salariés et suivis, et vous les notez après chaque visite'
+        }
+      ],
       howTitle: 'Comment ça marche ?',
       step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait pour 4 mois',
       step2Title: 'Demander', step2Desc: 'Photo ou note vocale',
-      step3Title: 'Le technicien arrive', step3Desc: 'Le plus vite possible',
+      step3Title: 'Le technicien arrive', step3Desc: 'Suivez chaque étape : en route • au travail • terminé',
       packagesTitle: "Forfaits d'entretien",
       packagesSub: 'Un seul paiement pour une saison — prix en nouvelle ouguiya (MRU)',
       perMonth: 'mois',
@@ -78,14 +118,14 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       included: 'Services inclus',
       labourOnly: "Main d'œuvre uniquement — pièces à la charge du client",
       downloadPdf: '📄 Télécharger les détails',
-      whyTitle: 'Pourquoi nous ?',
-      why1: 'Techniciens vérifiés', why2: 'Réponse rapide',
-      why3: 'Des visites à utiliser quand vous voulez', why4: 'Des services variés pour votre maison',
+      whyTitle: 'Pourquoi Darfix ?',
+      why1: 'Techniciens salariés et suivis', why2: "Une seule demande, nous nous occupons du reste",
+      why3: 'Prix fixe, sans marchandage', why4: 'Vous notez le technicien après chaque visite',
       joinNow: 'Commencer',
       footer: 'Tous droits réservés', city: 'Nouakchott, Mauritanie',
       servicesTitle: 'Nos services',
-      ctaTitle: 'Prêt à commencer ?',
-      ctaDesc: "Abonnez-vous et oubliez les soucis d'entretien de votre maison",
+      ctaTitle: 'Prêt à vous reposer des soucis de votre maison ?',
+      ctaDesc: "Abonnez-vous aujourd'hui et laissez l'équipe Darfix s'occuper du reste",
     }
   };
  
@@ -138,12 +178,12 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       items: p.items.map(k => ITEMS[k][l])
     };
   });
-
+ 
   const c = { ...content[lang], packages: buildPackages(lang) };
  
   // فصل الإيموجي عن النص العربي لتفادي خلل ترتيب الحروف عند التصدير كصورة
   const splitIcon = (str) => {
-    const match = str.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F]+)\s*(.*)$/u);
+    const match = str.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️]+)\s*(.*)$/u);
     if (match) return { icon: match[1], text: match[2] };
     return { icon: '', text: str };
   };
@@ -267,6 +307,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           .hfx-hero-btns { flex-direction: column !important; }
           .hfx-btn-hero { width: 100% !important; text-align: center !important; }
           .hfx-steps { grid-template-columns: 1fr !important; }
+          .hfx-pain-grid { grid-template-columns: 1fr !important; }
           .hfx-pkg-grid { grid-template-columns: 1fr !important; }
           .hfx-why-grid { grid-template-columns: 1fr 1fr !important; }
           .hfx-services-grid { grid-template-columns: repeat(4, 1fr) !important; }
@@ -389,17 +430,25 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           {/* العنوان الفرعي */}
           <p style={{
             fontSize: '1.1rem', color: '#ffc107', fontWeight: '700',
-            marginBottom: '10px', letterSpacing: '0.5px'
+            marginBottom: '10px', letterSpacing: '0.5px', lineHeight: 1.5
           }}>
             {c.heroSub}
           </p>
  
-          {/* وصف الخدمات */}
+          {/* الوعد المختصر */}
           <p className="hfx-hero-desc" style={{
-            fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)',
-            marginBottom: '30px', letterSpacing: '1px'
+            fontSize: '0.95rem', color: 'rgba(255,255,255,0.85)',
+            marginBottom: '8px', letterSpacing: '1px', fontWeight: '700'
           }}>
             {c.heroDesc}
+          </p>
+ 
+          {/* وصف الخدمات */}
+          <p style={{
+            fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)',
+            marginBottom: '30px', lineHeight: 1.6
+          }}>
+            {c.heroMeta}
           </p>
  
           {/* الأزرار */}
@@ -455,6 +504,39 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
             }}>
               <div style={{ fontSize: '1.6rem', marginBottom: '4px' }}>{s.icon}</div>
               <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: '600' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+ 
+      {/* ===== المشكلة والحل ===== */}
+      <section style={{ padding: '50px 20px', backgroundColor: '#fffdf5', textAlign: 'center' }}>
+        <div style={{ display: 'inline-block', background: '#fff3cd', color: '#8a6d00', padding: '4px 16px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 'bold', marginBottom: '12px' }}>
+          {c.painBadge}
+        </div>
+        <h2 style={{ fontSize: '1.7rem', fontWeight: '900', marginBottom: '35px', color: '#2c2c2c' }}>
+          {c.painTitle}
+        </h2>
+ 
+        <div className="hfx-pain-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '16px', maxWidth: '850px', margin: '0 auto'
+        }}>
+          {c.pains.map((p, i) => (
+            <div key={i} style={{
+              background: '#fff', borderRadius: '20px', padding: '22px 18px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.06)', border: '1px solid #eee',
+              display: 'flex', flexDirection: 'column', gap: '10px',
+              textAlign: lang === 'ar' ? 'right' : 'left'
+            }}>
+              <div style={{ fontSize: '1.8rem', lineHeight: 1 }}>{p.icon}</div>
+              <p style={{ margin: 0, fontWeight: '900', fontSize: '0.98rem', color: '#b45309', lineHeight: 1.4 }}>
+                {p.problem}
+              </p>
+              <div style={{ height: '1px', background: '#eee' }} />
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#2c2c2c', lineHeight: 1.7, fontWeight: '600' }}>
+                ✅ {p.solution}
+              </p>
             </div>
           ))}
         </div>
@@ -552,7 +634,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                   {pkg.badge}
                 </div>
               )}
-
+ 
               {/* الاسم والسعر الإجمالي */}
               <div style={{ padding: '26px 20px 16px', borderBottom: `2px solid ${pkg.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -568,7 +650,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                   {money(pkg.monthly)} MRU / {c.perMonth}
                 </p>
               </div>
-
+ 
               {/* الزيارات وسعر الزيارة */}
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
@@ -593,7 +675,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                   </div>
                 </div>
               </div>
-
+ 
               {/* الخدمات المشمولة */}
               <div style={{ padding: '16px 20px', flex: 1 }}>
                 <p style={{ margin: '0 0 10px', fontSize: '0.82rem', fontWeight: 'bold', color: '#555' }}>{c.included}</p>
@@ -611,7 +693,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                   ⚠️ {c.labourOnly}
                 </div>
               </div>
-
+ 
               {/* الأزرار */}
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button onClick={onRegisterClick} style={{
@@ -653,9 +735,9 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         }}>
           {[
             { icon: '🛡️', text: c.why1, bg: '#e8f5e9', color: '#006400' },
-            { icon: '⚡', text: c.why2, bg: '#fff3e0', color: '#f59e0b' },
-            { icon: '∞', text: c.why3, bg: '#e3f2fd', color: '#3b82f6' },
-            { icon: '🏠', text: c.why4, bg: '#f3e5f5', color: '#9c27b0' }
+            { icon: '📞', text: c.why2, bg: '#fff3e0', color: '#f59e0b' },
+            { icon: '💰', text: c.why3, bg: '#e3f2fd', color: '#3b82f6' },
+            { icon: '⭐', text: c.why4, bg: '#f3e5f5', color: '#9c27b0' }
           ].map((w, i) => (
             <div key={i} style={{
               background: '#fff', borderRadius: '20px', padding: '22px 15px',
@@ -686,7 +768,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         <div style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
           <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: '#fff', top: '-100px', right: '-100px' }} />
         </div>
-        <h2 style={{ fontSize: '2rem', color: '#fff', fontWeight: '900', marginBottom: '10px', position: 'relative' }}>
+        <h2 style={{ fontSize: '2rem', color: '#fff', fontWeight: '900', marginBottom: '10px', position: 'relative', lineHeight: 1.3 }}>
           {c.ctaTitle}
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1rem', marginBottom: '28px', position: 'relative' }}>
