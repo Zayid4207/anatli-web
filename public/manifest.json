@@ -1,12 +1,14 @@
 {
-  "short_name": "S.A.R.M",
-  "name": "خ.ت.ا.م",
+  "short_name": "Darfix",
+  "name": "دارفكس | Darfix",
   "icons": [
     {
+      "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
+      "src": "icon-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
@@ -15,6 +17,6 @@
   "display": "standalone",
   "theme_color": "#006400",
   "background_color": "#006400",
-  "description": "خدماتك المنزلية بلمسة زر",
+  "description": "صيانة منزلك باشتراك واحد",
   "gcm_sender_id": "1013365864559"
 }

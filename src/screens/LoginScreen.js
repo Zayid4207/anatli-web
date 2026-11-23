@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import APP_CONFIG from '../config';
 import Logo from '../Logo';
 export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onBackToLanding }) {
-  const [phone, setPhone] = useState('');
+  // آخر رقم هاتف سجّل به المستخدم (يُحفظ في الجهاز)
+  const [phone, setPhone] = useState(() => {
+    try { return localStorage.getItem('hfx_last_phone') || ''; } catch (e) { return ''; }
+  });
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,6 +24,7 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('userToken', data.token);
+        try { localStorage.setItem('hfx_last_phone', phone); } catch (e) {}
         onLoginSuccess({ ...data.user, token: data.token });
       } else {
         setError(data.error || 'خطأ في تسجيل الدخول');
@@ -32,8 +37,13 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
   };
 
  const handleWhatsApp = () => {
-    window.open(`https://wa.me/${APP_CONFIG.whatsapp}?text=${encodeURIComponent('أريد الاستفسار عن خدمة ' + APP_CONFIG.taglineAr)}`, '_blank');
+    window.open(`https://wa.me/${APP_CONFIG.whatsapp}?text=${encodeURIComponent('أريد الاستفسار عن خدمة ' + APP_CONFIG.name)}`, '_blank');
 };
+
+  const handleForgot = () => {
+    const msg = 'نسيت كلمة المرور في ' + APP_CONFIG.name + (phone ? '\nرقم هاتفي: ' + phone : '');
+    window.open(`https://wa.me/${APP_CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
   return (
     <div style={s.container}>
       <div style={s.card}>
@@ -41,38 +51,63 @@ export default function LoginScreen({ apiUrl, onLoginSuccess, onSignupClick, onB
         {/* الشعار */}
        <Logo size="lg" theme="dark" />
 
-        {/* الحقول */}
-        <div style={s.field}>
-          <label style={s.label}>رقم الهاتف</label>
-          <input
-            style={s.input}
-            type="text"
-            placeholder="أدخل رقم هاتفك"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-          />
-        </div>
-
-        <div style={s.field}>
-          <label style={s.label}>كلمة المرور</label>
-          <input
-            style={s.input}
-            type="password"
-            placeholder="أدخل كلمة المرور"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-        </div>
-
-        {error && <p style={s.error}>{error}</p>}
-
-        {/* زر الدخول */}
-        <button
-          style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
-          onClick={handleLogin}
-          disabled={loading}
+        {/* الحقول + زر الدخول (داخل نموذج ليعمل زر Enter وحفظ كلمة المرور في المتصفح) */}
+        <form
+          style={s.form}
+          onSubmit={e => { e.preventDefault(); handleLogin(); }}
         >
-          {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+          <div style={s.field}>
+            <label style={s.label}>رقم الهاتف</label>
+            <input
+              style={s.input}
+              type="tel"
+              name="phone"
+              inputMode="tel"
+              autoComplete="username"
+              placeholder="أدخل رقم هاتفك"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+            />
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>كلمة المرور</label>
+            <div style={s.passWrap}>
+              <input
+                style={{ ...s.input, paddingLeft: '48px' }}
+                type={showPass ? 'text' : 'password'}
+                name="password"
+                autoComplete="current-password"
+                placeholder="أدخل كلمة المرور"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                style={s.eyeBtn}
+                onClick={() => setShowPass(!showPass)}
+                aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+              >
+                {showPass ? '🙈' : '👁️'}
+              </button>
+            </div>
+          </div>
+
+          {error && <p style={s.error}>{error}</p>}
+
+          {/* زر الدخول */}
+          <button
+            type="submit"
+            style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
+            disabled={loading}
+          >
+            {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+          </button>
+               </form>
+
+        {/* نسيت كلمة المرور */}
+        <button type="button" style={s.forgotLink} onClick={handleForgot}>
+          نسيت كلمة المرور؟
         </button>
 
         {/* زر إنشاء حساب */}
@@ -135,6 +170,28 @@ const s = {
     margin: '5px 0 0 0',
     color: '#888',
     fontSize: '0.9rem'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '15px',
+    width: '100%'
+  },
+  passWrap: {
+    position: 'relative',
+    width: '100%'
+  },
+  eyeBtn: {
+    position: 'absolute',
+    left: '8px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    fontSize: '1.2rem',
+    cursor: 'pointer',
+    padding: '6px'
   },
   field: {
     display: 'flex',
@@ -200,6 +257,17 @@ const s = {
     justifyContent: 'center',
     gap: '8px',
     width: '100%'
+  },
+  forgotLink: {
+    background: 'none',
+    border: 'none',
+    color: '#006400',
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    textAlign: 'center',
+    textDecoration: 'underline',
+    padding: 0
   },
   backLink: {
     background: 'none',

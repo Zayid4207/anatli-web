@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../translations';
 import Logo from '../Logo';
+ 
+// رقم الإدارة الذي يظهر للفني (غيّره إذا أردت رقماً آخر)
+const ADMIN_PHONE = '42072952';
 export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
-  const [activeTab, setActiveTab] = useState('home');
-  const [availableRequests, setAvailableRequests] = useState([]);
+  const [activeTab, setActiveTab] = useState('jobs');
+  const [salaryMonths, setSalaryMonths] = useState([]);
   const [myJobs, setMyJobs] = useState([]);
-  const [earnings, setEarnings] = useState({ earnings: [], total_pending: 0, total_paid: 0 });
-  const [selectedRequest, setSelectedRequest] = useState(null); // مودال الطلبات المتاحة فقط
-  const [jobDetail, setJobDetail] = useState(null); // صفحة تفاصيل المهمة (بيانات الزبون)
+  const [jobDetail, setJobDetail] = useState(null); // صفحة تفاصيل المهمة
   const [loading, setLoading] = useState(false);
   const [unassignLoading, setUnassignLoading] = useState(false);
   const [userData, setUserData] = useState(user);
+  const [showPass, setShowPass] = useState(false);
+  const [passForm, setPassForm] = useState({ current: '', next: '', confirm: '' });
+  const [passLoading, setPassLoading] = useState(false);
  
   // ===== تشغيل الرسالة الصوتية بشكل واتساب =====
   const [voiceIsPlaying, setVoiceIsPlaying] = useState(false);
@@ -21,30 +25,34 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
   const voiceAudioRef = useRef(null);
  
   const token = localStorage.getItem('userToken');
+  
+  // حالة صرف الراتب (بدون المبلغ)
+  const fetchSalary = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/provider/salary`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setSalaryMonths(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+
+  useEffect(() => {
+    if (activeTab === 'salary') fetchSalary();
+  }, [activeTab, fetchSalary]);
  
   useEffect(() => {
-    fetchAvailableRequests();
     fetchMyJobs();
-    fetchEarnings();
-    const interval = setInterval(() => {
-      fetchAvailableRequests();
+    fetchMe();
+        const interval = setInterval(() => {
+      if (document.hidden) return;
       fetchMyJobs();
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
  
-  const fetchAvailableRequests = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiUrl}/provider/requests`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) setAvailableRequests(await res.json());
-    } catch (err) {}
-  }, [apiUrl, token]);
- 
   const fetchMyJobs = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/provider/my-requests/${user.id}`, {
+      const res = await fetch(`${apiUrl}/provider/my-jobs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -60,12 +68,16 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
     } catch (err) {}
   }, [apiUrl, token, user.id]);
  
-  const fetchEarnings = useCallback(async () => {
+  // تحديث بياناتي (التوفر والتخصص) من السيرفر
+  const fetchMe = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/provider/earnings/${user.id}`, {
+      const res = await fetch(`${apiUrl}/users/${user.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) setEarnings(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setUserData(data);
+      }
     } catch (err) {}
   }, [apiUrl, token, user.id]);
  
@@ -93,25 +105,30 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
     setVoiceDuration(0);
   };
  
-  // قبول طلب
-  const handleAccept = async (requestId) => {
+  // الانتقال للمرحلة التالية: انطلقت ← بدأت العمل ← أنهيت المهمة
+  const handleAdvance = async (job) => {
+    if (job.status === 'in_progress') {
+      const ok = window.confirm(
+        lang === 'ar' ? 'هل أنهيت هذه المهمة فعلاً؟' : 'Avez-vous vraiment terminé cette mission ?'
+      );
+      if (!ok) return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/provider/requests/${requestId}/accept`, {
+      const res = await fetch(`${apiUrl}/provider/requests/${job.id}/advance`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ provider_id: user.id })
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok) {
-        alert(lang === 'ar' ? '✅ تم قبول المهمة بنجاح' : '✅ Mission acceptée');
-        setSelectedRequest(null);
-        fetchAvailableRequests();
+        if (data.status === 'completed') {
+          alert(t.jobCompleted);
+          setJobDetail(null);
+          resetVoicePlayerState();
+        } else {
+          setJobDetail(prev => (prev ? { ...prev, status: data.status } : prev));
+        }
         fetchMyJobs();
-        setActiveTab('jobs');
       } else {
         alert(data.error || t.error);
       }
@@ -122,59 +139,58 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
     }
   };
  
-  // إنهاء مهمة
-  const handleComplete = async (requestId) => {
-    const confirm = window.confirm(
-      lang === 'ar' ? 'هل أنهيت هذه المهمة فعلاً؟' : 'Avez-vous vraiment terminé cette mission ?'
-    );
-    if (!confirm) return;
-    setLoading(true);
+  // تغيير كلمة المرور — بدون أي شروط على الطول
+  const handleChangePassword = async () => {
+    if (!passForm.current || !passForm.next) {
+      alert(lang === 'ar' ? 'يرجى تعبئة كل الحقول' : 'Veuillez remplir tous les champs');
+      return;
+    }
+    if (passForm.next !== passForm.confirm) {
+      alert(lang === 'ar' ? 'كلمتا المرور الجديدتان غير متطابقتين' : 'Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+    setPassLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/provider/requests/${requestId}/complete`, {
+      const res = await fetch(`${apiUrl}/me/password`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ provider_id: user.id })
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: passForm.current, new_password: passForm.next })
       });
+      const data = await res.json();
       if (res.ok) {
-        alert(t.jobCompleted);
-        fetchMyJobs();
-        fetchEarnings();
+        alert(lang === 'ar' ? '✅ تم تغيير كلمة المرور' : '✅ Mot de passe modifié');
+        setPassForm({ current: '', next: '', confirm: '' });
+        setShowPass(false);
+      } else {
+        alert(data.error || t.error);
       }
     } catch (err) {
       alert(t.serverError);
     } finally {
-      setLoading(false);
+      setPassLoading(false);
     }
   };
  
-  // التراجع عن مهمة قُبلت مسبقاً — تعود للقائمة المتاحة لبقية الفنيين
+  // الاعتذار عن مهمة معيّنة — تعود للإدارة لتعيّنها لفني آخر
   const handleUnassign = async (requestId) => {
     const confirm = window.confirm(
       lang === 'ar'
-        ? 'هل أنت متأكد أنك لن تتمكن من تنفيذ هذه المهمة؟ ستعود للقائمة المتاحة لبقية الفنيين، وسيتم إشعار الإدارة بذلك.'
-        : 'Voulez-vous vraiment annuler cette mission ? Elle redeviendra disponible pour les autres techniciens et l\'administration sera notifiée.'
+        ? 'هل أنت متأكد أنك لن تتمكن من تنفيذ هذه المهمة؟ ستعود للإدارة لتعيّنها لفني آخر.'
+        : 'Voulez-vous vraiment renoncer à cette mission ? Elle sera renvoyée à l\'administration pour être réassignée.'
     );
     if (!confirm) return;
     setUnassignLoading(true);
     try {
       const res = await fetch(`${apiUrl}/provider/requests/${requestId}/unassign`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ provider_id: user.id })
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok) {
-        alert(lang === 'ar' ? '✅ تم التراجع عن المهمة، وأُبلغت الإدارة' : '✅ Mission annulée, l\'administration a été notifiée');
+        alert(lang === 'ar' ? '✅ تم الاعتذار عن المهمة، وأُبلغت الإدارة' : '✅ Mission renvoyée, l\'administration a été notifiée');
         setJobDetail(null);
         resetVoicePlayerState();
         fetchMyJobs();
-        fetchAvailableRequests();
       } else {
         alert(data.error || t.error);
       }
@@ -187,11 +203,121 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
  
   const getStatusStyle = (status) => {
     const map = {
-      quoted: { bg: '#d1ecf1', color: '#0c5460' },
-      assigned: { bg: '#d4edda', color: '#155724' },
+      assigned: { bg: '#fff3cd', color: '#856404' },
+      on_the_way: { bg: '#d1ecf1', color: '#0c5460' },
+      in_progress: { bg: '#ffe0b2', color: '#a35200' },
       completed: { bg: '#e2e3e5', color: '#383d41' }
     };
     return map[status] || { bg: '#f8f9fa', color: '#333' };
+  };
+ 
+  const STEPS = ['assigned', 'on_the_way', 'in_progress', 'completed'];
+  const statusLabel = (st) => {
+    const ar = { assigned: 'جديدة', on_the_way: 'في الطريق', in_progress: 'قيد العمل', completed: 'منتهية' };
+    const fr = { assigned: 'Nouvelle', on_the_way: 'En route', in_progress: 'En cours', completed: 'Terminée' };
+    return (lang === 'ar' ? ar : fr)[st] || st;
+  };
+ 
+  const activeJobs = myJobs.filter(j => j.status !== 'completed');
+  const doneJobs = myJobs.filter(j => j.status === 'completed');
+ 
+  const specialtyLabel = (key) => {
+    if (key === 'plumber') return lang === 'ar' ? 'سباك' : 'Plombier';
+    if (key === 'electrician') return lang === 'ar' ? 'كهربائي' : 'Électricien';
+    return key;
+  };
+  const mySpecialties = (userData?.specialties ? String(userData.specialties).split(',') : [])
+    .map(specialtyLabel).join(' / ');
+ 
+  const renderStepper = (status) => {
+    const idx = STEPS.indexOf(status);
+    const labelsAr = ['تم التعيين', 'في الطريق', 'بدأ العمل', 'تم الإنهاء'];
+    const labelsFr = ['Assignée', 'En route', 'Au travail', 'Terminée'];
+    const labels = lang === 'ar' ? labelsAr : labelsFr;
+    return (
+      <div style={s.stepper}>
+        {STEPS.map((st, i) => {
+          const reached = i <= idx;
+          const current = i === idx && status !== 'completed';
+          return (
+            <React.Fragment key={st}>
+              {i > 0 && (
+                <div style={{ ...s.stepLine, backgroundColor: i <= idx ? '#006400' : '#e0e0e0' }} />
+              )}
+              <div style={s.stepItem}>
+                <div style={{
+                  ...s.stepDot,
+                  backgroundColor: reached ? '#006400' : '#e0e0e0',
+                  color: reached ? '#fff' : '#999',
+                  boxShadow: current ? '0 0 0 4px rgba(0,100,0,0.2)' : 'none'
+                }}>
+                  {i < idx || status === 'completed' ? '✓' : i + 1}
+                </div>
+                <span style={{ ...s.stepLabel, color: reached ? '#006400' : '#aaa', fontWeight: current ? 'bold' : 'normal' }}>
+                  {labels[i]}
+                </span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
+ 
+  const renderJobCard = (job) => {
+    const st = getStatusStyle(job.status);
+    return (
+      <div key={job.id} style={s.requestCard} onClick={() => setJobDetail(job)}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 'bold', color: '#333' }}>
+            {lang === 'ar' ? 'مهمة رقم' : 'Mission #'} {job.id}
+          </span>
+          <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
+            {statusLabel(job.status)}
+          </span>
+        </div>
+ 
+        <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
+          👤 {job.customer_name}
+        </p>
+        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#666' }}>
+          📍 {job.district}
+        </p>
+ 
+        {job.service_type && (
+          <p style={{ margin: '5px 0 0', fontSize: '0.85rem', fontWeight: 'bold', color: '#006400' }}>
+            🔧 {job.service_type}
+          </p>
+        )}
+ 
+        <p style={s.cardDate}>
+          {new Date(job.assigned_at || job.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+        </p>
+ 
+        {job.status === 'completed' && (
+          <button
+            style={{
+              marginTop: '8px', padding: '6px 12px', background: 'none',
+              border: '1px solid #dc3545', color: '#dc3545', borderRadius: '8px',
+              fontSize: '0.8rem', cursor: 'pointer', width: '100%'
+            }}
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذه المهمة؟' : 'Supprimer cette mission ?')) return;
+              try {
+                const res = await fetch(`${apiUrl}/requests/${job.id}`, {
+                  method: 'DELETE',
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) fetchMyJobs();
+              } catch (err) {}
+            }}
+          >
+            🗑️ {lang === 'ar' ? 'حذف المهمة' : 'Supprimer'}
+          </button>
+        )}
+      </div>
+    );
   };
  
   // ===================================================================
@@ -211,11 +337,7 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               </span>
             </div>
  
-            {jobDetail.quoted_price && (
-              <div style={{ ...s.priceBig, textAlign: 'center', marginBottom: '15px' }}>
-                {jobDetail.quoted_price} MRU
-              </div>
-            )}
+            {renderStepper(jobDetail.status)}
  
             {/* الصورة المرفقة مع الطلب */}
             {jobDetail.image_url && (
@@ -328,36 +450,48 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
               )}
             </div>
  
-            {/* أزرار الإجراء */}
-            {jobDetail.status === 'assigned' && (
+            {/* أزرار الإجراء — تتغير حسب مرحلة المهمة */}
+            {jobDetail.status !== 'completed' ? (
               <>
-                <button
-                  style={{ ...s.btnSuccess, width: '100%', opacity: loading ? 0.7 : 1, marginTop: '10px' }}
-                  onClick={() => handleComplete(jobDetail.id)}
-                  disabled={loading}
-                >
-                  {loading ? '...' : t.completeJob}
-                </button>
+                {(() => {
+                  const cfg = {
+                    assigned: { ar: '🚗 انطلقت إلى الزبون', fr: '🚗 Je pars chez le client', bg: '#1a73e8' },
+                    on_the_way: { ar: '🔧 بدأت العمل', fr: '🔧 J\'ai commencé le travail', bg: '#ff8f00' },
+                    in_progress: { ar: '✅ أنهيت المهمة', fr: '✅ J\'ai terminé la mission', bg: '#006400' }
+                  }[jobDetail.status];
+                  if (!cfg) return null;
+                  return (
+                    <button
+                      style={{ ...s.btnAction, backgroundColor: cfg.bg, opacity: loading ? 0.7 : 1 }}
+                      onClick={() => handleAdvance(jobDetail)}
+                      disabled={loading}
+                    >
+                      {loading ? '...' : (lang === 'ar' ? cfg.ar : cfg.fr)}
+                    </button>
+                  );
+                })()}
  
-                {/* التراجع عن المهمة — لحالات الطوارئ فقط */}
-                <button
-                  style={{ ...s.btnUnassign, width: '100%', opacity: unassignLoading ? 0.7 : 1, marginTop: '10px' }}
-                  onClick={() => handleUnassign(jobDetail.id)}
-                  disabled={unassignLoading}
-                >
-                  {unassignLoading
-                    ? '...'
-                    : (lang === 'ar' ? '⚠️ لم أعد أستطيع التنفيذ — إلغاء' : '⚠️ Je ne peux plus intervenir — Annuler')}
-                </button>
-                <p style={s.unassignHint}>
-                  {lang === 'ar'
-                    ? 'سيعود الطلب لقائمة الطلبات المتاحة لبقية الفنيين، وسيتم إشعار الإدارة'
-                    : 'La demande redeviendra disponible pour les autres techniciens, et l\'administration sera notifiée'}
-                </p>
+                {/* الاعتذار — ممكن فقط قبل بدء العمل */}
+                {jobDetail.status !== 'in_progress' && (
+                  <>
+                    <button
+                      style={{ ...s.btnUnassign, width: '100%', opacity: unassignLoading ? 0.7 : 1, marginTop: '10px' }}
+                      onClick={() => handleUnassign(jobDetail.id)}
+                      disabled={unassignLoading}
+                    >
+                      {unassignLoading
+                        ? '...'
+                        : (lang === 'ar' ? '⚠️ أعتذر عن المهمة' : '⚠️ Renoncer à la mission')}
+                    </button>
+                    <p style={s.unassignHint}>
+                      {lang === 'ar'
+                        ? 'سيعود الطلب للإدارة لتعيّنه لفني آخر، وسيتم إشعارها'
+                        : 'La demande sera renvoyée à l\'administration pour être réassignée'}
+                    </p>
+                  </>
+                )}
               </>
-            )}
- 
-            {jobDetail.status === 'completed' && (
+            ) : (
               <div style={{ ...s.completedBadge, marginTop: '10px' }}>
                 ✅ {lang === 'ar' ? 'تم إنهاء هذه المهمة' : 'Mission terminée'}
               </div>
@@ -371,376 +505,110 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
  
-      {/* نافذة تفاصيل الطلب المتاح (قبل القبول) فقط — لا تحتوي بيانات زبون */}
-      {selectedRequest && (
-        <div style={s.overlay}>
-          <div style={s.modal}>
-            <button style={s.closeBtn} onClick={() => { setSelectedRequest(null); resetVoicePlayerState(); }}>✕</button>
- 
-            {/* رأسية المودال */}
-            <div style={s.modalHeader}>
-              <span style={s.modalBadge}>
-                {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {selectedRequest.id}
-              </span>
-              <div style={{ ...s.priceBig, display: selectedRequest.quoted_price ? 'block' : 'none' }}>
-                {selectedRequest.quoted_price} MRU
-              </div>
-            </div>
- 
-            {/* الصورة */}
-            {selectedRequest.image_url && (
-              <img
-                src={selectedRequest.image_url}
-                alt="problem"
-                style={s.modalImg}
-                onClick={() => window.open(selectedRequest.image_url, '_blank')}
-              />
-            )}
- 
-            {/* الوصف الصوتي — فقاعة بشكل واتساب */}
-            {selectedRequest.voice_note_url && (
-              <div style={s.voiceBox}>
-                <p style={s.voiceLabel}>🎙 {t.playVoice}</p>
-                <div style={s.waBubble}>
-                  <button style={s.waPlayBtn} onClick={toggleVoicePlayback}>
-                    {voiceIsPlaying ? '⏸' : '▶️'}
-                  </button>
-                  <div style={s.waWaveTrack}>
-                    <div style={{ ...s.waWaveFill, width: `${voiceProgress}%` }} />
-                  </div>
-                  <span style={s.waDuration}>
-                    {formatVoiceDuration(voiceDuration)}
-                  </span>
-                  <audio
-                    ref={voiceAudioRef}
-                    src={selectedRequest.voice_note_url}
-                    onPlay={() => setVoiceIsPlaying(true)}
-                    onPause={() => setVoiceIsPlaying(false)}
-                    onEnded={() => { setVoiceIsPlaying(false); setVoiceProgress(0); }}
-                    onLoadedMetadata={e => setVoiceDuration(e.target.duration)}
-                    onTimeUpdate={e => setVoiceProgress((e.target.currentTime / e.target.duration) * 100 || 0)}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-              </div>
-            )}
- 
-            {/* نوع الخدمة المطلوبة */}
-            {selectedRequest.service_type && (
-              <div style={{ ...s.infoBox, backgroundColor: '#e8f5e9', border: '1px solid #006400' }}>
-                <p style={{ ...s.infoLabel, color: '#006400', fontWeight: 'bold' }}>
-                  {lang === 'ar' ? '🔧 نوع المشكلة:' : '🔧 Type de problème:'}
-                </p>
-                <p style={{ ...s.infoValue, fontWeight: 'bold', fontSize: '1rem' }}>
-                  {selectedRequest.service_type}
-                </p>
-              </div>
-            )}
- 
-            {/* الوصف النصي */}
-            {selectedRequest.description && (
-              <div style={s.infoBox}>
-                <p style={s.infoLabel}>
-                  {lang === 'ar' ? '📝 الوصف:' : '📝 Description:'}
-                </p>
-                <p style={s.infoValue}>{selectedRequest.description}</p>
-              </div>
-            )}
- 
-            {/* المقاطعة فقط — بدون أي بيانات زبون قبل القبول */}
-            <div style={s.infoBox}>
-              <p style={s.infoLabel}>
-                {lang === 'ar' ? '📍 المقاطعة:' : '📍 Commune:'}
-              </p>
-              <p style={s.infoValue}>{selectedRequest.district}</p>
-            </div>
- 
-            {/* أزرار الإجراء — قبول أو تجاهل */}
-            <div style={s.modalActions}>
-              <button
-                style={{ ...s.btnDanger, flex: 1 }}
-                onClick={async () => {
-                  try {
-                    await fetch(`${apiUrl}/provider/requests/${selectedRequest.id}/ignore`, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({ provider_id: user.id })
-                    });
-                  } catch (err) {}
-                  setAvailableRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
-                  setSelectedRequest(null);
-                  resetVoicePlayerState();
-                }}
-              >
-                {t.ignoreRequest}
-              </button>
-              <button
-                style={{ ...s.btnSuccess, flex: 2, opacity: loading ? 0.7 : 1 }}
-                onClick={() => handleAccept(selectedRequest.id)}
-                disabled={loading}
-              >
-                {loading ? '...' : t.acceptRequest}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
- 
       <main style={s.main}>
  
-        {/* ===== الطلبات المتاحة ===== */}
-        {activeTab === 'home' && (
-          <div style={s.screen}>
-           <div style={s.screenHeader}>
-  <Logo size="sm" theme="dark" />
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
-      {lang === 'ar' ? 'FR' : 'AR'}
-    </button>
-  </div>
-</div>
-<div style={{ marginBottom: '15px' }}>
-  <h2 style={s.screenTitle}>{t.availableRequests}</h2>
-  <p style={s.screenSub}>{lang === 'ar' ? `${availableRequests.length} طلب متاح` : `${availableRequests.length} demande(s)`}</p>
-</div>
- 
-            {availableRequests.length === 0 ? (
-              <div style={s.emptyBox}>
-                <span style={{ fontSize: '3rem' }}>📭</span>
-                <p style={{ color: '#888' }}>{t.noAvailableRequests}</p>
-              </div>
-            ) : (
-              availableRequests.map(req => (
-                <div
-                  key={req.id}
-                  style={s.requestCard}
-                  onClick={() => setSelectedRequest(req)}
-                >
-                  <div style={s.cardTop}>
-                    <div style={s.cardPrice}>
-                      {req.quoted_price} MRU
-                    </div>
-                    <span style={s.cardDistrict}>📍 {req.district}</span>
-                  </div>
- 
-                  {req.service_type && (
-                    <p style={{ margin: '0 0 8px', fontSize: '0.9rem', fontWeight: 'bold', color: '#006400' }}>
-                      🔧 {req.service_type}
-                    </p>
-                  )}
- 
-                  {/* أيقونات المحتوى */}
-                  <div style={s.cardIcons}>
-                    {req.image_url && <span style={s.contentIcon}>📷</span>}
-                    {req.voice_note_url && <span style={s.contentIcon}>🎙</span>}
-                    {req.description && <span style={s.contentIcon}>📝</span>}
-                  </div>
- 
-                  {req.description && (
-                    <p style={s.cardDesc}>{req.description.substring(0, 60)}...</p>
-                  )}
- 
-                  <p style={s.cardDate}>
-                    {new Date(req.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
-                  </p>
- 
-                  <div style={s.cardFooter}>
-                    <span style={s.tapHint}>
-                      {lang === 'ar' ? 'اضغط لرؤية التفاصيل' : 'Appuyer pour voir les détails'}
-                    </span>
-                    <span style={{ color: '#006400', fontWeight: 'bold' }}>←</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
- 
-        {/* ===== مهامي ===== */}
+        {/* ===== مهامي (الجارية) ===== */}
         {activeTab === 'jobs' && (
           <div style={s.screen}>
             <div style={s.screenHeader}>
-              <h2 style={s.screenTitle}>{t.myJobs}</h2>
+              <Logo size="sm" theme="dark" />
               <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
                 {lang === 'ar' ? 'FR' : 'AR'}
               </button>
             </div>
+            <div style={{ marginBottom: '15px' }}>
+              <h2 style={s.screenTitle}>{t.myJobs}</h2>
+              <p style={s.screenSub}>
+                {lang === 'ar' ? `${activeJobs.length} مهمة جارية` : `${activeJobs.length} mission(s) en cours`}
+              </p>
+            </div>
  
-            {myJobs.length === 0 ? (
+            {activeJobs.length === 0 ? (
               <div style={s.emptyBox}>
-                <span style={{ fontSize: '3rem' }}>📋</span>
+                <span style={{ fontSize: '3rem' }}>📭</span>
                 <p style={{ color: '#888' }}>
-                  {lang === 'ar' ? 'لا توجد مهام بعد' : 'Aucune mission pour le moment'}
+                  {lang === 'ar' ? 'لا توجد مهام جارية. ستصلك المهام من الإدارة.' : 'Aucune mission en cours. L\'administration vous en assignera.'}
                 </p>
               </div>
             ) : (
-              myJobs.map(job => {
-                const st = getStatusStyle(job.status);
-                return (
-                  <div
-                    key={job.id}
-                    style={s.requestCard}
-                    onClick={() => setJobDetail(job)}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 'bold', color: '#333' }}>
-                        {lang === 'ar' ? 'مهمة رقم' : 'Mission #'} {job.id}
-                      </span>
-                      <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                        {t[`status_${job.status}`] || job.status}
-                      </span>
-                    </div>
- 
-                    <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
-                      📍 {job.district}
-                    </p>
- 
-                    {job.service_type && (
-                      <p style={{ margin: '5px 0 0', fontSize: '0.85rem', fontWeight: 'bold', color: '#006400' }}>
-                        🔧 {job.service_type}
-                      </p>
-                    )}
- 
-                    {job.quoted_price && (
-                      <p style={{ margin: '5px 0 0', fontWeight: 'bold', color: '#006400' }}>
-                        {job.quoted_price} MRU
-                      </p>
-                    )}
- 
-                    <p style={s.cardDate}>
-                      {new Date(job.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
-                    </p>
-                    {job.status === 'completed' && (
-  <button
-    style={{
-      marginTop: '8px',
-      padding: '6px 12px',
-      background: 'none',
-      border: '1px solid #dc3545',
-      color: '#dc3545',
-      borderRadius: '8px',
-      fontSize: '0.8rem',
-      cursor: 'pointer',
-      width: '100%'
-    }}
-    onClick={async (e) => {
-      e.stopPropagation();
-      if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذه المهمة؟' : 'Supprimer cette mission ?')) return;
-      try {
-        const res = await fetch(`${apiUrl}/requests/${job.id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) fetchMyJobs();
-      } catch (err) {}
-    }}
-  >
-    🗑️ {lang === 'ar' ? 'حذف المهمة' : 'Supprimer'}
-  </button>
-)}
-                  </div>
-                );
-              })
+              activeJobs.map(renderJobCard)
             )}
           </div>
         )}
  
-        {/* ===== مستحقاتي ===== */}
-        {activeTab === 'earnings' && (
+        {/* ===== المهام المنجزة ===== */}
+        {activeTab === 'history' && (
           <div style={s.screen}>
             <div style={s.screenHeader}>
-              <h2 style={s.screenTitle}>{t.earnings}</h2>
+              <h2 style={s.screenTitle}>{lang === 'ar' ? 'المهام المنجزة' : 'Missions terminées'}</h2>
               <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
                 {lang === 'ar' ? 'FR' : 'AR'}
               </button>
             </div>
  
-            {/* ملخص المستحقات */}
-            <div style={s.earningsSummary}>
-              <div style={s.earningsCard}>
-                <p style={s.earningsLabel}>{t.totalPending}</p>
-                <p style={{ ...s.earningsAmount, color: '#856404' }}>
-                  {earnings.total_pending} MRU
-                </p>
-              </div>
-              <div style={{ ...s.earningsCard, backgroundColor: '#d4edda' }}>
-                <p style={s.earningsLabel}>{t.totalPaid}</p>
-                <p style={{ ...s.earningsAmount, color: '#155724' }}>
-                  {earnings.total_paid} MRU
-                </p>
-              </div>
-            </div>
- 
-            {/* معلومات الحساب البنكي */}
-            <div style={s.bankInfoBox}>
-              <p style={s.sectionTitle}>{t.bankInfo}</p>
-              <div style={s.bankRow}>
-                <span style={s.infoLabel}>
-                  {lang === 'ar' ? 'نوع الحساب:' : 'Type:'}
-                </span>
-                <span style={{ fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
-                  {userData?.bank_type || '-'}
-                </span>
-              </div>
-              <div style={s.bankRow}>
-                <span style={s.infoLabel}>
-                  {lang === 'ar' ? 'رقم الهاتف:' : 'Numéro:'}
-                </span>
-                <span style={{ fontWeight: 'bold', color: '#006400', fontSize: '1.1rem' }}>
-                  {userData?.bank_phone || '-'}
-                </span>
-              </div>
-            </div>
- 
-            {/* تفاصيل المستحقات */}
-            <p style={s.sectionTitle}>
-              {lang === 'ar' ? 'تفاصيل المهام' : 'Détail des missions'}
-            </p>
- 
-            {earnings.earnings.length === 0 ? (
+            {doneJobs.length === 0 ? (
               <div style={s.emptyBox}>
-                <span style={{ fontSize: '2rem' }}>💰</span>
+                <span style={{ fontSize: '3rem' }}>📋</span>
                 <p style={{ color: '#888' }}>
-                  {lang === 'ar' ? 'لا توجد مستحقات بعد' : 'Aucun revenu pour le moment'}
+                  {lang === 'ar' ? 'لا توجد مهام منجزة بعد' : 'Aucune mission terminée'}
                 </p>
               </div>
             ) : (
-              earnings.earnings.map(e => (
-                <div key={e.id} style={s.earningItem}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#333', fontSize: '0.9rem' }}>
-                      {lang === 'ar' ? 'مهمة رقم' : 'Mission #'} {e.request_id}
-                    </span>
-                    <span style={{
-                      padding: '3px 10px',
-                      borderRadius: '20px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      backgroundColor: e.status === 'paid' ? '#d4edda' : '#fff3cd',
-                      color: e.status === 'paid' ? '#155724' : '#856404'
-                    }}>
-                      {e.status === 'paid' ? t.paid : t.pendingPayment}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                    <span style={{ color: '#888', fontSize: '0.8rem' }}>
-                      📍 {e.district}
-                    </span>
-                    <span style={{ fontWeight: 'bold', color: '#006400', fontSize: '1.1rem' }}>
-                      {e.amount} MRU
-                    </span>
-                  </div>
-                  {e.paid_at && (
-                    <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: '#999' }}>
-                      {lang === 'ar' ? 'تم الدفع:' : 'Payé le:'} {new Date(e.paid_at).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              ))
+              doneJobs.map(renderJobCard)
             )}
+          </div>
+        )}
+                {/* ===== الراتب ===== */}
+        {activeTab === 'salary' && (
+          <div style={s.screen}>
+            <div style={s.screenHeader}>
+              <h2 style={s.screenTitle}>{lang === 'ar' ? 'راتبي' : 'Mon salaire'}</h2>
+              <button onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')} style={s.langBtn}>
+                {lang === 'ar' ? 'FR' : 'AR'}
+              </button>
+            </div>
+
+            {salaryMonths.map(m => {
+              const [y, mo] = m.month.split('-').map(Number);
+              const monthName = new Date(y, mo - 1, 1).toLocaleDateString(
+                lang === 'ar' ? 'ar-EG' : 'fr-FR', { month: 'long', year: 'numeric' }
+              );
+              return (
+                <div
+                  key={m.month}
+                  style={{
+                    ...s.requestCard,
+                    cursor: 'default',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: m.is_paid ? '1.5px solid #2e7d32' : '1.5px solid #ffc107',
+                    backgroundColor: m.is_paid ? '#f1f8f2' : '#fffdf5'
+                  }}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#333' }}>{monthName}</p>
+                    {m.is_paid && m.paid_at && (
+                      <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#888' }}>
+                        {lang === 'ar' ? 'صُرف في' : 'Payé le'} {new Date(m.paid_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                      </p>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 12px', borderRadius: '20px',
+                    backgroundColor: m.is_paid ? '#2e7d32' : '#ffc107', color: m.is_paid ? '#fff' : '#333'
+                  }}>
+                    {m.is_paid
+                      ? (lang === 'ar' ? '✅ تم الصرف' : '✅ Payé')
+                      : (lang === 'ar' ? '⏳ لم يُصرف بعد' : '⏳ Pas encore payé')}
+                  </span>
+                </div>
+              );
+            })}
+
+            <a href={`tel:+222${ADMIN_PHONE}`} style={s.adminCallBtn}>
+              📞 {lang === 'ar' ? 'اتصل بالإدارة' : 'Appeler l\'administration'}
+            </a>
           </div>
         )}
  
@@ -762,17 +630,9 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
  
             <div style={s.infoCard}>
               <div style={s.infoRow}>
-                <span style={s.infoLabel}>{t.bankInfo}</span>
-                <span style={{ fontWeight: 'bold', color: '#006400', textTransform: 'capitalize' }}>
-                  {userData?.bank_type || '-'}
-                </span>
-              </div>
-              <div style={s.infoRow}>
-                <span style={s.infoLabel}>
-                  {lang === 'ar' ? 'رقم الحساب:' : 'Numéro bancaire:'}
-                </span>
-                <span style={{ fontWeight: 'bold', color: '#333' }}>
-                  {userData?.bank_phone || '-'}
+                <span style={s.infoLabel}>{lang === 'ar' ? 'التخصص:' : 'Spécialité:'}</span>
+                <span style={{ fontWeight: 'bold', color: '#006400' }}>
+                  {mySpecialties || '-'}
                 </span>
               </div>
               <div style={s.infoRow}>
@@ -780,10 +640,55 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
                   {lang === 'ar' ? 'المهام المنجزة:' : 'Missions effectuées:'}
                 </span>
                 <span style={{ fontWeight: 'bold', color: '#006400' }}>
-                  {myJobs.filter(j => j.status === 'completed').length}
+                  {doneJobs.length}
                 </span>
               </div>
             </div>
+ 
+            {/* الاتصال بالإدارة */}
+            <a href={`tel:+222${ADMIN_PHONE}`} style={s.adminCallBtn}>
+              📞 {lang === 'ar' ? 'اتصل بالإدارة' : 'Appeler l\'administration'}
+            </a>
+ 
+            {/* تغيير كلمة المرور */}
+            <button style={s.btnOutline} onClick={() => setShowPass(!showPass)}>
+              🔒 {showPass
+                ? (lang === 'ar' ? 'إغلاق' : 'Fermer')
+                : (lang === 'ar' ? 'تغيير كلمة المرور' : 'Changer le mot de passe')}
+            </button>
+ 
+            {showPass && (
+              <div style={s.passBox}>
+                <input
+                  style={s.passInput}
+                  type="password"
+                  placeholder={lang === 'ar' ? 'كلمة المرور الحالية' : 'Mot de passe actuel'}
+                  value={passForm.current}
+                  onChange={e => setPassForm({ ...passForm, current: e.target.value })}
+                />
+                <input
+                  style={s.passInput}
+                  type="password"
+                  placeholder={lang === 'ar' ? 'كلمة المرور الجديدة' : 'Nouveau mot de passe'}
+                  value={passForm.next}
+                  onChange={e => setPassForm({ ...passForm, next: e.target.value })}
+                />
+                <input
+                  style={s.passInput}
+                  type="password"
+                  placeholder={lang === 'ar' ? 'تأكيد كلمة المرور الجديدة' : 'Confirmer le nouveau mot de passe'}
+                  value={passForm.confirm}
+                  onChange={e => setPassForm({ ...passForm, confirm: e.target.value })}
+                />
+                <button
+                  style={{ ...s.btnSuccess, width: '100%', opacity: passLoading ? 0.7 : 1 }}
+                  onClick={handleChangePassword}
+                  disabled={passLoading}
+                >
+                  {passLoading ? '...' : (lang === 'ar' ? 'حفظ' : 'Enregistrer')}
+                </button>
+              </div>
+            )}
  
             <button style={s.logoutBtn} onClick={onLogout}>{t.logout}</button>
           </div>
@@ -794,17 +699,18 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
       {/* شريط التنقل */}
       <nav style={s.bottomNav}>
         {[
-          { id: 'home', icon: '🏠', label: t.availableRequests.split(' ')[0] },
-          { id: 'jobs', icon: '🔧', label: t.myJobs },
-          { id: 'earnings', icon: '💰', label: t.earnings },
-          { id: 'profile', icon: '👤', label: t.myAccount }
+          { id: 'jobs', label: t.myJobs, badge: activeJobs.length },
+          { id: 'history', label: lang === 'ar' ? 'المنجزة' : 'Terminées', badge: 0 },
+          { id: 'salary', label: lang === 'ar' ? 'راتبي' : 'Salaire', badge: 0 },
+          { id: 'profile', label: t.myAccount, badge: 0 }
         ].map(tab => (
           <button
             key={tab.id}
-            style={activeTab === tab.id ? s.navActive : s.navBtn}
+            style={{ ...(activeTab === tab.id ? s.navActive : s.navBtn), position: 'relative' }}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span style={{ fontSize: '1.4rem' }}>{tab.icon}</span>
+            {tab.badge > 0 && <span style={s.navBadge}>{tab.badge}</span>}
+            <NavIcon name={tab.id} />
             <span style={{ fontSize: '0.7rem' }}>{tab.label}</span>
           </button>
         ))}
@@ -813,10 +719,16 @@ export default function ProviderScreen({ user, apiUrl, onLogout }) {
     </div>
   );
 }
+const NavIcon = ({ name }) => {
+  const p = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  if (name === 'jobs') return (<svg {...p}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>);
+  if (name === 'history') return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.8 2.8L16 9.8" /></svg>);
+  if (name === 'salary') return (<svg {...p}><rect x="3" y="6.5" width="18" height="11" rx="2" /><circle cx="12" cy="12" r="2.6" /><path d="M6.5 10v.01M17.5 14v.01" /></svg>);
+  return (<svg {...p}><circle cx="12" cy="8.5" r="3.6" /><path d="M4.8 20c.8-3.6 3.7-5.6 7.2-5.6s6.4 2 7.2 5.6" /></svg>);
+};
  
 const s = {
   container: {
-    height: '100vh',
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#f5f7fa',
@@ -827,7 +739,7 @@ const s = {
   main: {
     flex: 1,
     overflowY: 'auto',
-    paddingBottom: '80px'
+    paddingBottom: 'calc(95px + env(safe-area-inset-bottom))'
   },
   screen: {
     padding: '15px',
@@ -882,57 +794,10 @@ const s = {
     cursor: 'pointer',
     border: '1px solid #f0f0f0'
   },
-  cardTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '10px'
-  },
-  cardPrice: {
-    fontSize: '1.4rem',
-    fontWeight: 'bold',
-    color: '#006400'
-  },
-  cardDistrict: {
-    fontSize: '0.85rem',
-    color: '#555',
-    background: '#f0f4f0',
-    padding: '4px 10px',
-    borderRadius: '20px'
-  },
-  cardIcons: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '8px'
-  },
-  contentIcon: {
-    fontSize: '1.2rem',
-    background: '#f5f5f5',
-    padding: '4px 8px',
-    borderRadius: '8px'
-  },
-  cardDesc: {
-    margin: '0 0 8px',
-    fontSize: '0.85rem',
-    color: '#666',
-    lineHeight: '1.4'
-  },
   cardDate: {
     margin: '5px 0 0',
     fontSize: '0.75rem',
     color: '#999'
-  },
-  cardFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: '10px',
-    paddingTop: '10px',
-    borderTop: '1px solid #f5f5f5'
-  },
-  tapHint: {
-    fontSize: '0.8rem',
-    color: '#aaa'
   },
   statusBadge: {
     padding: '4px 10px',
@@ -949,43 +814,6 @@ const s = {
     gap: '10px'
   },
   // المودال (فقط للطلبات المتاحة قبل القبول)
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 3000,
-    padding: '20px'
-  },
-  modal: {
-    background: '#fff',
-    width: '100%',
-    maxWidth: '430px',
-    borderRadius: '24px',
-    padding: '25px',
-    position: 'relative',
-    maxHeight: '85vh',
-    overflowY: 'auto'
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: '15px',
-    left: '15px',
-    background: '#f5f5f5',
-    border: 'none',
-    borderRadius: '50%',
-    width: '32px',
-    height: '32px',
-    cursor: 'pointer',
-    fontSize: '1rem'
-  },
-  modalHeader: {
-    textAlign: 'center',
-    marginBottom: '15px',
-    paddingTop: '10px'
-  },
   modalBadge: {
     background: '#e8f5e9',
     color: '#006400',
@@ -993,12 +821,6 @@ const s = {
     borderRadius: '20px',
     fontSize: '0.85rem',
     fontWeight: 'bold'
-  },
-  priceBig: {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#006400',
-    marginTop: '10px'
   },
   modalImg: {
     width: '100%',
@@ -1062,11 +884,6 @@ const s = {
     fontSize: '1rem',
     cursor: 'pointer'
   },
-  modalActions: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '20px'
-  },
   btnSuccess: {
     padding: '14px',
     backgroundColor: '#006400',
@@ -1075,16 +892,6 @@ const s = {
     borderRadius: '12px',
     fontWeight: 'bold',
     fontSize: '1rem',
-    cursor: 'pointer'
-  },
-  btnDanger: {
-    padding: '14px',
-    backgroundColor: '#fff',
-    color: '#dc3545',
-    border: '1.5px solid #dc3545',
-    borderRadius: '12px',
-    fontWeight: 'bold',
-    fontSize: '0.95rem',
     cursor: 'pointer'
   },
   btnUnassign: {
@@ -1114,54 +921,6 @@ const s = {
     fontWeight: 'bold'
   },
   // المستحقات
-  earningsSummary: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-    marginBottom: '20px'
-  },
-  earningsCard: {
-    background: '#fff3cd',
-    borderRadius: '14px',
-    padding: '15px',
-    textAlign: 'center'
-  },
-  earningsLabel: {
-    margin: '0 0 8px',
-    fontSize: '0.8rem',
-    color: '#555'
-  },
-  earningsAmount: {
-    margin: 0,
-    fontSize: '1.5rem',
-    fontWeight: 'bold'
-  },
-  bankInfoBox: {
-    background: '#fff',
-    borderRadius: '14px',
-    padding: '15px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-  },
-  bankRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: '8px'
-  },
-  sectionTitle: {
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: '12px'
-  },
-  earningItem: {
-    background: '#fff',
-    borderRadius: '12px',
-    padding: '12px 15px',
-    marginBottom: '10px',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
-  },
   infoCard: {
     background: '#fff',
     borderRadius: '16px',
@@ -1200,7 +959,9 @@ const s = {
   bottomNav: {
     position: 'fixed',
     bottom: 0, left: 0, right: 0,
-    height: '70px',
+    height: 'calc(66px + env(safe-area-inset-bottom))',
+    paddingBottom: 'env(safe-area-inset-bottom)',
+    boxSizing: 'border-box',
     background: '#fff',
     display: 'flex',
     justifyContent: 'space-around',
@@ -1220,6 +981,118 @@ const s = {
     cursor: 'pointer',
     color: '#aaa',
     padding: '5px 0'
+  },
+  stepper: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '16px 8px 12px',
+    marginBottom: '15px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+  },
+  stepItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px',
+    width: '62px'
+  },
+  stepDot: {
+    width: '30px',
+    height: '30px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.85rem',
+    fontWeight: 'bold',
+    transition: 'all 0.2s ease'
+  },
+  stepLine: {
+    flex: 1,
+    height: '3px',
+    marginTop: '14px',
+    borderRadius: '2px',
+    minWidth: '10px'
+  },
+  stepLabel: {
+    fontSize: '0.68rem',
+    textAlign: 'center',
+    lineHeight: '1.2'
+  },
+  btnAction: {
+    width: '100%',
+    padding: '17px',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '14px',
+    fontWeight: 'bold',
+    fontSize: '1.05rem',
+    cursor: 'pointer',
+    marginTop: '10px',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
+  },
+  adminCallBtn: {
+    display: 'block',
+    textAlign: 'center',
+    textDecoration: 'none',
+    padding: '14px',
+    marginBottom: '12px',
+    backgroundColor: '#e8f5e9',
+    color: '#006400',
+    border: '1.5px solid #006400',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '1rem'
+  },
+  btnOutline: {
+    width: '100%',
+    padding: '13px',
+    marginBottom: '12px',
+    background: '#fff',
+    color: '#333',
+    border: '1.5px solid #ddd',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.95rem'
+  },
+  passBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    background: '#fff',
+    borderRadius: '14px',
+    padding: '15px',
+    marginBottom: '12px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+  },
+  passInput: {
+    padding: '13px 15px',
+    borderRadius: '12px',
+    border: '1.5px solid #ddd',
+    fontSize: '1rem',
+    outline: 'none',
+    backgroundColor: '#fafafa',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  navBadge: {
+    position: 'absolute',
+    top: '0',
+    right: '30%',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    borderRadius: '50%',
+    minWidth: '18px',
+    height: '18px',
+    fontSize: '0.7rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold'
   },
   navActive: {
     flex: 1,

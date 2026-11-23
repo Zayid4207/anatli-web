@@ -5,11 +5,8 @@ import TermsScreen from './TermsScreen';
 export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
   const [showTerms, setShowTerms] = useState(false);
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState('customer');
-  const [coveredDistricts, setCoveredDistricts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [otpCode, setOtpCode] = useState('');
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
  const [housePhoto, setHousePhoto] = useState(null);
@@ -23,9 +20,7 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     password: '',
     confirm_password: '',
     district: '',
-    address: '',
-    bank_phone: '',
-    bank_type: 'bankily'
+    address: ''
   });
  
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
@@ -48,40 +43,29 @@ export default function SignupScreen({ apiUrl, onBack, onSuccess }) {
     );
   };
  
-  const handleStep1 = () => {
+    const handleStep1 = () => {
     if (!form.full_name || !form.phone || !form.password || !form.confirm_password) {
       setError(t.fillAllFields); return;
     }
     if (form.password !== form.confirm_password) {
       setError(t.passwordMismatch); return;
     }
-    if (form.phone.length < 8) {
+    const phoneDigits = form.phone.replace(/\s+/g, '').replace(/\+/g, '').replace(/^00/, '');
+    if (!/^(222)?[234][0-9]{7}$/.test(phoneDigits)) {
       setError(t.phoneInvalid); return;
     }
    setError('');
 setStep(2);
   };
- const handleStep2 = () => {
-   if (role === 'customer') {
-  if (!form.district) {
-    setError(lang === 'ar' ? 'يرجى تحديد المقاطعة' : 'Veuillez choisir la commune'); return;
-  }
-}
-    if (role === 'provider') {
-      if (!form.bank_phone) {
-        setError(lang === 'ar' ? 'يرجى إدخال رقم الهاتف البنكي' : 'Veuillez entrer le numéro bancaire'); return;
-      }
-      if (coveredDistricts.length === 0) {
-        setError(lang === 'ar' ? 'يرجى اختيار مقاطعة واحدة على الأقل' : 'Veuillez choisir au moins une commune'); return;
-      }
+ 
+  const handleStep2 = () => {
+    if (!form.district) {
+      setError(lang === 'ar' ? 'يرجى تحديد المقاطعة' : 'Veuillez choisir la commune'); return;
     }
-   setError('');
-if (role === 'customer') {
-  setShowTerms(true);
-} else {
-  handleSignup();
-}
+    setError('');
+    setShowTerms(true);
   };
+ 
   const handleSignup = async () => {
     setLoading(true);
     try {
@@ -89,22 +73,13 @@ if (role === 'customer') {
       formData.append('full_name', form.full_name);
       formData.append('phone', form.phone);
       formData.append('password', form.password);
-      formData.append('user_role', role);
- 
-      if (role === 'customer') {
-        formData.append('district', form.district || '');
-        formData.append('address', form.address || '');
-        if (housePhoto) formData.append('house_photo', housePhoto);
-        if (location) {
-          formData.append('latitude', location.lat);
-          formData.append('longitude', location.lng);
-        }
-      }
- 
-      if (role === 'provider') {
-        formData.append('bank_phone', form.bank_phone || '');
-        formData.append('bank_type', form.bank_type || '');
-        formData.append('covered_districts', coveredDistricts.join(','));
+      formData.append('user_role', 'customer');
+      formData.append('district', form.district || '');
+      formData.append('address', form.address || '');
+      if (housePhoto) formData.append('house_photo', housePhoto);
+      if (location) {
+        formData.append('latitude', location.lat);
+        formData.append('longitude', location.lng);
       }
  
       const res = await fetch(`${apiUrl}/signup`, {
@@ -114,34 +89,13 @@ if (role === 'customer') {
  
       const data = await res.json();
       if (res.ok) {
+        try { localStorage.setItem('hfx_last_phone', form.phone); } catch (e) {}
         alert(lang === 'ar'
           ? '🎉 تم إنشاء حسابك بنجاح! يمكنك الآن تسجيل الدخول.'
           : '🎉 Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
         onSuccess();
       } else {
         setError(data.error || t.error);
-      }
-    } catch (err) {
-      setError(t.serverError);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleVerifyOtp = async () => {
-    if (!otpCode) { setError(lang === 'ar' ? 'يرجى إدخال الرمز' : 'Veuillez entrer le code'); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${apiUrl}/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: form.phone, code: otpCode })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert(t.accountCreated);
-        onSuccess();
-      } else {
-        setError(data.error || lang === 'ar' ? 'الرمز غير صحيح' : 'Code incorrect');
       }
     } catch (err) {
       setError(t.serverError);
@@ -165,7 +119,7 @@ if (role === 'customer') {
       <button
         onClick={() => setLang(lang === 'ar' ? 'fr' : 'ar')}
         style={{
-          position: 'fixed', top: '15px', left: '15px',
+          position: 'absolute', top: '15px', left: '15px',
           padding: '6px 14px', borderRadius: '10px',
           border: '1px solid #006400', background: '#fff',
           color: '#006400', fontWeight: 'bold', cursor: 'pointer',
@@ -196,30 +150,11 @@ if (role === 'customer') {
           <div style={s.form}>
             <p style={s.stepTitle}>{t.basicInfo}</p>
  
-            <div style={s.roleRow}>
-              <div
-                style={{ ...s.roleCard, borderColor: role === 'customer' ? '#006400' : '#ddd', backgroundColor: role === 'customer' ? '#f0fff0' : '#fff' }}
-                onClick={() => setRole('customer')}
-              >
-                <span style={{ fontSize: '2rem' }}>🏠</span>
-                <span style={s.roleLabel}>{t.iAmCustomer}</span>
-                <span style={s.roleDesc}>{t.customerDesc}</span>
-              </div>
-              <div
-                style={{ ...s.roleCard, borderColor: role === 'provider' ? '#006400' : '#ddd', backgroundColor: role === 'provider' ? '#f0fff0' : '#fff' }}
-                onClick={() => setRole('provider')}
-              >
-                <span style={{ fontSize: '2rem' }}>🔧</span>
-                <span style={s.roleLabel}>{t.iAmProvider}</span>
-                <span style={s.roleDesc}>{t.providerDesc}</span>
-              </div>
-            </div>
  
             <input style={s.input} placeholder={t.enterName} value={form.full_name} onChange={e => update('full_name', e.target.value)} />
-            <input style={s.input} placeholder={t.phone} type="text" value={form.phone} onChange={e => update('phone', e.target.value)} />
-            <input style={s.input} placeholder={t.password} type="password" value={form.password} onChange={e => update('password', e.target.value)} />
-            <input style={s.input} placeholder={t.confirmPassword} type="password" value={form.confirm_password} onChange={e => update('confirm_password', e.target.value)} />
- 
+             <input style={s.input} placeholder={t.phone} type="tel" inputMode="tel" autoComplete="tel" name="phone" value={form.phone} onChange={e => update('phone', e.target.value)} />
+            <input style={s.input} placeholder={t.password} type="password" autoComplete="new-password" name="new-password" value={form.password} onChange={e => update('password', e.target.value)} />
+            <input style={s.input} placeholder={t.confirmPassword} type="password" autoComplete="new-password" name="confirm-password" value={form.confirm_password} onChange={e => update('confirm_password', e.target.value)} />
             {error && <p style={s.error}>{error}</p>}
             <button style={s.btnPrimary} onClick={handleStep1}>{t.next}</button>
             <button style={s.backLink} onClick={onBack}>{t.haveAccount}</button>
@@ -227,10 +162,8 @@ if (role === 'customer') {
         )}
  
         {/* الخطوة 2 */}
-       {step === 2 && (
-     <div style={s.form}>
-      {role === 'customer' ? (
-      <>
+        {step === 2 && (
+          <div style={s.form}>
         <p style={s.stepTitle}>{t.locationInfo}</p>
         <p style={s.stepDesc}>{t.locationDesc}</p>
  
@@ -247,220 +180,100 @@ if (role === 'customer') {
           value={form.address}
           onChange={e => update('address', e.target.value)}
         />
-        {/* صورة واجهة المنزل */}
-<label style={{
-  display: 'flex', flexDirection: 'column', alignItems: 'center',
-  justifyContent: 'center', gap: '8px', padding: '20px',
-  border: `2px dashed ${housePhoto ? '#28a745' : '#006400'}`,
-  borderRadius: '14px', cursor: 'pointer',
-  backgroundColor: housePhoto ? '#f0fff0' : '#fafffe'
-}}>
-  <input
-    type="file" accept="image/*" style={{ display: 'none' }}
-    onChange={e => {
-      const file = e.target.files[0];
-      if (file && file.size > 5 * 1024 * 1024) {
-        alert(lang === 'ar' ? 'حجم الصورة كبير جداً' : 'Image trop grande');
-        return;
-      }
-      setHousePhoto(file);
-    }}
-  />
-  <span style={{ fontSize: '2rem' }}>{housePhoto ? '✅' : '🏠'}</span>
-  <div style={{ textAlign: 'center' }}>
-    <p style={{ margin: 0, fontWeight: 'bold', color: housePhoto ? '#28a745' : '#006400', fontSize: '0.9rem' }}>
-      {housePhoto
-        ? housePhoto.name.substring(0, 25) + '...'
-        : (lang === 'ar' ? 'صورة واجهة منزلك' : 'Photo de votre maison')}
-    </p>
-    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#888' }}>
-      {lang === 'ar'
-        ? 'ارفع صورة للواجهة الخارجية — تساعد الفني على إيجادك'
-        : 'Photo de la façade — aide le technicien à vous trouver'}
-    </p>
-  </div>
-</label>
- 
-        {/* سؤال: هل أنت بالمنزل الآن؟ */}
-        <div style={{
-          border: `2px solid ${locationChoice === 'yes' && location ? '#28a745' : '#ffc107'}`,
-          borderRadius: '14px',
-          padding: '15px',
-          backgroundColor: locationChoice === 'yes' && location ? '#f0fff0' : '#fffbf0',
-          textAlign: 'center'
-        }}>
-          {locationChoice === null && (
-            <div>
-              <p style={{ margin: '0 0 12px', color: '#856404', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                📍 {lang === 'ar' ? 'هل أنت في المنزل الآن؟' : 'Êtes-vous chez vous maintenant ?'}
-              </p>
-              <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: '#888' }}>
-                {lang === 'ar'
-                  ? 'يساعدنا هذا في تحديد موقع منزلك بدقة للفنيين'
-                  : 'Cela nous aide à localiser précisément votre domicile'}
-              </p>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  style={{ padding: '10px 18px', backgroundColor: '#006400', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
-                  onClick={() => { setLocationChoice('yes'); getLocation(); }}
-                >
-                  {lang === 'ar' ? '✅ نعم، أنا بالمنزل' : '✅ Oui'}
-                </button>
-                <button
-                  type="button"
-                  style={{ padding: '10px 18px', backgroundColor: '#fff', color: '#666', border: '1.5px solid #ccc', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
-                  onClick={() => setLocationChoice('no')}
-                >
-                  {lang === 'ar' ? 'لا، لست الآن' : 'Non'}
-                </button>
-              </div>
-            </div>
-          )}
- 
-          {locationChoice === 'yes' && (
-            location ? (
-              <div>
-                <p style={{ margin: 0, color: '#28a745', fontWeight: 'bold', fontSize: '0.95rem' }}>
-                  ✅ {lang === 'ar' ? 'تم تحديد موقع منزلك بنجاح' : 'Position localisée avec succès'}
-                </p>
-                <button
-                  type="button"
-                  style={{ marginTop: '8px', background: 'none', border: '1px solid #28a745', color: '#28a745', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}
-                  onClick={() => { setLocation(null); getLocation(); }}
-                >
-                  {lang === 'ar' ? 'إعادة التحديد' : 'Relocaliser'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                {locationError && (
-                  <p style={{ color: '#dc3545', fontSize: '0.75rem', margin: '0 0 8px' }}>{locationError}</p>
-                )}
-                <button
-                  type="button"
-                  style={{ padding: '10px 18px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.9rem', cursor: locationLoading ? 'not-allowed' : 'pointer' }}
-                  onClick={getLocation}
-                  disabled={locationLoading}
-                >
-                  {locationLoading
-                    ? (lang === 'ar' ? '⏳ جاري التحديد...' : '⏳ Localisation...')
-                    : (lang === 'ar' ? '📍 حاول مرة أخرى' : '📍 Réessayer')}
-                </button>
-              </div>
-            )
-          )}
- 
-          {locationChoice === 'no' && (
-            <div>
-              <p style={{ margin: 0, color: '#666', fontSize: '0.85rem' }}>
-                {lang === 'ar'
-                  ? 'تم تخطي تحديد الموقع. يمكنك تحديده لاحقاً من صفحة "حسابي"'
-                  : 'Localisation ignorée. Vous pourrez la définir plus tard depuis "Mon compte"'}
-              </p>
-              <button
-                type="button"
-                style={{ marginTop: '8px', background: 'none', border: '1px solid #006400', color: '#006400', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}
-                onClick={() => setLocationChoice(null)}
-              >
-                {lang === 'ar' ? 'رجوع' : 'Retour'}
-              </button>
-            </div>
-          )}
-        </div>
-      </>
-    ) : (
-      <>
-        <p style={s.stepTitle}>{t.paymentInfo}</p>
-        <p style={s.stepDesc}>{t.paymentDesc}</p>
- 
-        <label style={s.label}>{t.bankType}</label>
-        <div style={s.bankRow}>
-          {[
-            { key: 'bankily', label: lang === 'ar' ? 'بنكيلي' : 'Bankily' },
-            { key: 'sadad', label: lang === 'ar' ? 'سداد' : 'Sadad' },
-            { key: 'masrivi', label: lang === 'ar' ? 'مصرفي' : 'Masrivi' }
-          ].map(b => (
-            <div
-              key={b.key}
-              style={{ ...s.bankCard, borderColor: form.bank_type === b.key ? '#006400' : '#ddd', backgroundColor: form.bank_type === b.key ? '#f0fff0' : '#fff' }}
-              onClick={() => update('bank_type', b.key)}
-            >
-              <span style={{ fontSize: '1.5rem' }}>📱</span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{b.label}</span>
-            </div>
-          ))}
-        </div>
- 
-        <label style={s.label}>{t.bankPhone}</label>
-        <input style={s.input} placeholder={t.bankPhonePlaceholder} value={form.bank_phone} onChange={e => update('bank_phone', e.target.value)} />
- 
-        {/* اختيار المقاطعات */}
-        <label style={s.label}>
-          {lang === 'ar' ? 'المقاطعات التي تغطيها' : 'Communes que vous couvrez'}
+               {/* صورة واجهة المنزل */}
+        <label style={{ ...s.rowBox, flexDirection: 'row', alignItems: 'center', cursor: 'pointer', borderColor: housePhoto ? '#28a745' : '#cfe3cf', backgroundColor: housePhoto ? '#f0fff0' : '#f7fbf7' }}>
+          <input
+            type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files[0];
+              if (file && file.size > 5 * 1024 * 1024) {
+                alert(lang === 'ar' ? 'حجم الصورة كبير جداً' : 'Image trop grande');
+                return;
+              }
+              setHousePhoto(file);
+            }}
+          />
+          <div style={{ ...s.iconCircle, color: housePhoto ? '#28a745' : '#006400' }}>
+            <Ico name={housePhoto ? 'check' : 'camera'} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ ...s.boxTitle, color: housePhoto ? '#28a745' : '#006400' }}>
+              {housePhoto
+                ? (housePhoto.name.length > 22 ? housePhoto.name.slice(0, 22) + '…' : housePhoto.name)
+                : (lang === 'ar' ? 'صورة واجهة منزلك' : 'Photo de votre maison')}
+            </p>
+            <p style={s.boxDesc}>
+              {lang === 'ar'
+                ? 'تساعد الفني على إيجادك — اضغط للاختيار'
+                : 'Aide le technicien à vous trouver — appuyez pour choisir'}
+            </p>
+          </div>
         </label>
-        <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '-8px', marginBottom: '5px' }}>
-          {lang === 'ar' ? 'اختر كل المقاطعات التي يمكنك العمل فيها' : 'Sélectionnez les communes où vous pouvez travailler'}
-        </p>
- 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          {t.districts.map((district, i) => {
-            const isSelected = coveredDistricts.includes(district);
-            return (
-              <div
-                key={i}
-                onClick={() => {
-                  if (isSelected) {
-                    setCoveredDistricts(prev => prev.filter(d => d !== district));
-                  } else {
-                    setCoveredDistricts(prev => [...prev, district]);
-                  }
-                }}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: `2px solid ${isSelected ? '#006400' : '#ddd'}`,
-                  backgroundColor: isSelected ? '#f0fff0' : '#fff',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: isSelected ? 'bold' : 'normal',
-                  color: isSelected ? '#006400' : '#555',
-                  textAlign: 'center'
-                }}
-              >
-                {isSelected ? '✓ ' : ''}{district}
+         {/* موقع المنزل */}
+        {(() => {
+          const located = locationChoice === 'yes' && location;
+          const failed = locationChoice === 'yes' && !location && !locationLoading;
+          let title, desc = '';
+          if (locationChoice === null) {
+            title = lang === 'ar' ? 'هل أنت في المنزل الآن؟' : 'Êtes-vous chez vous maintenant ?';
+            desc = lang === 'ar' ? 'يساعدنا هذا في تحديد موقع منزلك بدقة للفنيين' : 'Cela nous aide à localiser précisément votre domicile';
+          } else if (located) {
+            title = lang === 'ar' ? 'تم تحديد موقع منزلك بنجاح' : 'Position localisée avec succès';
+          } else if (locationChoice === 'yes') {
+            title = locationLoading
+              ? (lang === 'ar' ? 'جاري تحديد الموقع...' : 'Localisation en cours...')
+              : (lang === 'ar' ? 'تعذّر تحديد الموقع' : 'Localisation impossible');
+            desc = locationError || '';
+          } else {
+            title = lang === 'ar' ? 'تم تخطي تحديد الموقع' : 'Localisation ignorée';
+            desc = lang === 'ar' ? 'يمكنك تحديده لاحقاً من صفحة "حسابي"' : 'Vous pourrez la définir plus tard depuis "Mon compte"';
+          }
+          return (
+            <div style={{ ...s.rowBox, borderColor: located ? '#28a745' : '#cfe3cf', backgroundColor: located ? '#f0fff0' : '#f7fbf7' }}>
+              <div style={s.rowTop}>
+                <div style={{ ...s.iconCircle, color: located ? '#28a745' : '#006400' }}>
+                  <Ico name={located ? 'check' : 'pin'} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ ...s.boxTitle, color: located ? '#28a745' : '#006400' }}>{title}</p>
+                  {desc && <p style={{ ...s.boxDesc, color: failed ? '#dc3545' : '#888' }}>{desc}</p>}
+                </div>
               </div>
-            );
-          })}
-        </div>
- 
-        {/* زر تحديد الكل */}
-        <button
-          type="button"
-          onClick={() => {
-            if (coveredDistricts.length === t.districts.length) {
-              setCoveredDistricts([]);
-            } else {
-              setCoveredDistricts([...t.districts]);
-            }
-          }}
-          style={{
-            width: '100%',
-            padding: '8px',
-            background: 'none',
-            border: '1px dashed #006400',
-            borderRadius: '8px',
-            color: '#006400',
-            cursor: 'pointer',
-            fontSize: '0.85rem'
-          }}
-        >
-          {coveredDistricts.length === t.districts.length
-            ? (lang === 'ar' ? 'إلغاء تحديد الكل' : 'Tout désélectionner')
-            : (lang === 'ar' ? 'تحديد كل المقاطعات' : 'Sélectionner tout')}
-        </button>
-      </>
-    )}
+
+              {locationChoice === null && (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" style={s.btnSm} onClick={() => { setLocationChoice('yes'); getLocation(); }}>
+                    {lang === 'ar' ? 'نعم، أنا بالمنزل' : 'Oui'}
+                  </button>
+                  <button type="button" style={s.btnSmOutline} onClick={() => setLocationChoice('no')}>
+                    {lang === 'ar' ? 'لا، لست الآن' : 'Non'}
+                  </button>
+                </div>
+              )}
+              {located && (
+                <div style={{ display: 'flex' }}>
+                  <button type="button" style={s.btnSmOutline} onClick={() => { setLocation(null); getLocation(); }}>
+                    {lang === 'ar' ? 'إعادة التحديد' : 'Relocaliser'}
+                  </button>
+                </div>
+              )}
+              {locationChoice === 'yes' && !location && (
+                <div style={{ display: 'flex' }}>
+                  <button type="button" style={{ ...s.btnSm, opacity: locationLoading ? 0.6 : 1 }} onClick={getLocation} disabled={locationLoading}>
+                    {locationLoading ? '...' : (lang === 'ar' ? 'حاول مرة أخرى' : 'Réessayer')}
+                  </button>
+                </div>
+              )}
+              {locationChoice === 'no' && (
+                <div style={{ display: 'flex' }}>
+                  <button type="button" style={s.btnSmOutline} onClick={() => setLocationChoice(null)}>
+                    {lang === 'ar' ? 'رجوع' : 'Retour'}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
  
     {error && <p style={s.error}>{error}</p>}
     <button style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }} onClick={handleStep2} disabled={loading}>
@@ -475,6 +288,12 @@ if (role === 'customer') {
     </div>
   );
 }
+const Ico = ({ name, size = 22 }) => {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  if (name === 'camera') return (<svg {...p}><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>);
+  if (name === 'pin') return (<svg {...p}><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg>);
+  return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.8 2.8L16 9.8" /></svg>);
+};
  
 const s = {
   container: {
@@ -483,7 +302,9 @@ const s = {
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f4f0',
-    padding: '20px'
+    padding: '64px 20px 24px',
+    position: 'relative',
+    boxSizing: 'border-box'
   },
   card: {
     backgroundColor: '#fff',
@@ -496,9 +317,6 @@ const s = {
   header: {
     textAlign: 'center',
     marginBottom: '25px'
-  },
-  logoIcon: {
-    fontSize: '2.5rem'
   },
   title: {
     margin: '8px 0',
@@ -536,32 +354,6 @@ const s = {
     textAlign: 'center',
     lineHeight: '1.5'
   },
-  roleRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px'
-  },
-  roleCard: {
-    border: '2px solid',
-    borderRadius: '16px',
-    padding: '15px 10px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '5px'
-  },
-  roleLabel: {
-    fontWeight: 'bold',
-    color: '#006400',
-    fontSize: '1rem'
-  },
-  roleDesc: {
-    fontSize: '0.7rem',
-    color: '#888',
-    textAlign: 'center'
-  },
   label: {
     fontSize: '0.9rem',
     fontWeight: '600',
@@ -578,22 +370,6 @@ const s = {
     backgroundColor: '#fafafa',
     width: '100%',
     boxSizing: 'border-box'
-  },
-  bankRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px'
-  },
-  bankCard: {
-    border: '2px solid',
-    borderRadius: '12px',
-    padding: '12px 5px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '5px'
   },
   error: {
     color: '#e53e3e',
@@ -619,6 +395,66 @@ const s = {
     fontSize: '0.9rem',
     cursor: 'pointer',
     textAlign: 'center'
-  }
+  },
+    rowBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    padding: '14px',
+    border: '1.5px solid #cfe3cf',
+    borderRadius: '14px',
+    backgroundColor: '#f7fbf7'
+  },
+  rowTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  iconCircle: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '50%',
+    backgroundColor: '#e6f2e6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  boxTitle: {
+    margin: 0,
+    fontWeight: 'bold',
+    fontSize: '0.92rem',
+    color: '#006400',
+    textAlign: 'start'
+  },
+  boxDesc: {
+    margin: '3px 0 0',
+    fontSize: '0.76rem',
+    color: '#888',
+    lineHeight: '1.5',
+    textAlign: 'start'
+  },
+  btnSm: {
+    flex: 1,
+    padding: '11px',
+    backgroundColor: '#006400',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    fontWeight: 'bold',
+    fontSize: '0.88rem',
+    cursor: 'pointer'
+  },
+  btnSmOutline: {
+    flex: 1,
+    padding: '11px',
+    backgroundColor: '#fff',
+    color: '#006400',
+    border: '1.5px solid #006400',
+    borderRadius: '10px',
+    fontWeight: 'bold',
+    fontSize: '0.88rem',
+    cursor: 'pointer'
+  },
 };
-
+ 

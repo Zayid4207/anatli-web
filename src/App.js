@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LandingPage from './LandingPage';
+import Logo from './Logo';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
 import CustomerScreen from './screens/CustomerScreen';
@@ -8,7 +9,7 @@ import AdminScreen from './screens/AdminScreen';
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
  
-const API_URL = 'https://anatli-server-production.up.railway.app';
+ const API_URL = process.env.REACT_APP_API_URL || 'https://anatli-server-production.up.railway.app';
  
 const firebaseConfig = {
   apiKey: "AIzaSyC1oNPF1cNNmQA57gK1XJX6Ljo-De3Ph-8",
@@ -20,7 +21,33 @@ const firebaseConfig = {
 };
  
 const firebaseApp = initializeApp(firebaseConfig);
-const messaging = getMessaging(firebaseApp);
+let messaging = null;
+try {
+  messaging = getMessaging(firebaseApp);
+} catch (e) {
+  console.warn('الإشعارات غير مدعومة في هذا المتصفح أو الصفحة');
+}
+// عند انتهاء الجلسة: مسح بيانات الدخول والعودة لشاشة الدخول تلقائيًا
+if (!window.__fetchGuardInstalled) {
+  window.__fetchGuardInstalled = true;
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    const res = await originalFetch(...args);
+    try {
+      const sentAuth = args[1] && args[1].headers && (args[1].headers.Authorization || args[1].headers.authorization);
+      if (sentAuth && (res.status === 401 || res.status === 403)) {
+        const data = await res.clone().json().catch(() => null);
+        const msg = data && data.error;
+        if (msg === 'انتهت صلاحية الجلسة' || msg === 'يجب تسجيل الدخول أولاً') {
+          localStorage.removeItem('hfx_user');
+          localStorage.removeItem('userToken');
+          window.location.reload();
+        }
+      }
+    } catch (e) {}
+    return res;
+  };
+}
  
 function App() {
   const [user, setUser] = useState(null);
@@ -68,14 +95,9 @@ function App() {
       } catch (e) {}
     }
     setLoading(false);
- 
-    window.addEventListener('beforeunload', () => {
-      localStorage.removeItem('hfx_user');
-    });
   }, []);
- 
   useEffect(() => {
-    if (!user || !user.id || hasSyncedToken.current) return;
+       if (!messaging || !user || !user.id || hasSyncedToken.current) return;
  
     const setupNotifications = async () => {
       try {
@@ -149,80 +171,28 @@ function App() {
         alignItems: 'center', justifyContent: 'center',
         zIndex: 9999, direction: 'rtl'
       }}>
-        <div style={{
-          width: '110px', height: '110px',
-          backgroundColor: '#ffc107',
-          borderRadius: '28px',
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 15px 40px rgba(255,193,7,0.4)',
-          marginBottom: '25px',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-        <div style={{
-            width: 0, height: 0,
-            borderLeft: '42px solid transparent',
-            borderRight: '42px solid transparent',
-            borderBottom: '34px solid #00843D',
-            position: 'absolute', top: '12px'
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '12px',
-            width: '56px', height: '40px',
-            backgroundColor: '#00843D', borderRadius: '3px 3px 0 0'
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '12px',
-            width: '18px', height: '24px',
-            backgroundColor: '#D21034', borderRadius: '3px 3px 0 0'
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '30px', right: '22px',
-            width: '12px', height: '12px',
-            backgroundColor: '#ffc107', borderRadius: '2px'
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '30px', left: '22px',
-            width: '12px', height: '12px',
-            backgroundColor: '#ffc107', borderRadius: '2px'
-          }} />
+        <div style={{ transform: 'scale(1.25)', margin: '10px 0 34px' }}>
+          <Logo size="xl" theme="light" stacked />
         </div>
- 
-        <div style={{
-          fontSize: '2.2rem', fontWeight: '900',
-          color: '#ffc107', letterSpacing: '8px',
-          fontFamily: 'Georgia, serif', marginBottom: '8px'
-        }}>
-          S.A.R.M
-        </div>
- 
         <div style={{
           width: '60px', height: '2px',
           backgroundColor: 'rgba(255,193,7,0.4)',
-          marginBottom: '12px'
+          margin: '24px 0 14px'
         }} />
- 
+
         <div style={{
-          fontSize: '1rem', fontWeight: '700',
+          fontSize: '1.15rem', fontWeight: '700',
           color: '#fff', textAlign: 'center',
-          lineHeight: 1.6, fontFamily: "'Tajawal', sans-serif",
+          fontFamily: "'Tajawal', sans-serif",
           opacity: 0.9
         }}>
-     خدمة تأمين 
+          صيانة منزلك باشتراك واحد
         </div>
         <div style={{
-          fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)',
-          fontFamily: "'Tajawal', sans-serif", marginBottom: '4px'
-        }}>
-           إصلاح المنازل
-        </div>
- 
-        <div style={{
-          fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)',
+           fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)',
           fontFamily: 'Georgia, serif', letterSpacing: '1px', marginTop: '4px'
         }}>
-          Service d'Assurance de réparation de maison
+          L'entretien de votre maison, par abonnement
         </div>
  
         <div style={{ display: 'flex', gap: '8px', marginTop: '40px' }}>
@@ -371,6 +341,4 @@ function App() {
     </>
   );
 }
- 
 export default App;
- 

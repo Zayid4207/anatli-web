@@ -1,17 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../translations';
- 
 export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [lang, setLang] = useState('ar');
   const t = useTranslation(lang);
   const [activeTab, setActiveTab] = useState('pending');
   const [subscriptions, setSubscriptions] = useState([]);
   const [callLogs, setCallLogs] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [salaryMonth, setSalaryMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [salaryList, setSalaryList] = useState([]);
+  const [callVisits, setCallVisits] = useState(null);
+  const [ratingStats, setRatingStats] = useState({});
   // البيانات
   const [pendingRequests, setPendingRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
   const [users, setUsers] = useState([]);
-  const [earnings, setEarnings] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
+  const [newTech, setNewTech] = useState({ full_name: '', phone: '', password: '', specialties: [] });
+  const [techLoading, setTechLoading] = useState(false);
+  const [showTechForm, setShowTechForm] = useState(false);
+  const [assignTechId, setAssignTechId] = useState('');
+  const [callTechId, setCallTechId] = useState('');
+  const [suggestion, setSuggestion] = useState(null);
+  const [callSuggestion, setCallSuggestion] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   
@@ -20,8 +32,6 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [clientResult, setClientResult] = useState(null);
   const [clientError, setClientError] = useState('');
  
-  // التسعير
-  const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(false);
  
   // فلتر الطلبات
@@ -32,7 +42,6 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   const [callCustomer, setCallCustomer] = useState(null);
   const [callSearchError, setCallSearchError] = useState('');
   const [callServiceType, setCallServiceType] = useState('');
-  const [callPrice, setCallPrice] = useState('');
   const [callDescription, setCallDescription] = useState('');
   const [callCreateLoading, setCallCreateLoading] = useState(false);
   const [callVoiceBlob, setCallVoiceBlob] = useState(null);
@@ -65,17 +74,19 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
  
   const token = localStorage.getItem('userToken');
  
-  useEffect(() => {
+   useEffect(() => {
     fetchPendingRequests();
     fetchAllRequests();
     fetchUsers();
-    fetchEarnings();
     fetchSubscriptions();
-    const interval = setInterval(() => {
+    fetchTechnicians();
+        const interval = setInterval(() => {
+      if (document.hidden) return;
       fetchPendingRequests();
       fetchAllRequests();
       fetchSubscriptions();
-    }, 20000);
+      fetchTechnicians();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
  
@@ -211,14 +222,167 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     } catch (err) {}
   }, [apiUrl, token]);
  
-  const fetchEarnings = useCallback(async () => {
+    const fetchTechnicians = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/admin/earnings`, {
+      const res = await fetch(`${apiUrl}/admin/technicians`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) setEarnings(await res.json());
+      if (res.ok) setTechnicians(await res.json());
     } catch (err) {}
   }, [apiUrl, token]);
+ 
+  // متوسط تقييم كل فني
+  const fetchRatingStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/ratings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        const map = {};
+        rows.forEach(r => { map[r.provider_id] = r; });
+        setRatingStats(map);
+      }
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  useEffect(() => {
+    if (activeTab === 'technicians') { fetchTechnicians(); fetchRatingStats(); }
+  }, [activeTab, fetchTechnicians, fetchRatingStats]);
+ 
+  const handleCreateTechnician = async () => {
+    if (!newTech.full_name.trim() || !newTech.phone.trim() || !newTech.password) {
+      alert(lang === 'ar' ? 'يرجى تعبئة كل الحقول' : 'Veuillez remplir tous les champs');
+      return;
+    }
+    if (newTech.specialties.length === 0) {
+      alert(lang === 'ar' ? 'يرجى اختيار تخصص واحد على الأقل' : 'Choisissez au moins une spécialité');
+      return;
+    }
+    setTechLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/admin/technicians`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTech)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(lang === 'ar' ? '✅ تم إنشاء حساب الفني' : '✅ Compte technicien créé');
+        setNewTech({ full_name: '', phone: '', password: '', specialties: [] });
+        setShowTechForm(false);
+        fetchTechnicians();
+        fetchUsers();
+      } else {
+        alert(data.error || t.error);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setTechLoading(false);
+    }
+  };
+ 
+  const handleToggleAvailability = async (techId, current) => {
+    try {
+      await fetch(`${apiUrl}/admin/technicians/${techId}/availability`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_available: !current })
+      });
+      fetchTechnicians();
+    } catch (err) {}
+  };
+  // ===== التخصصات والاقتراح =====
+  const specialtyLabel = (key) => {
+    if (key === 'plumber') return lang === 'ar' ? 'سباك' : 'Plombier';
+    if (key === 'electrician') return lang === 'ar' ? 'كهربائي' : 'Électricien';
+    return key;
+  };
+ 
+  const techOptionLabel = (tc) => {
+    const sp = (tc.specialties || []).map(specialtyLabel).join(' / ');
+    return `${tc.full_name}${sp ? ' — ' + sp : ''} — 🛠️ ${tc.open_jobs}`;
+  };
+ 
+  const suggestionHint = (sug) => {
+    if (!sug) return '';
+    if (!sug.technician) {
+      return lang === 'ar' ? '⚠️ لا يوجد فني متاح حالياً' : '⚠️ Aucun technicien disponible';
+    }
+    const name = sug.technician.full_name;
+    if (!sug.specialty) {
+      return lang === 'ar' ? `⭐ المقترح: ${name}` : `⭐ Suggéré : ${name}`;
+    }
+    const sp = specialtyLabel(sug.specialty);
+    if (sug.matched) {
+      return lang === 'ar' ? `⭐ المقترح: ${name} (${sp})` : `⭐ Suggéré : ${name} (${sp})`;
+    }
+    return lang === 'ar'
+      ? `⚠️ لا يوجد ${sp} متاح — المقترح: ${name}`
+      : `⚠️ Aucun ${sp} disponible — suggéré : ${name}`;
+  };
+ 
+  const handleToggleSpecialty = async (tc, key) => {
+    const current = tc.specialties || [];
+    const next = current.includes(key) ? current.filter(x => x !== key) : [...current, key];
+    if (next.length === 0) {
+      alert(lang === 'ar' ? 'يجب أن يبقى للفني تخصص واحد على الأقل' : 'Le technicien doit avoir au moins une spécialité');
+      return;
+    }
+    try {
+      await fetch(`${apiUrl}/admin/technicians/${tc.id}/specialties`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ specialties: next })
+      });
+      fetchTechnicians();
+    } catch (err) {}
+  };
+ 
+  const fetchSuggestion = async (serviceType) => {
+    try {
+      const res = await fetch(
+        `${apiUrl}/admin/technicians/suggested?service_type=${encodeURIComponent(serviceType || '')}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (res.ok) return await res.json();
+    } catch (err) {}
+    return null;
+  };
+ 
+  // اقتراح فني عند فتح طلب وارد
+  useEffect(() => {
+    if (!selectedRequest || selectedRequest.status !== 'pending_admin') {
+      setSuggestion(null);
+      setAssignTechId('');
+      return;
+    }
+    let cancelled = false;
+    fetchSuggestion(selectedRequest.service_type).then(sug => {
+      if (cancelled) return;
+      setSuggestion(sug);
+      setAssignTechId(sug && sug.technician ? String(sug.technician.id) : '');
+    });
+    return () => { cancelled = true; };
+  }, [selectedRequest]);
+ 
+  // اقتراح فني عند اختيار نوع المشكلة في تبويب "طلب لزبون"
+  useEffect(() => {
+    if (!callServiceType) {
+      setCallSuggestion(null);
+      setCallTechId('');
+      return;
+    }
+    let cancelled = false;
+    fetchSuggestion(callServiceType).then(sug => {
+      if (cancelled) return;
+      setCallSuggestion(sug);
+      setCallTechId(sug && sug.technician ? String(sug.technician.id) : '');
+    });
+    return () => { cancelled = true; };
+  }, [callServiceType]);
+ 
   const fetchCallLogs = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/admin/calls`, {
@@ -230,6 +394,99 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
    useEffect(() => {
     if (activeTab === 'callLogs') fetchCallLogs();
   }, [activeTab, fetchCallLogs]);
+    // الباقات من قاعدة البيانات (لأزرار تفعيل الاشتراك)
+  useEffect(() => {
+    fetch(`${apiUrl}/packages`)
+      .then(r => (r.ok ? r.json() : []))
+      .then(setPackages)
+      .catch(() => {});
+  }, [apiUrl]);
+    // ===== رواتب الفنيين =====
+  const fetchSalaries = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/salaries?month=${salaryMonth}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSalaryList(data.providers || []);
+      }
+    } catch (err) {}
+  }, [apiUrl, token, salaryMonth]);
+
+  useEffect(() => {
+    if (activeTab === 'salaries') fetchSalaries();
+  }, [activeTab, fetchSalaries]);
+
+  const shiftSalaryMonth = (delta) => {
+    const [y, m] = salaryMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setSalaryMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const paySalary = async (providerId) => {
+    if (!window.confirm(lang === 'ar' ? 'تأكيد تسجيل صرف راتب هذا الشهر؟' : 'Confirmer le paiement du salaire ?')) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/salaries/${providerId}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ month: salaryMonth })
+      });
+      if (res.ok) fetchSalaries();
+    } catch (err) {}
+  };
+
+  const undoSalary = async (providerId) => {
+    if (!window.confirm(lang === 'ar' ? 'التراجع عن تسجيل الصرف؟' : 'Annuler le paiement ?')) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/salaries/${providerId}/pay/${salaryMonth}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchSalaries();
+    } catch (err) {}
+  };
+
+  const editSalary = async (p) => {
+    const v = window.prompt(lang === 'ar' ? `الراتب الشهري الجديد لـ ${p.full_name} (MRU):` : `Nouveau salaire mensuel de ${p.full_name} (MRU) :`, p.monthly_salary);
+    if (v === null) return;
+    const n = parseInt(v, 10);
+    if (!Number.isInteger(n) || n < 0) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/salaries/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ monthly_salary: n })
+      });
+      if (res.ok) fetchSalaries();
+    } catch (err) {}
+  };
+ 
+  // ===== بلاغات الزبائن =====
+  const fetchReports = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/reports`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setReports(await res.json());
+    } catch (err) {}
+  }, [apiUrl, token]);
+ 
+  useEffect(() => {
+    fetchReports();
+    const timer = setInterval(fetchReports, 30000);
+    return () => clearInterval(timer);
+  }, [fetchReports]);
+ 
+  const resolveReport = async (id) => {
+    try {
+      const res = await fetch(`${apiUrl}/admin/reports/${id}/resolve`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchReports();
+    } catch (err) {}
+  };
   const deleteCallLog = async (id) => {
     if (!window.confirm(lang === 'ar' ? 'هل تريد حذف سجل هذه المكالمة؟' : 'Supprimer cet appel ?')) return;
     try {
@@ -251,25 +508,29 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       if (res.ok) fetchCallLogs();
     } catch (err) {}
   };
-  // تسعير الطلب ونشره
-  const handleQuote = async (requestId) => {
-    if (!price || isNaN(price) || parseInt(price) <= 0) {
-      alert(lang === 'ar' ? 'يرجى إدخال سعر صحيح' : 'Veuillez entrer un prix valide');
+   // تعيين الطلب للفني المختار
+  const handleAssign = async (requestId) => {
+    if (!assignTechId) {
+      alert(lang === 'ar' ? 'يرجى اختيار فني' : 'Veuillez choisir un technicien');
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/admin/requests/${requestId}/quote`, {
+      const res = await fetch(`${apiUrl}/admin/requests/${requestId}/assign`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quoted_price: parseInt(price) })
+        body: JSON.stringify({ technician_id: assignTechId })
       });
+      const data = await res.json();
       if (res.ok) {
-        alert(lang === 'ar' ? '✅ تم نشر الطلب للفنيين' : '✅ Demande publiée aux techniciens');
-        setPrice('');
+        alert(lang === 'ar' ? '✅ تم تعيين الطلب للفني' : '✅ Demande assignée');
+        setAssignTechId('');
         setSelectedRequest(null);
         fetchPendingRequests();
         fetchAllRequests();
+        fetchTechnicians();
+      } else {
+        alert(data.error || t.error);
       }
     } catch (err) {
       alert(t.serverError);
@@ -277,6 +538,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       setLoading(false);
     }
   };
+ 
  
   // رفض وحذف طلب
   const handleReject = async (requestId) => {
@@ -336,7 +598,28 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       setLoading(false);
     }
   };
- 
+   // إعادة تعيين كلمة مرور مستخدم (رمز مؤقت)
+  const handleResetPassword = async (u) => {
+    if (!window.confirm(lang === 'ar'
+      ? `هل تريد إعادة تعيين كلمة مرور ${u.full_name}؟\nتأكد أنه صاحب الحساب فعلًا.`
+      : `Réinitialiser le mot de passe de ${u.full_name} ?\nVérifiez qu'il s'agit bien du titulaire.`)) return;
+    try {
+      const res = await fetch(`${apiUrl}/admin/users/${u.id}/reset-password`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(lang === 'ar'
+          ? `✅ كلمة المرور المؤقتة لـ ${u.full_name}:\n\n${data.temp_password}\n\nأعطه الرمز، وليغيّره بعد الدخول.`
+          : `✅ Mot de passe temporaire de ${u.full_name} :\n\n${data.temp_password}\n\nCommuniquez-le, il pourra le changer après connexion.`);
+      } else {
+        alert(data.error || t.serverError);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    }
+  };
   // قبول/رفض طلب اشتراك
   const handleSubAction = async (subId, action, userId, packageId) => {
     try {
@@ -359,17 +642,6 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }
   };
  
-  // صرف مستحقات فني
-  const handlePay = async (earningId) => {
-    try {
-      await fetch(`${apiUrl}/admin/earnings/${earningId}/pay`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      alert(lang === 'ar' ? '✅ تم تسجيل الدفع' : '✅ Paiement enregistré');
-      fetchEarnings();
-    } catch (err) {}
-  };
   // البحث برمز العميل
   const handleClientSearch = async () => {
     if (!clientCode.trim()) return;
@@ -403,6 +675,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       const data = await res.json();
       if (res.ok) {
         setCallCustomer(data.user);
+        setCallVisits(data.visits || null);
       } else {
         setCallSearchError(t.clientNotFound);
       }
@@ -411,14 +684,11 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
     }
   };
  
-  // نشر الطلب مباشرة للفنيين
- const handleCreateForCustomer = async () => {
+  // إنشاء الطلب وتعيينه للفني المختار (أو حفظه في الواردة)
+ const handleCreateForCustomer = async (force) => {
+    const isForce = force === true;
     if (!callServiceType) {
       alert(lang === 'ar' ? 'يرجى اختيار نوع المشكلة' : 'Veuillez choisir le type de problème');
-      return;
-    }
-    if (!callPrice || isNaN(callPrice) || parseInt(callPrice) <= 0) {
-      alert(lang === 'ar' ? 'يرجى إدخال سعر صحيح' : 'Veuillez entrer un prix valide');
       return;
     }
     setCallCreateLoading(true);
@@ -426,7 +696,8 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
       const formData = new FormData();
       formData.append('client_code', callCustomer.client_code);
       formData.append('service_type', callServiceType);
-      formData.append('quoted_price', parseInt(callPrice));
+      if (isForce) formData.append('force', 'true');
+      if (callTechId) formData.append('technician_id', callTechId);
       if (callDescription) formData.append('description', callDescription);
       // هنا يبدا 
       console.log('🎙️ تسجيل الإدارة:', {
@@ -434,7 +705,7 @@ export default function AdminScreen({ user, apiUrl, onLogout }) {
   type: callVoiceBlob?.type,
   size: callVoiceBlob?.size
 });
-
+ 
 if (callVoiceBlob && callVoiceBlob.size > 0) {
   formData.append('voice_note', callVoiceBlob, 'voice.webm');
 }
@@ -446,14 +717,32 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(lang === 'ar' ? '✅ تم إنشاء الطلب ونشره للفنيين' : '✅ Demande créée et publiée');
+        if (data.assigned) {
+          alert(lang === 'ar' ? '✅ تم إنشاء الطلب وتعيينه للفني' : '✅ Demande créée et assignée');
+        } else {
+          alert(lang === 'ar' ? '📥 تم حفظ الطلب في الواردة — عيّن له فنياً من هناك' : '📥 Demande enregistrée dans les reçues — assignez un technicien');
+        }
         setCallCode('');
         setCallCustomer(null);
         setCallServiceType('');
-        setCallPrice('');
+        setCallSuggestion(null);
         setCallDescription('');
         discardCallVoice();
         fetchAllRequests();
+        fetchPendingRequests();
+        fetchTechnicians();
+        setCallVisits(null);
+      } else if (data.error === 'visits_exhausted' || data.error === 'open_request_exists') {
+        setCallCreateLoading(false);
+        const msgAr = data.error === 'visits_exhausted'
+          ? `⚠️ استهلك الزبون كل زياراته (${data.used}/${data.total}).\nهل تريد إنشاء زيارة إضافية له بإذن منك؟`
+          : '⚠️ لدى هذا الزبون طلب لم يكتمل بعد.\nهل تريد إنشاء طلب إضافي له بإذن منك؟';
+        const msgFr = data.error === 'visits_exhausted'
+          ? `⚠️ Le client a utilisé toutes ses visites (${data.used}/${data.total}).\nCréer une visite supplémentaire ?`
+          : '⚠️ Ce client a déjà une demande en cours.\nCréer une demande supplémentaire ?';
+        const ok = window.confirm(lang === 'ar' ? msgAr : msgFr);
+        if (ok) await handleCreateForCustomer(true);
+        return;
       } else {
         alert(data.error || t.error);
       }
@@ -625,8 +914,8 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
       setCallState('connected');
       callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     } catch (err) {
-      alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
-      declineCall();
+     alert(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون' : 'Veuillez autoriser le microphone');
+declineCall();
     } finally {
       isAcceptingRef.current = false;
     }
@@ -663,11 +952,26 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
   const getStatusStyle = (status) => {
     const map = {
       pending_admin: { bg: '#fff3cd', color: '#856404' },
-      quoted: { bg: '#d1ecf1', color: '#0c5460' },
       assigned: { bg: '#d4edda', color: '#155724' },
+      on_the_way: { bg: '#d1ecf1', color: '#0c5460' },
+      in_progress: { bg: '#ffe0b2', color: '#a35200' },
       completed: { bg: '#e2e3e5', color: '#383d41' }
     };
     return map[status] || { bg: '#f8f9fa', color: '#333' };
+  };
+ 
+  // هل الزبون مشترك الآن؟ (له باقة واشتراكه لم ينتهِ)
+  const subDaysLeft = (u) => {
+    if (!u || !u.package_id || !u.subscription_end_date) return 0;
+    const diff = new Date(u.subscription_end_date) - new Date();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+  const isSubscribedUser = (u) => subDaysLeft(u) > 0;
+ 
+  const statusLabel = (st) => {
+    const ar = { pending_admin: 'بانتظار التعيين', assigned: 'معيّن', on_the_way: 'في الطريق', in_progress: 'قيد العمل', completed: 'مكتمل' };
+    const fr = { pending_admin: 'À assigner', assigned: 'Assignée', on_the_way: 'En route', in_progress: 'En cours', completed: 'Terminée' };
+    return (lang === 'ar' ? ar : fr)[st] || st;
   };
  
   const filteredRequests = statusFilter === 'all'
@@ -675,7 +979,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
     : allRequests.filter(r => r.status === statusFilter);
  
   const customers = users.filter(u => u.user_role === 'customer');
-  const providers = users.filter(u => u.user_role === 'provider');
+  const availableTechs = technicians.filter(tc => tc.is_available && !tc.is_banned);
  
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
@@ -752,7 +1056,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
       {selectedRequest && (
         <div style={s.overlay}>
           <div style={s.modal}>
-            <button style={s.closeBtn} onClick={() => { setSelectedRequest(null); setPrice(''); }}>✕</button>
+            <button style={s.closeBtn} onClick={() => setSelectedRequest(null)}>✕</button>
  
             <h3 style={s.modalTitle}>
               {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {selectedRequest.id}
@@ -823,29 +1127,36 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
               const st = getStatusStyle(selectedRequest.status);
               return (
                 <div style={{ ...s.statusBox, backgroundColor: st.bg, borderColor: st.color }}>
-                  {t[`status_${selectedRequest.status}`]}
+                  {statusLabel(selectedRequest.status)}
                 </div>
               );
             })()}
  
-            {/* السعر المحدد */}
-            {selectedRequest.quoted_price && (
-              <div style={s.priceBox}>
-                {lang === 'ar' ? 'السعر:' : 'Prix:'} <strong>{selectedRequest.quoted_price} MRU</strong>
-              </div>
-            )}
- 
-            {/* تسعير الطلب — فقط للطلبات الواردة */}
+             {/* تعيين فني — فقط للطلبات الواردة */}
             {selectedRequest.status === 'pending_admin' && (
               <div style={s.quoteSection}>
-                <p style={s.sectionLabel}>{t.setPrice}</p>
-                <input
+                <p style={s.sectionLabel}>
+                  {lang === 'ar' ? '👷 تعيين فني' : '👷 Assigner un technicien'}
+                </p>
+                {suggestion && (
+                  <p style={{ margin: '0 0 8px', fontSize: '0.8rem', fontWeight: 'bold', color: suggestion.matched ? '#006400' : '#856404' }}>
+                    {suggestionHint(suggestion)}
+                  </p>
+                )}
+                <select
                   style={s.priceInput}
-                  type="number"
-                  placeholder={t.pricePlaceholder}
-                  value={price}
-                  onChange={e => setPrice(e.target.value)}
-                />
+                  value={assignTechId}
+                  onChange={e => setAssignTechId(e.target.value)}
+                >
+                  <option value="">
+                    {lang === 'ar' ? '-- اختر فني --' : '-- Choisir un technicien --'}
+                  </option>
+                  {availableTechs.map(tc => (
+                    <option key={tc.id} value={tc.id}>
+                      {techOptionLabel(tc)}
+                    </option>
+                  ))}
+                </select>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button
                     style={{ ...s.btnDanger, flex: 1 }}
@@ -855,10 +1166,10 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                   </button>
                   <button
                     style={{ ...s.btnSuccess, flex: 2, opacity: loading ? 0.7 : 1 }}
-                    onClick={() => handleQuote(selectedRequest.id)}
-                    disabled={loading}
+                    onClick={() => handleAssign(selectedRequest.id)}
+                    disabled={loading || !assignTechId}
                   >
-                    {loading ? '...' : t.publishRequest}
+                    {loading ? '...' : (lang === 'ar' ? '✅ تعيين' : '✅ Assigner')}
                   </button>
                 </div>
               </div>
@@ -890,10 +1201,20 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                   <span style={s.infoValue}>{selectedUser.district}</span>
                 </div>
               )}
-              {selectedUser.bank_type && (
+              {selectedUser.user_role === 'customer' && (
                 <div style={s.infoRow}>
-                  <span style={s.infoLabel}>{t.bankType}:</span>
-                  <span style={s.infoValue}>{selectedUser.bank_type} — {selectedUser.bank_phone}</span>
+                  <span style={s.infoLabel}>{lang === 'ar' ? 'الاشتراك:' : 'Abonnement:'}</span>
+                  <span style={{ ...s.infoValue, fontWeight: 'bold', color: isSubscribedUser(selectedUser) ? '#155724' : '#dc3545' }}>
+                    {isSubscribedUser(selectedUser)
+                      ? `✅ ${selectedUser.package_name || ''} (${subDaysLeft(selectedUser)} ${lang === 'ar' ? 'يوم متبقٍ' : 'j restants'})`
+                      : `❌ ${lang === 'ar' ? 'غير مشترك' : 'Non abonné'}`}
+                  </span>
+                </div>
+              )}
+              {selectedUser.user_role === 'customer' && isSubscribedUser(selectedUser) && selectedUser.visits_total != null && (
+                <div style={s.infoRow}>
+                  <span style={s.infoLabel}>{lang === 'ar' ? 'الزيارات:' : 'Visites:'}</span>
+                 <span style={s.infoValue} dir="ltr">{selectedUser.visits_used} / {selectedUser.visits_total}</span>
                 </div>
               )}
             </div>
@@ -903,18 +1224,14 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
               <div style={s.subSection}>
                 <p style={s.sectionLabel}>{t.activateSubscription}</p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[
-                    { id: 1, label: lang === 'ar' ? 'الأساسية — 1100' : 'Essentiel — 1100' },
-                    { id: 2, label: lang === 'ar' ? 'المتوسطة — 1300' : 'Standard — 1300' },
-                    { id: 3, label: lang === 'ar' ? 'الشاملة — 1500' : 'Intégral — 1500' }
-                  ].map(pkg => (
+                                    {[...packages].sort((a, b) => a.price - b.price).map(pkg => (
                     <button
                       key={pkg.id}
                       style={{ ...s.pkgBtn, opacity: loading ? 0.7 : 1 }}
                       onClick={() => handleSubscribe(selectedUser.id, pkg.id)}
                       disabled={loading}
                     >
-                      {pkg.label} MRU
+                      {pkg.name} — {(pkg.price * (pkg.duration_months || 4)).toLocaleString('en-US')} MRU
                     </button>
                   ))}
                 </div>
@@ -943,6 +1260,15 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                 {selectedUser.is_banned ? t.unbanUser : t.banUser}
               </button>
             </div>
+
+            {selectedUser.user_role !== 'admin' && (
+              <button
+                style={{ ...s.btnDanger, width: '100%', marginTop: '10px', color: '#555', borderColor: '#999' }}
+                onClick={() => handleResetPassword(selectedUser)}
+              >
+                🔑 {lang === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Réinitialiser le mot de passe'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -974,7 +1300,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
             <span style={s.statLabel}>{lang === 'ar' ? 'طلبات واردة' : 'En attente'}</span>
           </div>
           <div style={s.statCard}>
-            <span style={s.statNum}>{allRequests.filter(r => r.status === 'assigned').length}</span>
+            <span style={s.statNum}>{allRequests.filter(r => ['assigned', 'on_the_way', 'in_progress'].includes(r.status)).length}</span>
             <span style={s.statLabel}>{lang === 'ar' ? 'قيد التنفيذ' : 'En cours'}</span>
           </div>
           <div style={s.statCard}>
@@ -995,11 +1321,13 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
               { id: 'pending', icon: '📥', label: lang === 'ar' ? 'الواردة' : 'Reçues', color: '#fff3cd', border: '#ffc107', count: pendingRequests.length },
               { id: 'all', icon: '📋', label: lang === 'ar' ? 'كل الطلبات' : 'Tout', color: '#d1ecf1', border: '#17a2b8', count: null },
               { id: 'users', icon: '👥', label: lang === 'ar' ? 'المستخدمون' : 'Utilisateurs', color: '#d4edda', border: '#28a745', count: users.length },
-              { id: 'earnings', icon: '💰', label: lang === 'ar' ? 'المستحقات' : 'Revenus', color: '#e8f5e9', border: '#006400', count: earnings.length },
               { id: 'subscriptions', icon: '💳', label: lang === 'ar' ? 'الاشتراكات' : 'Abonnements', color: '#fce4ec', border: '#e91e63', count: subscriptions.length },
               { id: 'search', icon: '🔍', label: lang === 'ar' ? 'بحث بالرمز' : 'Recherche', color: '#e8eaf6', border: '#1a237e', count: null },
               { id: 'createForCustomer', icon: '🆕', label: lang === 'ar' ? 'طلب لزبون' : 'Nouvelle demande', color: '#e0f7fa', border: '#00838f', count: null },
+              { id: 'technicians', icon: '🔧', label: lang === 'ar' ? 'الفنيون' : 'Techniciens', color: '#fff8e1', border: '#ff8f00', count: null },
               { id: 'callLogs', icon: '📋', label: lang === 'ar' ? 'سجل المكالمات' : 'Historique appels', color: '#fff0f0', border: '#c62828', count: callLogs.filter(c => c.status === 'missed').length || null },
+              { id: 'reports', icon: '⚠️', label: lang === 'ar' ? 'البلاغات' : 'Signalements', color: '#fff3e0', border: '#e65100', count: reports.filter(r => !r.is_resolved).length || null },
+              { id: 'salaries', icon: '💰', label: lang === 'ar' ? 'الرواتب' : 'Salaires', color: '#e8f5e9', border: '#2e7d32', count: null },
             ].map(tab => (
               <div
                 key={tab.id}
@@ -1071,7 +1399,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
           {activeTab === 'all' && (
             <div>
               <div style={s.filterRow}>
-                {['all', 'pending_admin', 'quoted', 'assigned', 'completed'].map(st => (
+                {['all', 'pending_admin', 'assigned', 'on_the_way', 'in_progress', 'completed'].map(st => (
                   <button
                     key={st}
                     style={{
@@ -1081,7 +1409,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                     }}
                     onClick={() => setStatusFilter(st)}
                   >
-                    {st === 'all' ? (lang === 'ar' ? 'الكل' : 'Tout') : t[`status_${st}`] || st}
+                    {st === 'all' ? (lang === 'ar' ? 'الكل' : 'Tout') : statusLabel(st)}
                   </button>
                 ))}
               </div>
@@ -1098,7 +1426,7 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                       <div style={s.cardTop}>
                         <span style={s.cardId}>#{req.id}</span>
                         <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                          {t[`status_${req.status}`]}
+                          {statusLabel(req.status)}
                         </span>
                       </div>
                       <p style={s.cardInfo}>👤 {req.customer_name}</p>
@@ -1110,11 +1438,6 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                       )}
                       {req.provider_name && (
                         <p style={{ ...s.cardInfo, color: '#006400' }}>👷 {req.provider_name}</p>
-                      )}
-                      {req.quoted_price && (
-                        <p style={{ ...s.cardInfo, fontWeight: 'bold', color: '#006400' }}>
-                          💰 {req.quoted_price} MRU
-                        </p>
                       )}
                       <p style={s.cardDate}>
                         {new Date(req.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
@@ -1151,74 +1474,25 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                   </div>
                   <p style={s.cardInfo}>📞 {u.phone}</p>
                   {u.district && <p style={s.cardInfo}>📍 {u.district}</p>}
-                </div>
-              ))}
- 
-              <h3 style={{ ...s.sectionTitle, marginTop: '20px' }}>
-                {lang === 'ar' ? `🔧 الفنيون (${providers.length})` : `🔧 Techniciens (${providers.length})`}
-              </h3>
-              {providers.map(u => (
-                <div key={u.id} style={s.userCard} onClick={() => setSelectedUser(u)}>
-                  <div style={s.cardTop}>
-                    <span style={s.cardName}>{u.full_name}</span>
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      {!u.is_verified && (
-                        <span style={s.unverifiedBadge}>
-                          {lang === 'ar' ? 'غير مفعل' : 'Non activé'}
-                        </span>
-                      )}
-                      {u.is_banned && (
-                        <span style={s.bannedBadge}>
-                          {lang === 'ar' ? 'محظور' : 'Banni'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p style={s.cardInfo}>📞 {u.phone}</p>
-                </div>
-              ))}
-            </div>
-          )}
- 
-          {/* ===== المستحقات ===== */}
-          {activeTab === 'earnings' && (
-            <div>
-              {earnings.length === 0 ? (
-                <div style={s.emptyBox}>
-                  <span style={{ fontSize: '3rem' }}>💰</span>
-                  <p style={{ color: '#888' }}>
-                    {lang === 'ar' ? 'لا توجد مستحقات معلقة' : 'Aucun paiement en attente'}
+                  {isSubscribedUser(u) && u.visits_total != null && (
+                    <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: u.visits_total - u.visits_used <= 0 ? '#dc3545' : '#555', fontWeight: 'bold' }}>
+                      🛠️ {lang === 'ar' ? 'الزيارات' : 'Visites'}: <bdi dir="ltr">{u.visits_used}/{u.visits_total}</bdi>
+                    </p>
+                  )}
+                  <p style={{ margin: '8px 0 0' }}>
+                    <span style={{
+                      display: 'inline-block', padding: '4px 10px', borderRadius: '20px',
+                      fontSize: '0.75rem', fontWeight: 'bold',
+                      backgroundColor: isSubscribedUser(u) ? '#d4edda' : '#f8d7da',
+                      color: isSubscribedUser(u) ? '#155724' : '#721c24'
+                    }}>
+                      {isSubscribedUser(u)
+                        ? `✅ ${lang === 'ar' ? 'مشترك' : 'Abonné'}${u.package_name ? ' — ' + u.package_name : ''} · ${subDaysLeft(u)} ${lang === 'ar' ? 'يوم' : 'j'}`
+                        : `❌ ${lang === 'ar' ? 'غير مشترك' : 'Non abonné'}`}
+                    </span>
                   </p>
                 </div>
-              ) : (
-                earnings.map(e => (
-                  <div key={e.id} style={s.earningCard}>
-                    <div style={s.cardTop}>
-                      <span style={s.cardName}>{e.provider_name}</span>
-                      <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#006400' }}>
-                        {e.amount} MRU
-                      </span>
-                    </div>
-                    <div style={s.bankDetail}>
-                      <span style={{ textTransform: 'capitalize', fontWeight: 'bold', color: '#333' }}>
-                        📱 {e.bank_type}
-                      </span>
-                      <span style={{ color: '#006400', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                        {e.bank_phone}
-                      </span>
-                    </div>
-                    <p style={s.cardInfo}>
-                      {lang === 'ar' ? 'مهمة رقم:' : 'Mission #'} {e.request_id}
-                    </p>
-                    <p style={s.cardDate}>
-                      {new Date(e.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
-                    </p>
-                    <button style={s.payBtn} onClick={() => handlePay(e.id)}>
-                      {t.markAsPaid}
-                    </button>
-                  </div>
-                ))
-              )}
+              ))}
             </div>
           )}
  
@@ -1354,14 +1628,9 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                             <div style={s.cardTop}>
                               <span style={s.cardId}>#{req.id}</span>
                               <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                                {t[`status_${req.status}`]}
+                                {statusLabel(req.status)}
                               </span>
                             </div>
-                            {req.quoted_price && (
-                              <p style={{ ...s.cardInfo, color: '#006400', fontWeight: 'bold' }}>
-                                💰 {req.quoted_price} MRU
-                              </p>
-                            )}
                             <p style={s.cardDate}>
                               {new Date(req.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                             </p>
@@ -1405,6 +1674,16 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                   <p style={s.cardInfo}>📞 {callCustomer.phone}</p>
                   <p style={s.cardInfo}>📍 {callCustomer.district} — {callCustomer.address}</p>
                   <p style={s.cardInfo}>📦 {callCustomer.package_name || '-'}</p>
+                  {callVisits && callVisits.total != null && (
+                    <p style={{
+                      ...s.cardInfo, fontWeight: 'bold',
+                      color: callVisits.remaining <= 0 ? '#dc3545' : (callVisits.remaining <= 2 ? '#e65100' : '#155724')
+                    }}>
+                      🛠️ {lang === 'ar'
+                        ? `الزيارات: استهلك ${callVisits.used} من ${callVisits.total} — المتبقي ${callVisits.remaining}`
+                        : `Visites : ${callVisits.used}/${callVisits.total} utilisées — reste ${callVisits.remaining}`}
+                    </p>
+                  )}
  
                   {callCustomer.last_latitude && callCustomer.last_longitude ? (
                     <div style={{ marginTop: '8px' }}>
@@ -1476,14 +1755,28 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
   ))}
                       </select>
  
-                      <p style={{ ...s.sectionLabel, marginTop: '12px' }}>{t.setPrice}</p>
-                      <input
+                      <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
+                        {lang === 'ar' ? '👷 تعيين فني' : '👷 Assigner un technicien'}
+                      </p>
+                      {callServiceType && callSuggestion && (
+                        <p style={{ margin: '0 0 8px', fontSize: '0.8rem', fontWeight: 'bold', color: callSuggestion.matched ? '#006400' : '#856404' }}>
+                          {suggestionHint(callSuggestion)}
+                        </p>
+                      )}
+                      <select
                         style={s.priceInput}
-                        type="number"
-                        placeholder={t.pricePlaceholder}
-                        value={callPrice}
-                        onChange={e => setCallPrice(e.target.value)}
-                      />
+                        value={callTechId}
+                        onChange={e => setCallTechId(e.target.value)}
+                      >
+                        <option value="">
+                          {lang === 'ar' ? '-- بدون تعيين الآن --' : '-- Sans assignation --'}
+                        </option>
+                        {availableTechs.map(tc => (
+                          <option key={tc.id} value={tc.id}>
+                            {techOptionLabel(tc)}
+                          </option>
+                        ))}
+                      </select>
  
                       <p style={{ ...s.sectionLabel, marginTop: '12px' }}>
                         {lang === 'ar' ? 'ملاحظة (اختياري)' : 'Note (optionnel)'}
@@ -1543,11 +1836,140 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
                       >
                         {callCreateLoading
                           ? '...'
-                          : (lang === 'ar' ? '🚀 نشر الطلب للفنيين' : '🚀 Publier aux techniciens')}
+                          : callTechId
+                            ? (lang === 'ar' ? '🚀 إنشاء الطلب وتعيينه للفني' : '🚀 Créer et assigner')
+                            : (lang === 'ar' ? '📥 حفظ الطلب بدون تعيين' : '📥 Enregistrer sans assigner')}
                       </button>
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+                    {/* ===== الفنيون ===== */}
+          {activeTab === 'technicians' && (
+            <div>
+              <button
+                style={{ ...s.btnSuccess, width: '100%', marginBottom: '12px' }}
+                onClick={() => setShowTechForm(!showTechForm)}
+              >
+                {showTechForm
+                  ? (lang === 'ar' ? '✕ إغلاق' : '✕ Fermer')
+                  : (lang === 'ar' ? '➕ إضافة فني' : '➕ Ajouter un technicien')}
+              </button>
+ 
+              {showTechForm && (
+                <div style={s.clientCard}>
+                  <input
+                    style={{ ...s.priceInput, textAlign: 'right', fontSize: '1rem', marginBottom: '10px' }}
+                    placeholder={lang === 'ar' ? 'اسم الفني' : 'Nom du technicien'}
+                    value={newTech.full_name}
+                    onChange={e => setNewTech({ ...newTech, full_name: e.target.value })}
+                  />
+                  <input
+                    style={{ ...s.priceInput, textAlign: 'right', fontSize: '1rem', marginBottom: '10px' }}
+                    placeholder={lang === 'ar' ? 'رقم الهاتف' : 'Téléphone'}
+                    value={newTech.phone}
+                    onChange={e => setNewTech({ ...newTech, phone: e.target.value })}
+                  />
+                  <input
+                    style={{ ...s.priceInput, textAlign: 'right', fontSize: '1rem', marginBottom: '10px' }}
+                    placeholder={lang === 'ar' ? 'كلمة مرور مؤقتة (6 أحرف على الأقل)' : 'Mot de passe temporaire (6 car. min)'}
+                    value={newTech.password}
+                    onChange={e => setNewTech({ ...newTech, password: e.target.value })}
+                  />
+                  <p style={{ ...s.sectionLabel, marginBottom: '8px' }}>
+                    {lang === 'ar' ? 'التخصص' : 'Spécialité'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    {['electrician', 'plumber'].map(sp => {
+                      const on = newTech.specialties.includes(sp);
+                      return (
+                        <button
+                          key={sp}
+                          type="button"
+                          onClick={() => setNewTech({
+                            ...newTech,
+                            specialties: on ? newTech.specialties.filter(x => x !== sp) : [...newTech.specialties, sp]
+                          })}
+                          style={{
+                            flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold',
+                            border: `2px solid ${on ? '#006400' : '#ddd'}`,
+                            backgroundColor: on ? '#f0fff0' : '#fff',
+                            color: on ? '#006400' : '#777'
+                          }}
+                        >
+                          {on ? '✓ ' : ''}{specialtyLabel(sp)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    style={{ ...s.btnSuccess, width: '100%', opacity: techLoading ? 0.7 : 1 }}
+                    onClick={handleCreateTechnician}
+                    disabled={techLoading}
+                  >
+                    {techLoading ? '...' : (lang === 'ar' ? 'إنشاء الحساب' : 'Créer le compte')}
+                  </button>
+                </div>
+              )}
+ 
+              <p style={s.sectionTitle}>
+                {lang === 'ar' ? `🔧 الفنيون (${technicians.length})` : `🔧 Techniciens (${technicians.length})`}
+              </p>
+ 
+              {technicians.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا يوجد فنيون بعد' : 'Aucun technicien'}
+                  </p>
+                </div>
+              ) : (
+                technicians.map(tc => (
+                  <div key={tc.id} style={{ ...s.userCard, cursor: 'default', padding: '12px 15px' }}>
+                    <div style={s.cardTop}>
+                      <span style={s.cardName}>
+                        {tc.is_available ? '🟢' : '⚪'} {tc.full_name}
+                      </span>
+                      <button
+                        style={{ ...s.btnDanger, padding: '5px 10px', fontSize: '0.75rem' }}
+                        onClick={() => handleToggleAvailability(tc.id, tc.is_available)}
+                      >
+                        {tc.is_available
+                          ? (lang === 'ar' ? 'إيقاف' : 'Arrêter')
+                          : (lang === 'ar' ? 'تفعيل' : 'Activer')}
+                      </button>
+                    </div>
+                    <p style={{ ...s.cardInfo, margin: 0 }}>
+                      📞 {tc.phone} &nbsp;•&nbsp; 🛠️ {tc.open_jobs}
+                    </p>
+                    <p style={{ ...s.cardInfo, margin: '4px 0 0' }}>
+                      {ratingStats[tc.id]
+                        ? <>⭐ <b>{Number(ratingStats[tc.id].avg_stars).toFixed(1)}</b> / 5 ({ratingStats[tc.id].ratings_count} {lang === 'ar' ? 'تقييم' : 'avis'})</>
+                        : <span style={{ color: '#aaa' }}>⭐ {lang === 'ar' ? 'لا توجد تقييمات بعد' : 'Aucun avis'}</span>}
+                    </p>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                      {['electrician', 'plumber'].map(sp => {
+                        const on = (tc.specialties || []).includes(sp);
+                        return (
+                          <button
+                            key={sp}
+                            onClick={() => handleToggleSpecialty(tc, sp)}
+                            style={{
+                              padding: '4px 10px', borderRadius: '14px', cursor: 'pointer',
+                              fontSize: '0.75rem', fontWeight: 'bold',
+                              border: `1.5px solid ${on ? '#006400' : '#ccc'}`,
+                              backgroundColor: on ? '#f0fff0' : '#fff',
+                              color: on ? '#006400' : '#999'
+                            }}
+                          >
+                            {on ? '✓ ' : ''}{specialtyLabel(sp)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           )}
@@ -1639,6 +2061,163 @@ if (callVoiceBlob && callVoiceBlob.size > 0) {
             </div>
           )}
  
+          {activeTab === 'reports' && (
+            <div>
+              <p style={{ ...s.sectionTitle, marginBottom: '12px' }}>
+                {lang === 'ar' ? '⚠️ بلاغات الزبائن' : '⚠️ Signalements des clients'}
+              </p>
+ 
+              {reports.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>📭</span>
+                  <p style={{ color: '#888' }}>
+                    {lang === 'ar' ? 'لا توجد بلاغات' : 'Aucun signalement'}
+                  </p>
+                </div>
+              ) : (
+                reports.map(rp => (
+                  <div
+                    key={rp.id}
+                    style={{
+                      ...s.requestCard,
+                      cursor: 'default',
+                      backgroundColor: rp.is_resolved ? '#fff' : '#fff8f0',
+                      border: rp.is_resolved ? '1px solid #f0f0f0' : '1.5px solid #e65100'
+                    }}
+                  >
+                    <div style={s.cardTop}>
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>
+                        {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {rp.order_id}
+                      </span>
+                      <span style={{
+                        ...s.statusBadge,
+                        backgroundColor: rp.is_resolved ? '#d4edda' : '#ffe0b2',
+                        color: rp.is_resolved ? '#155724' : '#a35200'
+                      }}>
+                        {rp.is_resolved
+                          ? (lang === 'ar' ? '✅ تمت المعالجة' : '✅ Traité')
+                          : (lang === 'ar' ? '🟠 جديد' : '🟠 Nouveau')}
+                      </span>
+                    </div>
+ 
+                    <div style={{ background: '#fff', border: '1px solid #f0e0d0', borderRadius: '10px', padding: '10px 12px', margin: '10px 0' }}>
+                      <p style={{ margin: 0, color: '#333', lineHeight: '1.6', fontSize: '0.92rem' }}>{rp.reason}</p>
+                    </div>
+ 
+                    <p style={s.cardInfo}>
+                      👤 {lang === 'ar' ? 'الزبون' : 'Client'}: {rp.reporter_name || '-'}
+                      {rp.client_code ? ` (${rp.client_code})` : ''}
+                    </p>
+                    {rp.reported_name && (
+                      <p style={s.cardInfo}>
+                        🔧 {lang === 'ar' ? 'الفني' : 'Technicien'}: {rp.reported_name}
+                      </p>
+                    )}
+                    {rp.service_type && (
+                      <p style={s.cardInfo}>🛠️ {rp.service_type}</p>
+                    )}
+                    <p style={s.cardDate}>
+                      {new Date(rp.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                    </p>
+ 
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                      {rp.reporter_phone && (
+                        <a
+                          href={`tel:+222${rp.reporter_phone}`}
+                          style={{
+                            flex: 1, textAlign: 'center', textDecoration: 'none', padding: '10px',
+                            borderRadius: '10px', border: '1.5px solid #006400', color: '#006400',
+                            fontWeight: 'bold', fontSize: '0.85rem'
+                          }}
+                        >
+                          📞 {lang === 'ar' ? 'اتصل بالزبون' : 'Appeler'}
+                        </a>
+                      )}
+                      {!rp.is_resolved && (
+                        <button
+                          style={{ ...s.btnSuccess, flex: 1, padding: '10px', fontSize: '0.85rem' }}
+                          onClick={() => resolveReport(rp.id)}
+                        >
+                          ✅ {lang === 'ar' ? 'تمت المعالجة' : 'Marquer traité'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+      {activeTab === 'salaries' && (
+            <div>
+              <p style={{ ...s.sectionTitle, marginBottom: '12px' }}>
+                {lang === 'ar' ? '💰 رواتب الفنيين' : '💰 Salaires des techniciens'}
+              </p>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', direction: 'ltr' }}>
+                <button style={{ ...s.btnSuccess, width: '48px', padding: '10px' }} onClick={() => shiftSalaryMonth(-1)}>◀</button>
+                <span style={{ fontWeight: '900', fontSize: '1.2rem' }}>{salaryMonth}</span>
+                <button style={{ ...s.btnSuccess, width: '48px', padding: '10px' }} onClick={() => shiftSalaryMonth(1)}>▶</button>
+              </div>
+
+              {salaryList.length === 0 ? (
+                <div style={s.emptyBox}>
+                  <span style={{ fontSize: '3rem' }}>📭</span>
+                  <p style={{ color: '#888' }}>{lang === 'ar' ? 'لا يوجد فنيون' : 'Aucun technicien'}</p>
+                </div>
+              ) : (
+                salaryList.map(p => (
+                  <div
+                    key={p.id}
+                    style={{
+                      ...s.requestCard,
+                      cursor: 'default',
+                      border: p.is_paid ? '1.5px solid #2e7d32' : '1.5px solid #ffc107',
+                      backgroundColor: p.is_paid ? '#f1f8f2' : '#fffdf5'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{p.full_name}</span>
+                      <span style={{
+                        fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 12px', borderRadius: '20px',
+                        backgroundColor: p.is_paid ? '#2e7d32' : '#ffc107', color: p.is_paid ? '#fff' : '#333'
+                      }}>
+                        {p.is_paid
+                          ? (lang === 'ar' ? '✅ تم الصرف' : '✅ Payé')
+                          : (lang === 'ar' ? '⏳ لم يُصرف' : '⏳ Non payé')}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: '0 0 4px', fontSize: '0.95rem', color: '#555' }}>
+                      {lang === 'ar' ? 'الراتب الشهري' : 'Salaire mensuel'}:{' '}
+                      <bdi dir="ltr" style={{ fontWeight: 'bold', color: '#222' }}>
+                        {Number(p.is_paid ? p.paid_amount : p.monthly_salary).toLocaleString('en-US')} MRU
+                      </bdi>
+                    </p>
+                    {p.is_paid && p.paid_at && (
+                      <p style={{ margin: '0 0 4px', fontSize: '0.8rem', color: '#888' }}>
+                        {lang === 'ar' ? 'تاريخ الصرف' : 'Date de paiement'}: {new Date(p.paid_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
+                      </p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                      {p.is_paid ? (
+                        <button style={{ ...s.btnDanger, flex: 1, padding: '10px', fontSize: '0.85rem' }} onClick={() => undoSalary(p.id)}>
+                          ↩️ {lang === 'ar' ? 'تراجع' : 'Annuler'}
+                        </button>
+                      ) : (
+                        <button style={{ ...s.btnSuccess, flex: 1, padding: '10px', fontSize: '0.85rem' }} onClick={() => paySalary(p.id)}>
+                          💵 {lang === 'ar' ? 'تسجيل الصرف' : 'Marquer payé'}
+                        </button>
+                      )}
+                      <button style={{ ...s.btnSuccess, flex: 1, padding: '10px', fontSize: '0.85rem', backgroundColor: '#607d8b' }} onClick={() => editSalary(p)}>
+                        ✏️ {lang === 'ar' ? 'تعديل الراتب' : 'Modifier'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -1889,26 +2468,6 @@ const s = {
     whiteSpace: 'nowrap',
     fontWeight: 'bold'
   },
-  bankDetail: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    background: '#f0f4f0',
-    borderRadius: '10px',
-    padding: '10px 12px',
-    margin: '8px 0'
-  },
-  payBtn: {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#006400',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginTop: '10px'
-  },
   searchRow: {
     display: 'flex',
     gap: '10px',
@@ -2048,14 +2607,6 @@ const s = {
     padding: '10px',
     textAlign: 'center',
     fontWeight: 'bold',
-    marginBottom: '10px'
-  },
-  priceBox: {
-    background: '#e8f5e9',
-    borderRadius: '10px',
-    padding: '10px',
-    textAlign: 'center',
-    color: '#155724',
     marginBottom: '10px'
   },
   quoteSection: {
@@ -2359,4 +2910,3 @@ const s = {
     fontSize: '0.75rem'
   }
 };
- 

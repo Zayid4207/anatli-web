@@ -28,84 +28,118 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
     ar: {
       appName: APP_CONFIG.name,
       appSub: APP_CONFIG.taglineAr,
-      hero: 'منزلك في أمان دائم',
-      heroSub: 'اشتراك شهري واحد — طلبات غير محدودة',
+      hero: 'بيتك في أيدٍ أمينة',
+      heroSub: 'اشتراك صيانة لفصل كامل — 4 أشهر',
       heroDesc: 'سباكة • كهرباء • تكييف • صيانة وأكثر',
       login: 'دخول',
       register: 'اشترك الآن',
       howTitle: 'كيف يعمل؟',
-      step1Title: 'اشترك', step1Desc: 'اختر باقتك الشهرية',
+      step1Title: 'اشترك', step1Desc: 'اختر باقتك لمدة 4 أشهر',
       step2Title: 'اطلب', step2Desc: 'صورة أو وصف صوتي للمشكلة',
       step3Title: 'الفني يصلك', step3Desc: 'في أقرب وقت ممكن',
-      packagesTitle: 'باقاتنا الشهرية',
-      unlimited: 'طلبات غير محدودة',
-      perMonth: 'شهرياً',
+      packagesTitle: 'باقات الصيانة',
+      packagesSub: 'ادفع مرة واحدة لفصل كامل — الأسعار بالأوقية الجديدة (MRU)',
+      perMonth: 'شهر',
+      forMonths: 'لمدة 4 أشهر (فصل كامل)',
+      visitsWord: 'زيارة',
+      visitsNote: 'رصيد للمدة كلها، تستخدمه متى شئت',
+      perVisit: 'للزيارة',
+      included: 'الخدمات المشمولة',
+      labourOnly: 'الخدمة تشمل اليد العاملة فقط — قطع الغيار على عاتق الزبون',
       downloadPdf: '📄 تحميل تفاصيل الباقة',
       whyTitle: 'لماذا نحن؟',
       why1: 'فنيون موثوقون', why2: 'استجابة سريعة',
-      why3: 'طلبات غير محدودة', why4: 'تغطية شاملة',
-      joinNow: 'ابدأ الآن', joinProvider: 'انضم كفني',
+      why3: 'زيارات تستعملها متى شئت', why4: 'خدمات متنوعة لبيتك',
+      joinNow: 'ابدأ الآن',
       footer: 'جميع الحقوق محفوظة', city: 'نواكشوط، موريتانيا',
-      servicesTitle: 'ما نغطيه',
+      servicesTitle: 'خدماتنا',
       ctaTitle: 'هل أنت مستعد؟',
-      ctaDesc: 'انضم الآن واحمِ منزلك',
-      packages: [
-        {
-          name: 'راحة البال', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'الأكثر شمولاً',
-          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🔌 تركيب Stabilisateur','❄️ إصلاح وتركيب المكيف','🌀 إصلاح وتركيب Ventilateur','🔧 إصلاح وتركيب التيو','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','⚙️ إصلاح مضخة المياه','🔩 إصلاح السبرسير','🧊 إصلاح الثلاجة','🌡️ إصلاح وتركيب مسخن المياه','📺 إصلاح التلفاز','🚪 إصلاح وتركيب مفاتيح الأبواب','⚡ أولوية قصوى في الاستجابة']
-        },
-        {
-          name: 'البيت المعمور', price: 1300, color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: 'الأكثر طلباً',
-          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🔌 تركيب Stabilisateur','❄️ إصلاح وتركيب المكيف','🌀 إصلاح وتركيب Ventilateur','🔧 إصلاح وتركيب التيو','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','🔩 إصلاح السبرسير','🧊 إصلاح الثلاجة','🌡️ إصلاح وتركيب مسخن المياه']
-        },
-        {
-          name: 'السلامة', price: 1100, color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: 'للبداية',
-          items: ['⚡ إصلاح انقطاع الكهرباء والتمديدات','💡 إصلاح وتركيب الأضواء والمفاتيح','🚿 إصلاح وتركيب الرباين ورباين الدوش والمطبخ','💧 إصلاح تسرب Lavabo','🔩 إصلاح السبرسير','🚪 إصلاح وتركيب مفاتيح الأبواب']
-        }
-      ]
+      ctaDesc: 'اشترك الآن وارتح من هموم صيانة بيتك',
     },
     fr: {
       appName: APP_CONFIG.nameFr,
       appSub: APP_CONFIG.taglineFr,
-      hero: 'Votre maison toujours en sécurité',
-      heroSub: 'Un abonnement mensuel — demandes illimitées',
+      hero: 'Votre maison entre de bonnes mains',
+      heroSub: "Abonnement d'entretien pour une saison — 4 mois",
       heroDesc: 'Plomberie • Électricité • Climatisation • Maintenance',
       login: 'Connexion',
       register: "S'abonner",
       howTitle: 'Comment ça marche ?',
-      step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait',
+      step1Title: "S'abonner", step1Desc: 'Choisissez votre forfait pour 4 mois',
       step2Title: 'Demander', step2Desc: 'Photo ou note vocale',
       step3Title: 'Le technicien arrive', step3Desc: 'Le plus vite possible',
-      packagesTitle: 'Nos forfaits mensuels',
-      unlimited: 'Demandes illimitées',
-      perMonth: 'par mois',
+      packagesTitle: "Forfaits d'entretien",
+      packagesSub: 'Un seul paiement pour une saison — prix en nouvelle ouguiya (MRU)',
+      perMonth: 'mois',
+      forMonths: 'pour 4 mois (une saison)',
+      visitsWord: 'visites',
+      visitsNote: 'Solde pour toute la durée, à utiliser quand vous voulez',
+      perVisit: 'visite',
+      included: 'Services inclus',
+      labourOnly: "Main d'œuvre uniquement — pièces à la charge du client",
       downloadPdf: '📄 Télécharger les détails',
       whyTitle: 'Pourquoi nous ?',
       why1: 'Techniciens vérifiés', why2: 'Réponse rapide',
-      why3: 'Demandes illimitées', why4: 'Couverture complète',
-      joinNow: 'Commencer', joinProvider: 'Rejoindre comme technicien',
+      why3: 'Des visites à utiliser quand vous voulez', why4: 'Des services variés pour votre maison',
+      joinNow: 'Commencer',
       footer: 'Tous droits réservés', city: 'Nouakchott, Mauritanie',
-      servicesTitle: 'Ce que nous couvrons',
+      servicesTitle: 'Nos services',
       ctaTitle: 'Prêt à commencer ?',
-      ctaDesc: 'Rejoignez-nous et protégez votre maison',
-      packages: [
-        {
-          name: 'Rāħat el bāl', price: 1500, color: '#fff8e1', border: '#f59e0b', icon: '🥇', badge: 'Le plus complet',
-          items: ['⚡ Pannes électriques','💡 Éclairage','🔌 Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets','💧 Lavabo','⚙️ Pompe','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau','📺 Télévision','🚪 Serrures','⚡ Priorité max']
-        },
-        {
-          name: 'El beit el maâmour', price: 1300, color: '#f0f4ff', border: '#3b82f6', icon: '🥈', badge: 'Le plus demandé',
-          items: ['⚡ Pannes électriques','💡 Éclairage','🔌 Stabilisateur','❄️ Climatisation','🌀 Ventilateur','🔧 Tuyaux','🚿 Robinets','💧 Lavabo','🔩 Compresseur','🧊 Réfrigérateur','🌡️ Chauffe-eau']
-        },
-        {
-          name: 'Es-salāma', price: 1100, color: '#f0fff4', border: '#22c55e', icon: '🥉', badge: 'Pour commencer',
-          items: ['⚡ Pannes électriques','💡 Éclairage','🚿 Robinets','💧 Lavabo','🔩 Compresseur','🚪 Serrures']
-        }
-      ]
+      ctaDesc: "Abonnez-vous et oubliez les soucis d'entretien de votre maison",
     }
   };
  
-  const c = content[lang];
+  // ===== الباقات (السعر شهري بالأوقية الجديدة MRU) =====
+  const MONTHS = 4;
+  const money = (n) => Number(n).toLocaleString('en-US');
+  const ITEMS = {
+    elec:   { ar: '⚡ إصلاح انقطاع الكهرباء والتمديدات', fr: '⚡ Pannes électriques et câblage' },
+    lights: { ar: '💡 إصلاح الأضواء والمفاتيح', fr: '💡 Éclairage et interrupteurs' },
+    stab:   { ar: '🔌 إصلاح Stabilisateur', fr: '🔌 Stabilisateur' },
+    ac:     { ar: '❄️ إصلاح المكيف', fr: '❄️ Climatisation' },
+    fan:    { ar: '🌀 إصلاح Ventilateur', fr: '🌀 Ventilateur' },
+    pipes:  { ar: '🔧 إصلاح التيو', fr: '🔧 Tuyaux' },
+    taps:   { ar: '🚿 إصلاح الرباين ورباين الدوش والمطبخ', fr: '🚿 Robinets (douche et cuisine)' },
+    basin:  { ar: '💧 إصلاح تسرب Lavabo', fr: '💧 Fuite de lavabo' },
+    pump:   { ar: '⚙️ إصلاح مضخة المياه', fr: '⚙️ Pompe à eau' },
+    surp:   { ar: '🔩 إصلاح السبرسير', fr: '🔩 Surpresseur' },
+    fridge: { ar: '🧊 إصلاح الثلاجة', fr: '🧊 Réfrigérateur' },
+    heater: { ar: '🌡️ إصلاح مسخن المياه', fr: '🌡️ Chauffe-eau' },
+    tv:     { ar: '📺 إصلاح التلفاز', fr: '📺 Télévision' },
+    locks:  { ar: '🚪 إصلاح مفاتيح الأبواب', fr: '🚪 Serrures de porte' },
+    prio:   { ar: '⚡ أولوية قصوى في الاستجابة', fr: '⚡ Priorité maximale' }
+  };
+  const PACKAGES = [
+    {
+      name: { ar: 'راحة البال', fr: 'Tranquillité' }, monthly: 800, visits: 24,
+      color: '#fff8e1', border: '#f59e0b', icon: '🥇',
+      badge: { ar: '🏆 الأوفر قيمة', fr: '🏆 Meilleur rapport qualité-prix' },
+      items: ['elec','lights','stab','ac','fan','pipes','taps','basin','pump','surp','fridge','heater','tv','locks','prio']
+    },
+    {
+      name: { ar: 'البيت المعمور', fr: 'Maison Prospère' }, monthly: 700, visits: 12,
+      color: '#f7f8fa', border: '#9aa5b1', icon: '🥈', badge: null,
+      items: ['elec','lights','stab','ac','fan','pipes','taps','basin','surp','fridge','heater','locks']
+    },
+    {
+      name: { ar: 'السلامة', fr: 'Sécurité' }, monthly: 400, visits: 8,
+      color: '#f0fff4', border: '#22c55e', icon: '🥉',
+      badge: { ar: '✅ للبداية', fr: '✅ Pour commencer' },
+      items: ['elec','lights','taps','basin','surp','locks']
+    }
+  ];
+  const buildPackages = (l) => PACKAGES.map(p => {
+    const total = p.monthly * MONTHS;
+    return {
+      name: p.name[l], monthly: p.monthly, total, visits: p.visits,
+      perVisit: Math.round(total / p.visits),
+      color: p.color, border: p.border, icon: p.icon,
+      badge: p.badge ? p.badge[l] : '',
+      items: p.items.map(k => ITEMS[k][l])
+    };
+  });
+
+  const c = { ...content[lang], packages: buildPackages(lang) };
  
   // فصل الإيموجي عن النص العربي لتفادي خلل ترتيب الحروف عند التصدير كصورة
   const splitIcon = (str) => {
@@ -139,14 +173,10 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
  
           <div style="display:flex;align-items:center;justify-content:space-between;position:relative;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:52px;height:52px;background:#ffc107;border-radius:11px;position:relative;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.2);">
-                <div style="width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:15px solid #00843D;position:absolute;top:5px;left:6px;"></div>
-                <div style="position:absolute;bottom:5px;left:13px;width:26px;height:19px;background:#00843D;border-radius:2px 2px 0 0;"></div>
-                <div style="position:absolute;bottom:5px;left:21px;width:8px;height:11px;background:#D21034;border-radius:2px 2px 0 0;"></div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:3px;line-height:1;">S.A.R.M</div>
-                <div dir="rtl" style="unicode-bidi:isolate;font-size:9.5px;color:rgba(255,255,255,0.9);margin-top:3px;">خدمة تأمين إصلاح المنازل</div>
+              <svg width="52" height="52" viewBox="0 0 64 64" style="flex-shrink:0;"><rect width="64" height="64" rx="15" fill="#ffc107"/><path d="M10 33 L32 14 L54 33" fill="none" stroke="#00843D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 34 L32 21 L47 34 V49 a2 2 0 0 1 -2 2 H19 a2 2 0 0 1 -2 -2 Z" fill="#00843D"/><line x1="24" y1="46" x2="37" y2="33" stroke="#fff" stroke-width="4.2" stroke-linecap="round"/><circle cx="40" cy="30" r="5.6" fill="none" stroke="#fff" stroke-width="4.2"/><line x1="40" y1="30" x2="46.5" y2="23.5" stroke="#00843D" stroke-width="5.5"/></svg>
+              <div style="text-align:left;">
+                <div style="font-size:24px;font-weight:900;line-height:1;"><span style="color:#fff;">Dar</span><span style="color:#ffc107;">fix</span></div>
+                <div dir="rtl" style="unicode-bidi:isolate;font-size:9.5px;color:rgba(255,255,255,0.9);margin-top:4px;">صيانة المنازل بالاشتراك</div>
               </div>
             </div>
             <div style="font-size:44px;line-height:1;">${pkg.icon}</div>
@@ -155,9 +185,10 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           <div style="text-align:center;margin-top:26px;position:relative;">
             <div dir="rtl" style="unicode-bidi:isolate;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px;">${pkg.name}</div>
             <div style="display:inline-block;background:rgba(0,0,0,0.18);padding:7px 22px;border-radius:20px;">
-              <span style="font-size:15px;font-weight:bold;color:#fff;">${pkg.price} MRU</span>
-              <span dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:rgba(255,255,255,0.85);"> / شهرياً</span>
+              <span style="font-size:16px;font-weight:bold;color:#fff;">${money(pkg.total)} MRU</span>
+              <span dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:rgba(255,255,255,0.85);"> / 4 أشهر</span>
             </div>
+            <div dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:rgba(255,255,255,0.9);margin-top:10px;">${pkg.visits} زيارة · ${money(pkg.perVisit)} MRU للزيارة الواحدة</div>
           </div>
         </div>
  
@@ -174,7 +205,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           <div style="display:flex;align-items:center;gap:8px;justify-content:center;background:#fff8e1;border:1px solid #ffc10766;border-radius:12px;padding:12px 16px;margin-top:20px;">
             <span style="font-size:14px;">⚠️</span>
             <span dir="rtl" style="unicode-bidi:isolate;font-size:12px;color:#8a6d00;line-height:1.5;text-align:center;">
-              <strong>تغطية اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
+              <strong>الخدمة تشمل اليد العاملة فقط</strong> — قطع الغيار على عاتق الزبون
             </span>
           </div>
         </div>
@@ -203,7 +234,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#e5e7eb' });
       const link = document.createElement('a');
-      link.download = `SARM-${pkg.name}.png`;
+      link.download = `Darfix-${pkg.name}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -412,7 +443,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
             { icon: '💧', label: lang === 'ar' ? 'سباكة' : 'Plomberie' },
             { icon: '❄️', label: lang === 'ar' ? 'تكييف' : 'Clim' },
             { icon: '🔧', label: lang === 'ar' ? 'صيانة' : 'Maintenance' },
-            { icon: '🌀', label: lang === 'ar' ? 'Ventilateur' : 'Ventilo' },
+            { icon: '🌀', label: lang === 'ar' ? 'مروحة' : 'Ventilo' },
             { icon: '📺', label: lang === 'ar' ? 'تلفاز' : 'TV' },
             { icon: '🚪', label: lang === 'ar' ? 'أبواب' : 'Portes' },
             { icon: '🧊', label: lang === 'ar' ? 'ثلاجة' : 'Frigo' }
@@ -492,50 +523,80 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         <h2 style={{ fontSize: '1.7rem', fontWeight: '900', marginBottom: '40px', color: '#2c2c2c' }}>
           {c.packagesTitle}
         </h2>
+        <p style={{ margin: '-28px 0 34px', color: '#777', fontSize: '0.9rem' }}>{c.packagesSub}</p>
  
         <div className="hfx-pkg-grid" style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '24px', maxWidth: '950px', margin: '0 auto'
         }}>
-          {c.packages.map((pkg, i) => (
+          {c.packages.map((pkg, i) => {
+            const isTarget = i === 0;
+            const isDecoy = i === 1;
+            return (
             <div key={i} style={{
-              border: `2px solid ${pkg.border}`, borderRadius: '24px',
+              border: `${isTarget ? 3 : 2}px solid ${pkg.border}`, borderRadius: '24px',
               backgroundColor: pkg.color, position: 'relative',
-              marginTop: '18px', boxShadow: '0 6px 25px rgba(0,0,0,0.08)',
+              marginTop: '18px',
+              boxShadow: isTarget ? `0 10px 32px ${pkg.border}55` : '0 6px 25px rgba(0,0,0,0.08)',
               display: 'flex', flexDirection: 'column',
-              transition: 'transform 0.2s ease'
+              textAlign: lang === 'ar' ? 'right' : 'left'
             }}>
               {/* شارة */}
-              <div style={{
-                position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
-                backgroundColor: pkg.border, color: '#fff', padding: '5px 18px',
-                borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold',
-                whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${pkg.border}55`
-              }}>
-                {pkg.badge}
+              {pkg.badge && (
+                <div style={{
+                  position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
+                  backgroundColor: pkg.border, color: '#fff', padding: '5px 18px',
+                  borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold',
+                  whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${pkg.border}55`
+                }}>
+                  {pkg.badge}
+                </div>
+              )}
+
+              {/* الاسم والسعر الإجمالي */}
+              <div style={{ padding: '26px 20px 16px', borderBottom: `2px solid ${pkg.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '2.3rem' }}>{pkg.icon}</span>
+                  <p style={{ margin: 0, fontWeight: '900', fontSize: '1.25rem', color: pkg.border }}>{pkg.name}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '2.2rem', fontWeight: '900', color: '#222', lineHeight: 1 }}>{money(pkg.total)}</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#444' }}>MRU</span>
+                  <span style={{ fontSize: '0.82rem', color: '#777' }}>· {c.forMonths}</span>
+                </div>
+                <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#888' }}>
+                  {money(pkg.monthly)} MRU / {c.perMonth}
+                </p>
               </div>
- 
-              {/* رأسية */}
+
+              {/* الزيارات وسعر الزيارة */}
               <div style={{
-                padding: '22px 20px', paddingTop: '28px',
-                borderBottom: `2px solid ${pkg.border}`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
+                padding: '14px 20px', borderBottom: `1px dashed ${pkg.border}`,
+                backgroundColor: isTarget ? '#e8f5e9' : 'transparent'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '2.5rem' }}>{pkg.icon}</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontWeight: '900', fontSize: '1.15rem', color: pkg.border }}>{pkg.name}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#666' }}>∞ {c.unlimited}</p>
-                  </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 'bold', color: '#333' }}>
+                    🛠️ {pkg.visits} {c.visitsWord}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#888' }}>{c.visitsNote}</p>
                 </div>
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <div style={{ fontSize: '1.8rem', fontWeight: '900', color: pkg.border, lineHeight: 1 }}>{pkg.price}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#888' }}>MRU/{c.perMonth}</div>
+                  <div style={{
+                    fontSize: isTarget ? '1.8rem' : '1.05rem', fontWeight: '900',
+                    color: isTarget ? '#1b8a3a' : '#999', lineHeight: 1
+                  }}>
+                    {money(pkg.perVisit)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: isTarget ? '#1b8a3a' : '#aaa', marginTop: '3px' }}>
+                    MRU / {c.perVisit}
+                  </div>
                 </div>
               </div>
- 
-              {/* التغطية */}
-              <div style={{ padding: '18px 20px', flex: 1 }}>
+
+              {/* الخدمات المشمولة */}
+              <div style={{ padding: '16px 20px', flex: 1 }}>
+                <p style={{ margin: '0 0 10px', fontSize: '0.82rem', fontWeight: 'bold', color: '#555' }}>{c.included}</p>
                 {pkg.items.map((item, j) => (
                   <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '9px' }}>
                     <span style={{ color: pkg.border, fontWeight: 'bold', flexShrink: 0 }}>✓</span>
@@ -547,16 +608,19 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                   borderRadius: '10px', fontSize: '0.75rem', color: '#777',
                   textAlign: 'center', borderTop: `1px dashed ${pkg.border}`
                 }}>
-                  ⚠️ اليد العاملة فقط · Main d'œuvre uniquement
+                  ⚠️ {c.labourOnly}
                 </div>
               </div>
- 
+
               {/* الأزرار */}
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button onClick={onRegisterClick} style={{
-                  padding: '13px', backgroundColor: pkg.border, color: '#fff',
-                  border: 'none', borderRadius: '12px', fontWeight: 'bold',
-                  fontSize: '0.95rem', cursor: 'pointer'
+                  padding: isTarget ? '15px' : '13px',
+                  backgroundColor: isDecoy ? '#fff' : pkg.border,
+                  color: isDecoy ? pkg.border : '#fff',
+                  border: isDecoy ? `1.5px solid ${pkg.border}` : 'none',
+                  borderRadius: '12px', fontWeight: 'bold',
+                  fontSize: isTarget ? '1.05rem' : '0.95rem', cursor: 'pointer'
                 }}>
                   {c.register}
                 </button>
@@ -569,7 +633,8 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
  
@@ -636,12 +701,12 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
           }}>
             🔧 {c.joinNow}
           </button>
-          <button onClick={onRegisterClick} style={{
+          <button onClick={onLoginClick} style={{
             padding: '14px 30px', backgroundColor: 'rgba(255,255,255,0.1)',
             color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)',
             borderRadius: '14px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer'
           }}>
-            👷 {c.joinProvider}
+            {c.login}
           </button>
         </div>
       </section>
@@ -666,7 +731,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', margin: '4px 0' }}>{c.city}</p>
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: '4px 0' }}>
-          © 2026 S.A.R.M · {c.footer}
+          © 2026 Darfix · {c.footer}
         </p>
         <button
   onClick={() => setShowTerms(true)}

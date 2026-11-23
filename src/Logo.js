@@ -1,124 +1,92 @@
 import React, { useState, useEffect } from 'react';
- 
-export default function Logo({ size = 'md', theme = 'light' }) {
+
+// شعار دارفكس — أيقونة منزل بمفتاح إصلاح + اسم يتبدل بين العربية والفرنسية
+export default function Logo({ size = 'md', theme = 'light', stacked = false }) {
   const [isArabic, setIsArabic] = useState(true);
- 
+
   useEffect(() => {
     const interval = setInterval(() => {
       setIsArabic(prev => !prev);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
- 
+
   const sizes = {
-    sm: { box: 32, abbr: '0.8rem', sub: '0.5rem', gap: 8 },
-    md: { box: 44, abbr: '1rem', sub: '0.6rem', gap: 10 },
-    lg: { box: 58, abbr: '1.25rem', sub: '0.72rem', gap: 12 },
-    xl: { box: 75, abbr: '1.55rem', sub: '0.9rem', gap: 16 }
+    sm: { box: 34, name: '1.15rem', sub: '0.5rem', gap: 9 },
+    md: { box: 46, name: '1.5rem', sub: '0.6rem', gap: 11 },
+    lg: { box: 60, name: '1.9rem', sub: '0.72rem', gap: 13 },
+    xl: { box: 78, name: '2.4rem', sub: '0.9rem', gap: 16 }
   };
- 
+
   const s = sizes[size] || sizes.md;
   const isLight = theme === 'light';
-  const textColor = isLight ? '#fff' : '#006400';
-  const subColor = isLight ? 'rgba(255,255,255,0.75)' : 'rgba(0,100,0,0.65)';
+  const darColor = isLight ? '#ffffff' : '#006400';
+  const fixColor = isLight ? '#ffc107' : '#d99a00';
+  const subColor = isLight ? 'rgba(255,255,255,0.78)' : 'rgba(0,100,0,0.7)';
   const dividerColor = isLight ? 'rgba(255,255,255,0.3)' : 'rgba(0,100,0,0.2)';
- 
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: s.gap,
-      direction: 'ltr'
-    }}>
-      {/* الأيقونة — منزل بألوان العلم الموريتاني */}
-      <div style={{
-        width: s.box,
-        height: s.box,
-        backgroundColor: '#ffc107',
-        borderRadius: s.box * 0.2,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        boxShadow: '0 3px 10px rgba(255,193,7,0.35)',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* سقف — أخضر (العلم الموريتاني) */}
-        <div style={{
-          width: 0, height: 0,
-          borderLeft: `${s.box * 0.38}px solid transparent`,
-          borderRight: `${s.box * 0.38}px solid transparent`,
-          borderBottom: `${s.box * 0.3}px solid #00843D`,
-          position: 'absolute',
-          top: s.box * 0.1
-        }} />
-        {/* جسم — أخضر (العلم الموريتاني) */}
-        <div style={{
-          position: 'absolute',
-          bottom: s.box * 0.1,
-          width: s.box * 0.5,
-          height: s.box * 0.36,
-          backgroundColor: '#00843D',
-          borderRadius: '2px 2px 0 0'
-        }} />
-        {/* باب — أحمر (العلم الموريتاني) */}
-        <div style={{
-          position: 'absolute',
-          bottom: s.box * 0.1,
-          width: s.box * 0.16,
-          height: s.box * 0.2,
-          backgroundColor: '#D21034',
-          borderRadius: '2px 2px 0 0'
-        }} />
-      </div>
- 
-      {/* النص المتبادل */}
+    <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row', alignItems: 'center', gap: stacked ? s.gap + 10 : s.gap, direction: 'ltr' }}>
+      {/* الأيقونة: منزل أخضر ومفتاح إصلاح */}
+      <svg
+         width={stacked ? s.box * 1.7 : s.box}
+        height={stacked ? s.box * 1.7 : s.box}
+        viewBox="0 0 64 64"
+        style={{ flexShrink: 0, filter: 'drop-shadow(0 3px 8px rgba(255,193,7,0.35))' }}
+        aria-label="Darfix"
+      >
+        <rect width="64" height="64" rx="15" fill="#ffc107" />
+        <path d="M10 33 L32 14 L54 33" fill="none" stroke="#00843D" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M17 34 L32 21 L47 34 V49 a2 2 0 0 1 -2 2 H19 a2 2 0 0 1 -2 -2 Z" fill="#00843D" />
+        {/* مفتاح الإصلاح */}
+        <line x1="24" y1="46" x2="37" y2="33" stroke="#fff" strokeWidth="4.2" strokeLinecap="round" />
+        <circle cx="40" cy="30" r="5.6" fill="none" stroke="#fff" strokeWidth="4.2" />
+        <line x1="40" y1="30" x2="46.5" y2="23.5" stroke="#00843D" strokeWidth="5.5" strokeLinecap="butt" />
+      </svg>
+
+      {/* النص المتبدل */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
-        minWidth: size === 'xl' ? '160px' : size === 'lg' ? '130px' : '110px'
+        alignItems: stacked ? 'center' : 'stretch',
+        minWidth: stacked ? 0 : (size === 'xl' ? '190px' : size === 'lg' ? '150px' : '120px')
       }}>
-        {/* الاختصار */}
         <div style={{
-          fontSize: s.abbr,
+          fontSize: s.name,
           fontWeight: '900',
-          color: '#ffc107',
-          letterSpacing: isArabic ? '4px' : '3px',
-          lineHeight: 1,
-          fontFamily: isArabic ? "'Tajawal', sans-serif" : 'Georgia, serif',
+          lineHeight: 1.05,
+          letterSpacing: isArabic ? '0' : '0.5px',
+          fontFamily: isArabic ? "'Tajawal', sans-serif" : "'Poppins', 'Segoe UI', sans-serif",
           direction: isArabic ? 'rtl' : 'ltr',
-          transition: 'all 0.5s ease',
-          opacity: 1
+          textAlign: 'left'
         }}>
-          {isArabic ? 'خ.ت.ا.م' : 'S.A.R.M'}
+          {isArabic ? (
+            <>
+              <span style={{ color: darColor }}>دار</span>
+              <span style={{ color: fixColor }}>فكس</span>
+            </>
+          ) : (
+            <>
+              <span style={{ color: darColor }}>Dar</span>
+              <span style={{ color: fixColor }}>fix</span>
+            </>
+          )}
         </div>
- 
-        {/* خط فاصل */}
-        <div style={{
-          width: '100%',
-          height: '1px',
-          backgroundColor: dividerColor,
-          margin: '2px 0'
-        }} />
- 
-        {/* الوصف */}
+
+        <div style={{ width: '100%', height: '1px', backgroundColor: dividerColor, margin: '2px 0' }} />
+
         <div style={{
           fontSize: s.sub,
           color: subColor,
           lineHeight: 1.3,
           fontFamily: "'Tajawal', sans-serif",
           direction: isArabic ? 'rtl' : 'ltr',
-          transition: 'all 0.5s ease'
+          textAlign: 'left'
         }}>
-          {isArabic
-            ? 'خدمة تأمين إصلاح المنازل'
-            : "Service d'assurance du réparation de maison"}
+          {isArabic ? 'صيانة المنازل بالاشتراك' : "Entretien de la maison par abonnement"}
         </div>
       </div>
     </div>
   );
 }
- 

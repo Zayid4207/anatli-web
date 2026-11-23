@@ -5,20 +5,19 @@
 
 const APP_CONFIG = {
   // الاسم
-  name: 'HomeFix',
-  nameAr: 'هوم فيكس',
-  nameFr: 'HomeFix',
-
+   name: 'دارفكس',
+  nameAr: 'دارفكس',
+  nameFr: 'Darfix',
   // الوصف
-  taglineAr: 'تأمين إصلاح المنازل',
-  taglineFr: 'Assurance réparation domicile',
+   taglineAr: 'صيانة منزلك باشتراك واحد',
+  taglineFr: 'L\'entretien de votre maison, par abonnement',
 
   // معلومات التواصل
   whatsapp: '22242072952',
   phone: '42072952',
 
   // الرابط
-  url: 'https://leplombiermr.com',
+    url: 'https://darfix.app',
 
   // الألوان الرئيسية
   primaryColor: '#006400',

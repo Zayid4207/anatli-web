@@ -9,7 +9,15 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(user);
+  const [myRatings, setMyRatings] = useState({});
+  const [visits, setVisits] = useState(null);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingLoading, setRatingLoading] = useState(false);
   const [profileLocationLoading, setProfileLocationLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [passForm, setPassForm] = useState({ current: '', next: '', confirm: '' });
+  const [passLoading, setPassLoading] = useState(false);
   // بيانات الطلب الجديد
   const [location, setLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -57,11 +65,15 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
   useEffect(() => {
     fetchUserData();
     fetchRequests();
+    fetchMyRatings();
+    fetchVisits();
     fetchPackages();
-    const interval = setInterval(() => {
+       const interval = setInterval(() => {
+      if (document.hidden) return;
       fetchRequests();
+      fetchVisits();
       fetchUserData();
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
  
@@ -144,6 +156,88 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     } catch (err) {}
   };
  
+  // رصيد الزيارات
+  const fetchVisits = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/customers/${user.id}/visits`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setVisits(await res.json());
+    } catch (err) {}
+  };
+
+  // تقييماتي السابقة { رقم الطلب: عدد النجوم }
+  const fetchMyRatings = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/ratings/mine`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        const map = {};
+        rows.forEach(r => { map[r.request_id] = r.stars; });
+        setMyRatings(map);
+      }
+    } catch (err) {}
+  };
+  // تغيير كلمة المرور
+  const handleChangePassword = async () => {
+    if (!passForm.current || !passForm.next) {
+      alert(lang === 'ar' ? 'يرجى تعبئة كل الحقول' : 'Veuillez remplir tous les champs');
+      return;
+    }
+    if (passForm.next !== passForm.confirm) {
+      alert(lang === 'ar' ? 'كلمتا المرور الجديدتان غير متطابقتين' : 'Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+    setPassLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/me/password`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: passForm.current, new_password: passForm.next })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(lang === 'ar' ? '✅ تم تغيير كلمة المرور' : '✅ Mot de passe modifié');
+        setPassForm({ current: '', next: '', confirm: '' });
+        setShowPass(false);
+      } else {
+        alert(data.error || t.error);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setPassLoading(false);
+    }
+  };
+  const handleSubmitRating = async () => {
+    if (!ratingStars) {
+      alert(lang === 'ar' ? 'اختر عدد النجوم أولاً' : 'Choisissez d\'abord le nombre d\'étoiles');
+      return;
+    }
+    setRatingLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/requests/${selectedRequest.id}/rating`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stars: ratingStars, comment: ratingComment })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMyRatings(prev => ({ ...prev, [selectedRequest.id]: ratingStars }));
+        setRatingStars(0);
+        setRatingComment('');
+      } else {
+        alert(data.error || t.error);
+      }
+    } catch (err) {
+      alert(t.serverError);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
   const fetchPackages = async () => {
     try {
       const res = await fetch(`${apiUrl}/packages`);
@@ -259,6 +353,15 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
         setStep(1);
         setActiveTab('requests');
         fetchRequests();
+        fetchVisits();
+      } else if (data.error === 'open_request_exists') {
+        alert(lang === 'ar'
+          ? 'لديك طلب قيد التنفيذ. انتظر حتى ينتهي ثم أرسل طلباً جديداً.'
+          : 'Vous avez déjà une demande en cours. Attendez qu\'elle soit terminée avant d\'en envoyer une nouvelle.');
+      } else if (data.error === 'visits_exhausted') {
+        alert(lang === 'ar'
+          ? 'انتهى رصيد زياراتك. تواصل مع الإدارة لتجديد اشتراكك أو ترقيته.'
+          : 'Votre solde de visites est épuisé. Contactez l\'administration pour renouveler ou changer de forfait.');
       } else if (data.error === 'subscription_required') {
         alert(lang === 'ar' ? 'يجب الاشتراك أولاً لإرسال الطلبات' : 'Vous devez vous abonner d\'abord');
         setActiveTab('subscription');
@@ -501,17 +604,106 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
  
-  const isSubscribed = userData?.package_id && getDaysLeft() > 0;
+  const visitsExhausted = !!(visits && visits.total != null && visits.used >= visits.total);
+  const isSubscribed = userData?.package_id && getDaysLeft() > 0 && !visitsExhausted;
  
   const getStatusStyle = (status) => {
     const map = {
       pending_admin: { bg: '#fff3cd', color: '#856404' },
-      quoted: { bg: '#d1ecf1', color: '#0c5460' },
       assigned: { bg: '#d4edda', color: '#155724' },
+      on_the_way: { bg: '#d1ecf1', color: '#0c5460' },
+      in_progress: { bg: '#ffe0b2', color: '#a35200' },
       completed: { bg: '#e2e3e5', color: '#383d41' }
     };
     return map[status] || { bg: '#f8f9fa', color: '#333' };
   };
+
+  // ترجمة أسماء الباقات وخدماتها عند التبديل للفرنسية (القيم الأصلية في القاعدة تبقى بالعربية)
+  const PKG_FR = {
+    'السلامة': 'Sécurité',
+    'البيت المعمور': 'Maison Prospère',
+    'راحة البال': 'Tranquillité'
+  };
+  const ITEM_FR = {
+    'إصلاح انقطاع الكهرباء ومشاكل التمديدات': 'Réparation de coupure d\'électricité et problèmes de câblage',
+    'إصلاح الأضواء والمفاتيح': 'Réparation des lampes et interrupteurs',
+    'إصلاح Stabilisateur': 'Réparation du stabilisateur',
+    'إصلاح المكيف': 'Réparation de la climatisation',
+        'إصلاح المروحة': 'Réparation du ventilateur',
+    'إصلاح التيو': 'Réparation des tuyaux',
+    'إصلاح الرباين ورباين الدوش والمطبخ': 'Réparation des robinets (douche et cuisine)',
+    'إصلاح تسرب Lavabo': 'Réparation de fuite de lavabo',
+    'إصلاح مضخة المياه': 'Réparation de la pompe à eau',
+    'إصلاح السبرسير': 'Réparation du surpresseur',
+    'إصلاح الثلاجة': 'Réparation du réfrigérateur',
+    'إصلاح مسخن المياه': 'Réparation du chauffage de eau',
+    'إصلاح التلفاز': 'Réparation de la télévision',
+    'إصلاح مفاتيح الأبواب': 'Réparation des serrures de porte',
+    'أولوية قصوى في الاستجابة': 'Priorité maximale de réponse'
+  };
+  const pkgName = (name) => (lang === 'fr' && PKG_FR[name]) ? PKG_FR[name] : name;
+  const itemText = (item) => {
+    const k = String(item).trim();
+    return (lang === 'fr' && ITEM_FR[k]) ? ITEM_FR[k] : k;
+  };
+
+  const statusLabel = (status) => {
+    const ar = {
+      pending_admin: 'قيد المراجعة',
+      assigned: 'تم تعيين فني',
+      on_the_way: 'الفني في الطريق إليك',
+      in_progress: 'الفني يعمل الآن',
+      completed: 'تم إنجاز الطلب'
+    };
+    const fr = {
+      pending_admin: 'En cours de traitement',
+      assigned: 'Technicien assigné',
+      on_the_way: 'Le technicien est en route',
+      in_progress: 'Intervention en cours',
+      completed: 'Mission terminée'
+    };
+    return (lang === 'ar' ? ar : fr)[status] || status;
+  };
+
+  // مراحل الطلب بعد التعيين
+  const TRACK_STEPS = ['assigned', 'on_the_way', 'in_progress', 'completed'];
+  const renderTracker = (status) => {
+    const idx = TRACK_STEPS.indexOf(status);
+    if (idx === -1) return null;
+    const labels = lang === 'ar'
+      ? ['تم التعيين', 'في الطريق', 'بدأ العمل', 'تم الإنجاز']
+      : ['Assigné', 'En route', 'Au travail', 'Terminé'];
+    return (
+      <div style={s.tracker}>
+        {TRACK_STEPS.map((st, i) => {
+          const reached = i <= idx;
+          const current = i === idx && status !== 'completed';
+          return (
+            <React.Fragment key={st}>
+              {i > 0 && <div style={{ ...s.trackLine, backgroundColor: i <= idx ? '#006400' : '#e0e0e0' }} />}
+              <div style={s.trackItem}>
+                <div style={{
+                  ...s.trackDot,
+                  backgroundColor: reached ? '#006400' : '#e0e0e0',
+                  color: reached ? '#fff' : '#999',
+                  boxShadow: current ? '0 0 0 4px rgba(0,100,0,0.2)' : 'none'
+                }}>
+                  {i < idx || status === 'completed' ? '✓' : i + 1}
+                </div>
+                <span style={{ ...s.trackLabel, color: reached ? '#006400' : '#aaa', fontWeight: current ? 'bold' : 'normal' }}>
+                  {labels[i]}
+                </span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const fmtTime = (ts) => ts
+    ? new Date(ts).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })
+    : null;
  
   return (
     <div style={{ ...s.container, direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
@@ -598,7 +790,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                   <div>
                     <p style={{ margin: 0, fontWeight: 'bold', color: '#155724' }}>{t.currentPackage}</p>
                     <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#155724' }}>
-                      {userData?.package_name}
+                      {pkgName(userData?.package_name)}
                     </p>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -608,6 +800,35 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                     </div>
                   </div>
                 </div>
+
+                {/* عدّاد الزيارات */}
+                {visits && visits.total != null && (() => {
+                  const left = visits.remaining;
+                  const pct = Math.min(100, Math.round((visits.used / visits.total) * 100));
+                  const col = left <= 0 ? '#dc3545' : (left <= 2 ? '#e65100' : '#006400');
+                  return (
+                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed #9ccc9c' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#155724' }}>
+                          🛠️ {lang === 'ar' ? 'رصيد الزيارات' : 'Solde de visites'}
+                        </span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: '900', color: col }}>
+                          {lang === 'ar' ? `تبقّى ${left} من ${visits.total}` : `Reste ${left} sur ${visits.total}`}
+                        </span>
+                      </div>
+                      <div style={{ height: '10px', borderRadius: '6px', background: '#c8e6c9', overflow: 'hidden', direction: 'ltr' }}>
+                        <div style={{ width: `${100 - pct}%`, height: '100%', background: col, borderRadius: '6px', transition: 'width 0.4s ease' }} />
+                      </div>
+                      {left <= 2 && (
+                        <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: col, fontWeight: 'bold' }}>
+                          {left <= 0
+                            ? (lang === 'ar' ? 'انتهى رصيدك — تواصل مع الإدارة للتجديد أو الترقية' : 'Solde épuisé — contactez l\'administration')
+                            : (lang === 'ar' ? 'رصيدك على وشك النفاد' : 'Votre solde est bientôt épuisé')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div style={s.subWarningCard} onClick={() => setActiveTab('subscription')}>
@@ -616,12 +837,18 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                   <p style={{ margin: 0, fontWeight: 'bold', color: '#856404' }}>
                     {userData?.subscription_pending
                       ? t.subscriptionPending
-                      : t.subscriptionExpired}
+                      : (userData?.package_id
+                          ? (visitsExhausted
+                              ? (lang === 'ar' ? 'استنفدت جميع زياراتك' : 'Vous avez utilisé toutes vos visites')
+                              : t.subscriptionExpired)
+                          : (lang === 'ar' ? 'لم تشترك في أي باقة بعد' : 'Vous n\'avez pas encore d\'abonnement'))}
                   </p>
                   <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#856404' }}>
                     {userData?.subscription_pending
                       ? t.subscriptionPendingDesc
-                      : (lang === 'ar' ? 'اضغط هنا للاشتراك' : 'Appuyez pour s\'abonner')}
+                      : (userData?.package_id
+                          ? (lang === 'ar' ? 'اضغط هنا لتجديد اشتراكك' : 'Appuyez pour renouveler')
+                          : (lang === 'ar' ? 'اضغط هنا لاختيار باقتك' : 'Appuyez pour choisir un forfait'))}
                   </p>
                 </div>
               </div>
@@ -677,7 +904,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                           {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {r.id}
                         </span>
                         <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                          {t[`status_${r.status}`] || r.status}
+                          {statusLabel(r.status)}
                         </span>
                       </div>
                       <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#666' }}>
@@ -723,7 +950,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                           .filter(item => item.trim() !== 'أولوية قصوى في الاستجابة')
                       : [];
                     return items.map((item, i) => (
-                      <option key={i} value={item.trim()}>{item.trim()}</option>
+                      <option key={i} value={item.trim()}>{itemText(item)}</option>
                     ));
                   })()}
                 </select>
@@ -862,7 +1089,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                         {lang === 'ar' ? 'طلب رقم' : 'Demande #'} {r.id}
                       </span>
                       <span style={{ ...s.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                        {t[`status_${r.status}`] || r.status}
+                        {statusLabel(r.status)}
                       </span>
                     </div>
                     {r.description && (
@@ -873,6 +1100,13 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                     <p style={{ margin: '5px 0 0', fontSize: '0.8rem', color: '#999' }}>
                       {new Date(r.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'fr-FR')}
                     </p>
+                    {r.status === 'completed' && r.provider_name && (
+                      <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: myRatings[r.id] ? '#f5a623' : '#006400', fontWeight: 'bold' }}>
+                        {myRatings[r.id]
+                          ? '★'.repeat(myRatings[r.id]) + '☆'.repeat(5 - myRatings[r.id])
+                          : (lang === 'ar' ? '⭐ قيّم الفني' : '⭐ Notez le technicien')}
+                      </p>
+                    )}
                     {r.status === 'completed' && (
   <button
     style={{
@@ -926,12 +1160,30 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               return (
                 <div style={{ ...s.statusBigBox, backgroundColor: st.bg, borderColor: st.color }}>
                   <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: st.color }}>
-                    {t[`status_${selectedRequest.status}`]}
+                    {statusLabel(selectedRequest.status)}
                   </p>
                 </div>
               );
             })()}
  
+            {/* مراحل الطلب */}
+            {renderTracker(selectedRequest.status)}
+
+            {/* أوقات المراحل */}
+            {(selectedRequest.on_the_way_at || selectedRequest.started_at || selectedRequest.completed_at) && (
+              <div style={s.infoBox}>
+                {selectedRequest.on_the_way_at && (
+                  <p style={s.timeRow}>🚗 {lang === 'ar' ? 'انطلق الفني' : 'Départ du technicien'}: <b>{fmtTime(selectedRequest.on_the_way_at)}</b></p>
+                )}
+                {selectedRequest.started_at && (
+                  <p style={s.timeRow}>🔧 {lang === 'ar' ? 'بدأ العمل' : 'Début du travail'}: <b>{fmtTime(selectedRequest.started_at)}</b></p>
+                )}
+                {selectedRequest.completed_at && (
+                  <p style={s.timeRow}>✅ {lang === 'ar' ? 'تم الإنجاز' : 'Terminé'}: <b>{fmtTime(selectedRequest.completed_at)}</b></p>
+                )}
+              </div>
+            )}
+
             {/* الصورة */}
             {selectedRequest.image_url && (
               <img
@@ -969,6 +1221,52 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               </p>
             </div>
  
+            {/* تقييم الفني بعد انتهاء المهمة */}
+            {selectedRequest.status === 'completed' && selectedRequest.provider_name && (
+              <div style={s.ratingBox}>
+                {myRatings[selectedRequest.id] ? (
+                  <>
+                    <p style={s.ratingTitle}>
+                      {lang === 'ar' ? 'شكراً لتقييمك 🌟' : 'Merci pour votre avis 🌟'}
+                    </p>
+                    <div style={s.starsRow}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span key={n} style={{ ...s.star, color: n <= myRatings[selectedRequest.id] ? '#f5a623' : '#ddd', cursor: 'default' }}>★</span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p style={s.ratingTitle}>
+                      {lang === 'ar' ? 'كيف كانت خدمة الفني؟' : 'Comment était le service ?'}
+                    </p>
+                    <div style={s.starsRow}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span
+                          key={n}
+                          style={{ ...s.star, color: n <= ratingStars ? '#f5a623' : '#ddd' }}
+                          onClick={() => setRatingStars(n)}
+                        >★</span>
+                      ))}
+                    </div>
+                    <textarea
+                      style={{ ...s.textarea, height: '70px', marginTop: '10px' }}
+                      placeholder={lang === 'ar' ? 'تعليق (اختياري)' : 'Commentaire (facultatif)'}
+                      value={ratingComment}
+                      onChange={e => setRatingComment(e.target.value)}
+                    />
+                    <button
+                      style={{ ...s.btnPrimary, marginTop: '10px', opacity: ratingLoading ? 0.7 : 1 }}
+                      onClick={handleSubmitRating}
+                      disabled={ratingLoading}
+                    >
+                      {ratingLoading ? '...' : (lang === 'ar' ? 'إرسال التقييم' : 'Envoyer l\'avis')}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* زر الإبلاغ */}
             <button style={s.reportBtn} onClick={() => handleReport(selectedRequest.id)}>
               ⚠️ {t.reportProblem}
@@ -995,7 +1293,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                   {lang === 'ar' ? 'اشتراكك فعال' : 'Abonnement actif'}
                 </h2>
                 <p style={{ margin: '0 0 15px', opacity: 0.9, fontSize: '1.1rem', fontWeight: 'bold' }}>
-                  {userData?.package_name}
+                  {pkgName(userData?.package_name)}
                 </p>
                 <div style={{
                   background: 'rgba(255,255,255,0.15)',
@@ -1040,7 +1338,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                       {lang === 'ar' ? 'الباقة المطلوبة:' : 'Forfait demandé:'}
                     </p>
                     <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.2rem', color: '#856404' }}>
-                      {userData.package_name}
+                      {pkgName(userData.package_name)}
                     </p>
                   </div>
                 )}
@@ -1085,275 +1383,169 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
  
                 
 {/* بطاقات الباقات — من قاعدة البيانات */}
-{packages.map(pkg => {
-  // تنسيق الباقات حسب الاسم، بدل الاعتماد على أرقام id ثابتة
+{(() => {
+  const money = n => Number(n).toLocaleString('en-US');
+  const cur = 'MRU';
+  const sorted = [...packages].sort((a, b) => b.price - a.price);
+  const target = sorted[0];   // الباقة الأعلى = المستهدفة
+  const neighbor = sorted[1]; // الباقة المجاورة لها (للمقارنة)
+
   const packageStyles = {
-    'راحة البال': {
-      color: '#fff8e1',
-      border: '#f59e0b',
-      icon: '🥇',
-      badge: lang === 'ar'
-        ? '⭐ الأكثر شمولاً'
-        : '⭐ Le plus complet'
-    },
-    'البيت المعمور': {
-      color: '#f0f4ff',
-      border: '#3b82f6',
-      icon: '🥈',
-      badge: lang === 'ar'
-        ? '🔥 الأكثر طلباً'
-        : '🔥 Le plus demandé'
-    },
-    'السلامة': {
-      color: '#f0fff4',
-      border: '#22c55e',
-      icon: '🥉',
-      badge: lang === 'ar'
-        ? '✅ للبداية'
-        : '✅ Pour commencer'
-    }
+    'راحة البال': { color: '#fff8e1', border: '#f59e0b', icon: '🥇' },
+    'البيت المعمور': { color: '#f7f8fa', border: '#9aa5b1', icon: '🥈' },
+    'السلامة': { color: '#f0fff4', border: '#22c55e', icon: '🥉' }
   };
 
-  const ps = packageStyles[pkg.name] || {
-    color: '#f5f5f5',
-    border: '#999',
-    icon: '📦',
-    badge: ''
-  };
-
-  // معالجة الخدمات القادمة من PostgreSQL JSONB
-  const items = (() => {
-    const coverage = pkg.coverage_items;
-
-    if (Array.isArray(coverage)) {
-      return coverage;
-    }
-
+  const parseItems = (coverage) => {
+    if (Array.isArray(coverage)) return coverage;
     if (typeof coverage === 'string') {
       const value = coverage.trim();
-
       if (!value) return [];
-
       try {
         const parsed = JSON.parse(value);
-
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-
-        return value.split('|').map(item => item.trim()).filter(Boolean);
-      } catch {
-        return value.split('|').map(item => item.trim()).filter(Boolean);
-      }
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return value.split('|').map(i => i.trim()).filter(Boolean);
     }
-
     return [];
-  })();
+  };
 
-  return (
-    <div
-      key={pkg.id}
-      style={{
-        border: `2px solid ${ps.border}`,
-        borderRadius: '20px',
-        marginBottom: '20px',
-        marginTop: '18px',
-        overflow: 'visible',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.07)',
-        backgroundColor: ps.color,
-        position: 'relative'
-      }}
-    >
-      {/* شارة مميزة */}
-      {ps.badge && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '-14px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: ps.border,
-            color: '#fff',
-            padding: '5px 18px',
-            borderRadius: '20px',
-            fontSize: '0.78rem',
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            boxShadow: `0 3px 10px ${ps.border}66`
-          }}
-        >
-          {ps.badge}
-        </div>
-      )}
+  return sorted.map(pkg => {
+    const isTarget = target && pkg.id === target.id;
+    const isDecoy = neighbor && pkg.id === neighbor.id;
+    const ps = packageStyles[pkg.name] || { color: '#f5f5f5', border: '#999', icon: '📦' };
+    const months = pkg.duration_months || 4;
+    const total = pkg.price * months;
+    const visits = pkg.visits_total;
+    const perVisit = visits ? Math.round(total / visits) : null;
+    const items = parseItems(pkg.coverage_items);
+    const badge = isTarget
+      ? (lang === 'ar' ? '🏆 الأوفر قيمة' : '🏆 Meilleur rapport qualité-prix')
+      : (!isDecoy ? (lang === 'ar' ? '✅ للبداية' : '✅ Pour commencer') : '');
 
-      {/* رأسية الباقة */}
+    return (
       <div
+        key={pkg.id}
         style={{
-          padding: '20px',
-          paddingTop: '28px',
-          borderBottom: `2px solid ${ps.border}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          border: `${isTarget ? 3 : 2}px solid ${ps.border}`,
+          borderRadius: '20px',
+          marginBottom: '22px',
+          marginTop: '18px',
+          boxShadow: isTarget ? `0 8px 26px ${ps.border}55` : '0 3px 12px rgba(0,0,0,0.06)',
+          backgroundColor: ps.color,
+          position: 'relative',
+          opacity: isDecoy ? 0.95 : 1
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}
-        >
-          <span style={{ fontSize: '2.5rem' }}>
-            {ps.icon}
-          </span>
-
-          <div>
-            <p
-              style={{
-                margin: 0,
-                fontWeight: '900',
-                fontSize: '1.2rem',
-                color: ps.border
-              }}
-            >
-              {pkg.name}
-            </p>
-
-            <p
-              style={{
-                margin: '3px 0 0',
-                fontSize: '0.8rem',
-                color: '#666'
-              }}
-            >
-              {lang === 'ar'
-                ? '∞ طلبات غير محدودة'
-                : '∞ Demandes illimitées'}
-            </p>
+        {badge && (
+          <div style={{
+            position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
+            backgroundColor: ps.border, color: '#fff', padding: '5px 18px', borderRadius: '20px',
+            fontSize: '0.8rem', fontWeight: 'bold', whiteSpace: 'nowrap',
+            boxShadow: `0 3px 10px ${ps.border}66`
+          }}>
+            {badge}
           </div>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <div
-            style={{
-              fontSize: '1.8rem',
-              fontWeight: '900',
-              color: ps.border,
-              lineHeight: 1
-            }}
-          >
-            {pkg.price}
-          </div>
-
-          <div
-            style={{
-              fontSize: '0.75rem',
-              color: '#888'
-            }}
-          >
-            MRU/{lang === 'ar' ? 'شهر' : 'mois'}
-          </div>
-        </div>
-      </div>
-
-      {/* قائمة التغطية */}
-      <div style={{ padding: '15px 20px' }}>
-        {items.map((item, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
-              marginBottom: '8px'
-            }}
-          >
-            <span
-              style={{
-                color: ps.border,
-                fontWeight: 'bold',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}
-            >
-              ✓
-            </span>
-
-            <span
-              style={{
-                fontSize: '0.88rem',
-                color: '#444',
-                lineHeight: '1.5'
-              }}
-            >
-              {String(item)}
-            </span>
-          </div>
-        ))}
-
-        {/* رسالة عند عدم وجود خدمات */}
-        {items.length === 0 && (
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.85rem',
-              color: '#777',
-              textAlign: 'center'
-            }}
-          >
-            {lang === 'ar'
-              ? 'لا توجد تفاصيل تغطية متاحة لهذه الباقة حالياً.'
-              : 'Aucun détail de couverture disponible pour le moment.'}
-          </p>
         )}
 
-        {/* تنبيه اليد العاملة */}
-        <div
-          style={{
-            marginTop: '12px',
-            padding: '10px 12px',
-            background: 'rgba(0,0,0,0.04)',
-            borderRadius: '10px',
-            fontSize: '0.78rem',
-            color: '#777',
-            textAlign: 'center',
-            borderTop: `1px dashed ${ps.border}`
-          }}
-        >
-          ⚠️ {lang === 'ar'
-            ? 'تأمين اليد العاملة فقط — قطع الغيار على عاتق الزبون'
-            : "Main d'œuvre uniquement — pièces à la charge du client"}
+        {/* الاسم والسعر الإجمالي */}
+        <div style={{ padding: '24px 20px 14px', borderBottom: `2px solid ${ps.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '2.2rem' }}>{ps.icon}</span>
+            <p style={{ margin: 0, fontWeight: '900', fontSize: '1.25rem', color: ps.border }}>{pkgName(pkg.name)}</p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '2.1rem', fontWeight: '900', color: '#222', lineHeight: 1 }}>{money(total)}</span>
+            <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#444' }}>{cur}</span>
+            <span style={{ fontSize: '0.85rem', color: '#777' }}>
+              {lang === 'ar' ? `· لمدة ${months} أشهر (فصل كامل)` : `· pour ${months} mois (une saison)`}
+            </span>
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#888' }}>
+            {money(pkg.price)} {cur} / {lang === 'ar' ? 'شهر' : 'mois'}
+          </p>
+        </div>
+
+        {/* الزيارات وسعر الزيارة */}
+        {visits ? (
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '14px 20px', gap: '10px',
+            backgroundColor: isTarget ? '#e8f5e9' : 'transparent',
+            borderBottom: `1px dashed ${ps.border}`
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 'bold', color: '#333' }}>
+                🛠️ {visits} {lang === 'ar' ? 'زيارة' : 'visites'}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#888' }}>
+                {lang === 'ar' ? 'رصيد للمدة كلها، تستخدمه متى شئت' : 'Solde pour toute la durée'}
+              </p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: isTarget ? '1.7rem' : '1.05rem',
+                fontWeight: '900',
+                color: isTarget ? '#1b8a3a' : '#999',
+                lineHeight: 1
+              }}>
+                {money(perVisit)}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: isTarget ? '#1b8a3a' : '#aaa', marginTop: '3px' }}>
+                {cur} / {lang === 'ar' ? 'للزيارة' : 'visite'}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* الخدمات المشمولة */}
+        <div style={{ padding: '15px 20px' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>
+            {lang === 'ar' ? 'الخدمات المشمولة' : 'Services inclus'}
+          </p>
+          {items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+              <span style={{ color: ps.border, fontWeight: 'bold', fontSize: '1rem', flexShrink: 0 }}>✓</span>
+              <span style={{ fontSize: '0.88rem', color: '#444', lineHeight: '1.5' }}>{itemText(item)}</span>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#777', textAlign: 'center' }}>
+              {lang === 'ar' ? 'لا توجد تفاصيل متاحة لهذه الباقة حالياً.' : 'Aucun détail disponible pour le moment.'}
+            </p>
+          )}
+
+          <div style={{
+            marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: '10px',
+            fontSize: '0.78rem', color: '#777', textAlign: 'center', borderTop: `1px dashed ${ps.border}`
+          }}>
+            ⚠️ {lang === 'ar'
+              ? 'الخدمة تشمل اليد العاملة فقط — قطع الغيار على عاتق الزبون'
+              : "Main d'œuvre uniquement — pièces à la charge du client"}
+          </div>
+        </div>
+
+        {/* زر الاختيار */}
+        <div style={{ padding: '0 20px 20px' }}>
+          <button
+            style={{
+              width: '100%', padding: isTarget ? '16px' : '13px',
+              backgroundColor: isDecoy ? '#fff' : ps.border,
+              color: isDecoy ? ps.border : '#fff',
+              border: isDecoy ? `1.5px solid ${ps.border}` : 'none',
+              borderRadius: '12px', fontWeight: 'bold',
+              fontSize: isTarget ? '1.1rem' : '1rem', cursor: 'pointer'
+            }}
+            onClick={() => { setSelectedPackage(pkg.id); setSubStep(2); }}
+          >
+            {lang === 'ar' ? 'اختر هذه الباقة ←' : 'Choisir ce forfait →'}
+          </button>
         </div>
       </div>
-   
-
- 
-                      {/* زر الاختيار */}
-                      <div style={{ padding: '0 20px 20px' }}>
-                        <button
-                          style={{
-                            width: '100%',
-                            padding: '14px',
-                            backgroundColor: ps.border,
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontWeight: 'bold',
-                            fontSize: '1rem',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => {
-                            setSelectedPackage(pkg.id);
-                            setSubStep(2);
-                          }}
-                        >
-                          {lang === 'ar' ? 'اختر هذه الباقة ←' : 'Choisir ce forfait →'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+    );
+  });
+})()}
               </div>
  
             ) : subStep === 2 ? (
@@ -1372,11 +1564,13 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                 {(() => {
                   const selectedPkg = packages.find(p => p.id === selectedPackage);
                   const pkgStyles = {
-                    3: { border: '#f59e0b', icon: '🥇' },
-                    2: { border: '#3b82f6', icon: '🥈' },
-                    1: { border: '#22c55e', icon: '🥉' }
+                    'راحة البال': { border: '#f59e0b', icon: '🥇' },
+                    'البيت المعمور': { border: '#6b7785', icon: '🥈' },
+                    'السلامة': { border: '#22c55e', icon: '🥉' }
                   };
-                  const ps = pkgStyles[selectedPackage] || { border: '#006400', icon: '📦' };
+                  const ps = pkgStyles[selectedPkg?.name] || { border: '#006400', icon: '📦' };
+                  const months = selectedPkg?.duration_months || 4;
+                  const total = selectedPkg ? selectedPkg.price * months : null;
                   return (
                     <div style={{
                       background: `linear-gradient(135deg, ${ps.border} 0%, ${ps.border}cc 100%)`,
@@ -1395,15 +1589,17 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
                             {lang === 'ar' ? 'الباقة المختارة' : 'Forfait sélectionné'}
                           </p>
                           <p style={{ margin: '4px 0 0', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                            {selectedPkg?.name || '-'}
+                            {pkgName(selectedPkg?.name) || '-'}
                           </p>
                         </div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>
-                          {selectedPkg?.price || '-'}
+                        <div style={{ fontSize: '1.7rem', fontWeight: '900' }}>
+                          {total ? total.toLocaleString('en-US') : '-'}
                         </div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>MRU</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                          {lang === 'ar' ? `MRU · ${months} أشهر` : `MRU · ${months} mois`}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1583,7 +1779,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               </div>
               <div style={s.infoRow}>
                 <span style={s.infoLabel}>{t.currentPackage}</span>
-                <span style={s.infoValue}>{userData?.package_name || '-'}</span>
+                <span style={s.infoValue}>{pkgName(userData?.package_name) || '-'}</span>
               </div>
             </div>
  
@@ -1634,6 +1830,49 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               </button>
             </div>
  
+                      {/* تغيير كلمة المرور */}
+            <button
+              style={{ ...s.logoutBtn, color: '#006400', borderColor: '#006400', marginBottom: '10px' }}
+              onClick={() => setShowPass(!showPass)}
+            >
+              🔒 {showPass
+                ? (lang === 'ar' ? 'إغلاق' : 'Fermer')
+                : (lang === 'ar' ? 'تغيير كلمة المرور' : 'Changer le mot de passe')}
+            </button>
+
+            {showPass && (
+              <div style={{ ...s.infoBox, marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { key: 'current', ar: 'كلمة المرور الحالية', fr: 'Mot de passe actuel' },
+                  { key: 'next', ar: 'كلمة المرور الجديدة', fr: 'Nouveau mot de passe' },
+                  { key: 'confirm', ar: 'تأكيد كلمة المرور الجديدة', fr: 'Confirmer le nouveau mot de passe' }
+                ].map(f => (
+                  <input
+                    key={f.key}
+                    type="password"
+                    placeholder={lang === 'ar' ? f.ar : f.fr}
+                    value={passForm[f.key]}
+                    onChange={e => setPassForm({ ...passForm, [f.key]: e.target.value })}
+                    style={{
+                      padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #ddd',
+                      fontSize: '1rem', width: '100%', boxSizing: 'border-box', backgroundColor: '#fff'
+                    }}
+                  />
+                ))}
+                <button
+                  style={{
+                    padding: '12px', backgroundColor: '#006400', color: '#fff', border: 'none',
+                    borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', width: '100%',
+                    opacity: passLoading ? 0.7 : 1
+                  }}
+                  onClick={handleChangePassword}
+                  disabled={passLoading}
+                >
+                  {passLoading ? '...' : (lang === 'ar' ? 'حفظ' : 'Enregistrer')}
+                </button>
+              </div>
+            )}
+
             <button style={s.logoutBtn} onClick={onLogout}>{t.logout}</button>
           </div>
         )}
@@ -1643,10 +1882,10 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
       {/* شريط التنقل السفلي */}
       <nav style={s.bottomNav}>
         {[
-          { id: 'home', icon: '🏠', label: t.home },
-          { id: 'requests', icon: '📋', label: t.myRequests },
-          { id: 'subscription', icon: '💳', label: t.subscription },
-          { id: 'profile', icon: '👤', label: t.myAccount }
+          { id: 'home', label: t.home },
+          { id: 'requests', label: t.myRequests },
+          { id: 'subscription', label: t.subscription },
+          { id: 'profile', label: t.myAccount }
         ].map(tab => (
           <button
             key={tab.id}
@@ -1654,7 +1893,7 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
               ? s.navActive : s.navBtn}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span style={{ fontSize: '1.4rem' }}>{tab.icon}</span>
+            <NavIcon name={tab.id} />
             <span style={{ fontSize: '0.7rem' }}>{tab.label}</span>
           </button>
         ))}
@@ -1663,10 +1902,16 @@ export default function CustomerScreen({ user, apiUrl, onLogout }) {
     </div>
   );
 }
+const NavIcon = ({ name }) => {
+  const p = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  if (name === 'home') return (<svg {...p}><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h13V10" /><path d="M10 19.5v-5h4v5" /></svg>);
+  if (name === 'requests') return (<svg {...p}><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="M8.5 10h7M8.5 14h7M8.5 18h4" /></svg>);
+  if (name === 'subscription') return (<svg {...p}><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><path d="M7 15h4" /></svg>);
+  return (<svg {...p}><circle cx="12" cy="8.5" r="3.6" /><path d="M4.8 20c.8-3.6 3.7-5.6 7.2-5.6s6.4 2 7.2 5.6" /></svg>);
+};
  
 const s = {
   container: {
-    height: '100vh',
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#f5f7fa',
@@ -1677,7 +1922,7 @@ const s = {
   main: {
     flex: 1,
     overflowY: 'auto',
-    paddingBottom: '80px'
+    paddingBottom: 'calc(95px + env(safe-area-inset-bottom))'
   },
   screen: {
     padding: '15px',
@@ -1776,6 +2021,76 @@ const s = {
     borderRadius: '20px',
     fontSize: '0.75rem',
     fontWeight: 'bold'
+  },
+  ratingBox: {
+    background: '#fffaf0',
+    border: '1.5px solid #f5a623',
+    borderRadius: '16px',
+    padding: '16px',
+    marginBottom: '12px',
+    textAlign: 'center'
+  },
+  ratingTitle: {
+    margin: '0 0 8px',
+    fontWeight: 'bold',
+    color: '#333',
+    fontSize: '1rem'
+  },
+  starsRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '6px',
+    direction: 'ltr'
+  },
+  star: {
+    fontSize: '2.6rem',
+    lineHeight: 1,
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  tracker: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '16px 8px 12px',
+    marginBottom: '15px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+  },
+  trackItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px',
+    width: '62px'
+  },
+  trackDot: {
+    width: '30px',
+    height: '30px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.85rem',
+    fontWeight: 'bold'
+  },
+  trackLine: {
+    flex: 1,
+    height: '3px',
+    marginTop: '14px',
+    borderRadius: '2px',
+    minWidth: '10px'
+  },
+  trackLabel: {
+    fontSize: '0.68rem',
+    textAlign: 'center',
+    lineHeight: '1.2'
+  },
+  timeRow: {
+    margin: '4px 0',
+    fontSize: '0.85rem',
+    color: '#555'
   },
   statusBigBox: {
     border: '2px solid',
@@ -1951,33 +2266,6 @@ const s = {
     cursor: 'pointer',
     marginTop: '10px'
   },
-  packageCard: {
-    border: '2px solid',
-    borderRadius: '14px',
-    padding: '15px',
-    marginBottom: '12px',
-    cursor: 'pointer',
-    transition: '0.2s'
-  },
-  pendingBox: {
-    textAlign: 'center',
-    padding: '30px 20px',
-    background: '#fffbf0',
-    border: '2px solid #ffc107',
-    borderRadius: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '12px'
-  },
-  notifHint: {
-    background: '#fff',
-    border: '1px dashed #ffc107',
-    borderRadius: '10px',
-    padding: '8px 16px',
-    fontSize: '0.85rem',
-    color: '#856404'
-  },
   avatar: {
     width: '80px',
     height: '80px',
@@ -2002,7 +2290,9 @@ const s = {
   bottomNav: {
     position: 'fixed',
     bottom: 0, left: 0, right: 0,
-    height: '70px',
+    height: 'calc(66px + env(safe-area-inset-bottom))',
+    paddingBottom: 'env(safe-area-inset-bottom)',
+    boxSizing: 'border-box',
     background: '#fff',
     display: 'flex',
     justifyContent: 'space-around',
@@ -2086,18 +2376,6 @@ const s = {
     animationIterationCount: 'infinite',
     animationDirection: 'alternate'
   },
- endCallBtn: {
-    marginTop: '30px',
-    padding: '16px 40px',
-    backgroundColor: '#dc3545',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '30px',
-    fontWeight: 'bold',
-    fontSize: '1rem',
-    cursor: 'pointer',
-    boxShadow: '0 6px 20px rgba(220,53,69,0.4)'
-  },
   callControlsRow: {
     display: 'flex',
     alignItems: 'center',
@@ -2156,4 +2434,3 @@ const s = {
     fontSize: '0.75rem'
   }
 };
- 
